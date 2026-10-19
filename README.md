@@ -1,0 +1,1 @@
+# Organiza-o-de-Recursos---QS-projeto-final
