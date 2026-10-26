@@ -29,7 +29,11 @@ A especificação inicial estabelece os seguintes elementos:
 - Gerenciamento de salas, professores, materiais, usuários, bloqueios e períodos de manutenção pelo administrador.
 - Prevenção de conflitos de horário envolvendo os recursos alocados.
 
-Os detalhes das regras de negócio, permissões específicas, estados dos fluxos e critérios de conflito ainda precisam ser definidos e validados. Esta lista registra somente o que foi informado na especificação inicial; não substitui requisitos detalhados.
+Documentação complementar adicionada:
+
+- [requisitos-funcionais.md](requisitos-funcionais.md) — especificação detalhada dos requisitos funcionais, regras de negócio e critérios de aceite, revisada e considerada validada.
+
+As personas em [personas.md](personas.md) e os requisitos funcionais foram revisados e considerados validados. As regras críticas e os critérios de qualidade aprovados estão consolidados nesta visão geral; os documentos vinculados mantêm o detalhamento completo.
 
 ## Perfis envolvidos
 
@@ -46,26 +50,62 @@ Os perfis e suas necessidades estão detalhados em [personas.md](personas.md).
 - Entrega prevista: semana 46.
 - O projeto será desenvolvido por equipes.
 
-A arquitetura, o banco de dados, os mecanismos de autenticação, as integrações e as ferramentas de teste ainda não foram especificados neste documento.
+A arquitetura, o banco de dados, os mecanismos de autenticação e as integrações ainda precisam de definição técnica. A estratégia e as ferramentas de qualidade estão definidas abaixo.
 
-## Qualidade e evidências
+## Regras críticas
 
-A entrega deve apresentar evidências objetivas relacionadas a:
+#### Tempo e concorrência
 
-- **Qualidade:** validações e resultados de testes pertinentes aos requisitos.
-- **Segurança:** controles e verificações a definir conforme os perfis, dados e fluxos da aplicação.
-- **Rastreabilidade:** vínculo verificável entre requisitos, implementação e testes.
-- **Desempenho:** medições com cenários e critérios a definir.
+- O término de uma reserva deve ser posterior ao início.
+- Reservas do mesmo recurso não podem se sobrepor, seja sala, material ou professor.
+- Duas solicitações simultâneas conflitantes devem produzir uma única reserva aceita.
+- Recursos em manutenção não podem ser reservados.
 
-Os métodos, limiares de aprovação e formatos dessas evidências são decisões pendentes; não devem ser tratados como definidos até serem acordados e documentados.
+#### Estados e auditoria
+
+- Fluxo principal: `SOLICITADA → APROVADA → EM_USO → CONCLUÍDA`.
+- Estados alternativos: `REJEITADA`, `CANCELADA` e `NÃO_COMPARECEU`.
+- Somente responsáveis podem aprovar reservas de recursos restritos.
+- Reservas iniciadas não podem ser apagadas.
+- Toda mudança de estado deve gerar registro de auditoria.
+
+## Estratégia obrigatória de qualidade
+
+#### Testes automatizados
+
+- Testes unitários com JUnit 5, incluindo testes parametrizados.
+- Testes de integração, testes de API em caixa-preta e testes end-to-end.
+- Teste automatizado de concorrência que comprove a proteção contra dupla reserva.
+- Ao menos uma funcionalidade nova deve ser desenvolvida com TDD ou BDD e evidências da técnica.
+
+#### Ambiente realista e integrações
+
+- Usar banco de dados containerizado com Testcontainers.
+- Usar WireMock para simular integrações externas.
+- Mocks são permitidos em testes unitários isolados. Persistência e integrações críticas devem ser verificadas em ambiente realista, com Testcontainers ou WireMock.
+
+#### CI, análise estática e requisitos não funcionais
+
+- GitHub Actions deve executar verificações em pull requests.
+- JaCoCo deve medir a cobertura; o projeto deve estar integrado ao SonarCloud.
+- Avaliar desempenho com JMeter, além de autorização, validação de entrada e tratamento seguro de erros.
+
+## Metas mensuráveis
+
+- **80%** de cobertura de linhas.
+- **70%** de cobertura de branches.
+- **100%** dos requisitos críticos cobertos pela RTM (matriz de rastreabilidade).
+- **0** bugs ou vulnerabilidades críticas.
+
+Cobertura alta, isoladamente, não garante qualidade: testes triviais criados apenas para elevar o percentual não asseguram a pontuação máxima. As evidências devem demonstrar comportamento relevante e rastreável.
 
 ## Estado atual do projeto
 
-**Fase:** documentação inicial e descoberta de requisitos.
+**Fase:** requisitos funcionais e personas revisados e validados; preparação da arquitetura e da implementação.
 
-**Baseline:** a especificação fornecida define o propósito, os perfis, as capacidades gerais, a stack prevista e o foco de avaliação. No momento da criação deste documento, o README do repositório contém apenas o título do projeto e não há implementação da aplicação registrada na estrutura visível do repositório.
+**Baseline:** a especificação define o propósito, os perfis, os requisitos funcionais validados, a stack prevista e as evidências de qualidade exigidas. No momento da criação deste documento, o README do repositório contém apenas o título do projeto e não há implementação da aplicação registrada na estrutura visível do repositório.
 
-**Decisões pendentes:** regras detalhadas de conflito e disponibilidade; fluxo e estados das reservas; significado e tratamento de solicitações especiais; permissões por perfil; regras para bloqueios e manutenção; ciclo de retirada e devolução de materiais; requisitos funcionais e não funcionais mensuráveis; arquitetura e persistência; critérios de segurança, desempenho e aceite.
+**Próximas definições técnicas:** arquitetura e persistência; estratégia de implementação das regras de concorrência; configuração da CI e integração das ferramentas de qualidade. Essas definições devem implementar os requisitos validados, sem alterá-los.
 
 ## Registro de evolução
 
@@ -74,16 +114,19 @@ A visão geral deve ser atualizada sempre que uma implementação for iniciada o
 | Data | Mudança | Arquivos ou área | Requisito, decisão ou evidência relacionada |
 |---|---|---|---|
 | 2026-10-19 | Criação do baseline de visão geral e personas; sem implementação de aplicação registrada. | `prd/visão-geral.md`, `prd/personas.md` | Especificação inicial fornecida para o projeto. |
+| 2026-10-26 | Adição da especificação funcional detalhada, com regras de negócio, critérios de aceite, validações e próximos passos para continuidade. | `prd/requisitos-funcionais.md` | Requisitos funcionais obrigatórios e base de validação do projeto. |
+| 2026-10-26 | Registro da validação das personas e dos requisitos funcionais; inclusão das regras críticas, estratégia obrigatória de qualidade e metas mensuráveis. | `prd/visão-geral.md`, `prd/personas.md`, `prd/requisitos-funcionais.md` | Revisão confirmada; cobertura de requisitos críticos, concorrência, auditoria, testes, CI e metas de qualidade. |
 
 ## Próximos passos
 
-1. **Validar e detalhar requisitos:** transformar o escopo confirmado em requisitos funcionais e não funcionais, regras de negócio e critérios de aceite. Objetivo: remover ambiguidades antes da implementação e permitir rastreabilidade.
-2. **Validar personas e permissões:** confirmar responsabilidades, ações permitidas e informações necessárias em cada fluxo. Objetivo: orientar autorização e comportamento do sistema por perfil.
-3. **Definir regras de alocação:** especificar disponibilidade, intervalos, conflitos, bloqueios, manutenção e exceções. Objetivo: estabelecer critérios testáveis para impedir alocações incompatíveis.
-4. **Documentar arquitetura e dados:** decidir e registrar a estrutura da aplicação, persistência e contratos necessários. Objetivo: oferecer uma base consistente para implementar os requisitos aprovados.
-5. **Planejar qualidade e segurança:** definir estratégia de testes, rastreabilidade, controles de segurança e evidências de desempenho com critérios mensuráveis. Objetivo: tornar a avaliação da qualidade reproduzível.
-6. **Implementar incrementalmente e atualizar este documento:** associar cada incremento aos requisitos e testes correspondentes. Objetivo: manter documentação, código e evidências alinhados até a entrega da semana 46.
+1. **Documentar arquitetura e dados:** decidir e registrar arquitetura, persistência e contratos necessários para implementar os requisitos validados.
+2. **Planejar a implementação da qualidade:** configurar CI, cobertura, análise estática, ambientes de teste e medição de desempenho conforme a estratégia obrigatória.
+3. **Construir a RTM:** vincular todos os requisitos críticos a implementação e evidências de teste, atingindo 100% de cobertura na matriz.
+4. **Implementar incrementalmente:** associar cada incremento aos requisitos e testes correspondentes e manter este documento alinhado até a entrega da semana 46.
+5. **Verificar as metas de qualidade:** medir cobertura de linhas e branches, executar os testes de concorrência e desempenho e confirmar ausência de bugs ou vulnerabilidades críticas.
 
 ## Histórico de atualização
 
 - **2026-10-19:** criação do documento com base exclusivamente na especificação inicial e no estado visível do repositório.
+- **2026-10-26:** atualização da visão geral para incluir a documentação de requisitos funcionais adicionada em `prd/requisitos-funcionais.md`.
+- **2026-10-26:** registro da validação das personas e dos requisitos funcionais e inclusão das regras críticas e metas de qualidade acordadas.
