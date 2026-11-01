@@ -32,6 +32,8 @@ A especificação inicial estabelece os seguintes elementos:
 Documentação complementar adicionada:
 
 - [requisitos-funcionais.md](requisitos-funcionais.md) — especificação detalhada dos requisitos funcionais, regras de negócio e critérios de aceite, revisada e considerada validada.
+- [requisitos-não-funcionais.md](requisitos-não-funcionais.md) — requisitos de qualidade, restrições técnicas, evidências de verificação e parâmetros ainda pendentes; não substitui nem altera os requisitos funcionais.
+- [arquitetura.md](arquitetura.md) — baseline arquitetural inicial com contexto, personas, requisitos arquiteturalmente significativos, atributos de qualidade, drivers priorizados, riscos e perguntas abertas. Registra a restrição explícita desta solicitação de executar diariamente ao final do dia um cron job de treinamento ou retreinamento usando somente dados novos; seu escopo e detalhes operacionais permanecem pendentes.
 
 As personas em [personas.md](personas.md) e os requisitos funcionais foram revisados e considerados validados. As regras críticas e os critérios de qualidade aprovados estão consolidados nesta visão geral; os documentos vinculados mantêm o detalhamento completo.
 
@@ -101,7 +103,7 @@ Cobertura alta, isoladamente, não garante qualidade: testes triviais criados ap
 
 ## Estado atual do projeto
 
-**Fase:** requisitos funcionais e personas revisados e validados; preparação da arquitetura e da implementação.
+**Fase:** requisitos funcionais e personas revisados e validados; requisitos não funcionais registrados; baseline de análise arquitetural inicial elaborado. Decisões detalhadas de arquitetura e implementação permanecem pendentes.
 
 **Baseline:** a especificação define o propósito, os perfis, os requisitos funcionais validados, a stack prevista e as evidências de qualidade exigidas. No momento da criação deste documento, o README do repositório contém apenas o título do projeto e não há implementação da aplicação registrada na estrutura visível do repositório.
 
@@ -116,10 +118,12 @@ A visão geral deve ser atualizada sempre que uma implementação for iniciada o
 | 2026-10-19 | Criação do baseline de visão geral e personas; sem implementação de aplicação registrada. | `prd/visão-geral.md`, `prd/personas.md` | Especificação inicial fornecida para o projeto. |
 | 2026-10-26 | Adição da especificação funcional detalhada, com regras de negócio, critérios de aceite, validações e próximos passos para continuidade. | `prd/requisitos-funcionais.md` | Requisitos funcionais obrigatórios e base de validação do projeto. |
 | 2026-10-26 | Registro da validação das personas e dos requisitos funcionais; inclusão das regras críticas, estratégia obrigatória de qualidade e metas mensuráveis. | `prd/visão-geral.md`, `prd/personas.md`, `prd/requisitos-funcionais.md` | Revisão confirmada; cobertura de requisitos críticos, concorrência, auditoria, testes, CI e metas de qualidade. |
+| 2026-11-01 | Inclusão dos requisitos não funcionais, com atributos de qualidade, evidências, restrições técnicas e parâmetros ainda pendentes. | `prd/requisitos-não-funcionais.md` | RNF-01 a RNF-09; metas de cobertura e rastreabilidade; desempenho sem limites quantitativos aprovados. |
+| 2026-11-01 | Criação do baseline de análise arquitetural; registro da restrição do cron job diário usando somente dados novos, sem escolher arquitetura ou alterar RF/RNF. | `prd/arquitetura.md` | ASR-01 a ASR-07; fontes e prioridades indicadas no documento; escopo e detalhes da rotina diária permanecem como perguntas abertas. |
 
 ## Próximos passos
 
-1. **Documentar arquitetura e dados:** decidir e registrar arquitetura, persistência e contratos necessários para implementar os requisitos validados.
+1. **Concluir arquitetura e dados:** resolver as perguntas abertas de [arquitetura.md](arquitetura.md) e decidir arquitetura, persistência e contratos necessários para implementar os requisitos validados, sem presumir decisões ainda não aprovadas.
 2. **Planejar a implementação da qualidade:** configurar CI, cobertura, análise estática, ambientes de teste e medição de desempenho conforme a estratégia obrigatória.
 3. **Construir a RTM:** vincular todos os requisitos críticos a implementação e evidências de teste, atingindo 100% de cobertura na matriz.
 4. **Implementar incrementalmente:** associar cada incremento aos requisitos e testes correspondentes e manter este documento alinhado até a entrega da semana 46.
