@@ -34,6 +34,8 @@ Documentação complementar adicionada:
 - [requisitos-funcionais.md](requisitos-funcionais.md) — especificação detalhada dos requisitos funcionais, regras de negócio e critérios de aceite, revisada e considerada validada.
 - [requisitos-não-funcionais.md](requisitos-não-funcionais.md) — requisitos de qualidade, restrições técnicas, evidências de verificação e parâmetros ainda pendentes; não substitui nem altera os requisitos funcionais.
 - [arquitetura.md](arquitetura.md) — baseline arquitetural inicial com contexto, personas, requisitos arquiteturalmente significativos, atributos de qualidade, drivers priorizados, riscos e perguntas abertas. Registra a restrição explícita desta solicitação de executar diariamente ao final do dia um cron job de treinamento ou retreinamento usando somente dados novos; seu escopo e detalhes operacionais permanecem pendentes.
+- [arquitetura-proposta.md](arquitetura-proposta.md) — complemento arquitetural proposto com responsabilidades, limites, contratos lógicos, diagramas C4, sequências online e batch, e recomendações para incrementalidade, operação e governança de ML. Não aprova tecnologias, origem dos dados, uso online de modelo ou políticas que ainda não tenham requisito.
+- [painel-revisor-arquitetura.md](painel-revisor-arquitetura.md) — parecer independente com objeções por papel, análise de coerência entre diagramas e fluxo, ADRs propostos, matriz requisito → decisão → componente → evidência, lacunas, suposições, riscos e próximos experimentos. Os ADRs permanecem pendentes; nenhum risco foi formalmente aceito.
 
 As personas em [personas.md](personas.md) e os requisitos funcionais foram revisados e considerados validados. As regras críticas e os critérios de qualidade aprovados estão consolidados nesta visão geral; os documentos vinculados mantêm o detalhamento completo.
 
@@ -103,11 +105,11 @@ Cobertura alta, isoladamente, não garante qualidade: testes triviais criados ap
 
 ## Estado atual do projeto
 
-**Fase:** requisitos funcionais e personas revisados e validados; requisitos não funcionais registrados; baseline de análise arquitetural inicial elaborado. Decisões detalhadas de arquitetura e implementação permanecem pendentes.
+**Fase:** requisitos funcionais e personas revisados e validados; requisitos não funcionais registrados; baseline arquitetural, proposta complementar e parecer ATAM/painel elaborados. Os diagramas e ADRs complementares são propostas para revisão, não decisões aprovadas; fonte de dados e escopo de ML, critérios de avaliação/promoção, implantação, persistência e políticas operacionais permanecem pendentes.
 
 **Baseline:** a especificação define o propósito, os perfis, os requisitos funcionais validados, a stack prevista e as evidências de qualidade exigidas. No momento da criação deste documento, o README do repositório contém apenas o título do projeto e não há implementação da aplicação registrada na estrutura visível do repositório.
 
-**Próximas definições técnicas:** arquitetura e persistência; estratégia de implementação das regras de concorrência; configuração da CI e integração das ferramentas de qualidade. Essas definições devem implementar os requisitos validados, sem alterá-los.
+**Próximas definições técnicas:** resolver as perguntas e lacunas de [arquitetura.md](arquitetura.md) e [painel-revisor-arquitetura.md](painel-revisor-arquitetura.md); confirmar se o job de ML integra o escopo e, se sim, definir fonte e semântica de “dados novos”, watermark/checkpoint, avaliação, gates e governança; decidir persistência e estratégia de concorrência de reservas; e configurar CI e ferramentas de qualidade. Os ADRs estão propostos e aguardam decisão. Essas definições devem implementar os requisitos validados, sem alterá-los.
 
 ## Registro de evolução
 
@@ -120,6 +122,7 @@ A visão geral deve ser atualizada sempre que uma implementação for iniciada o
 | 2026-10-26 | Registro da validação das personas e dos requisitos funcionais; inclusão das regras críticas, estratégia obrigatória de qualidade e metas mensuráveis. | `prd/visão-geral.md`, `prd/personas.md`, `prd/requisitos-funcionais.md` | Revisão confirmada; cobertura de requisitos críticos, concorrência, auditoria, testes, CI e metas de qualidade. |
 | 2026-11-01 | Inclusão dos requisitos não funcionais, com atributos de qualidade, evidências, restrições técnicas e parâmetros ainda pendentes. | `prd/requisitos-não-funcionais.md` | RNF-01 a RNF-09; metas de cobertura e rastreabilidade; desempenho sem limites quantitativos aprovados. |
 | 2026-11-01 | Criação do baseline de análise arquitetural; registro da restrição do cron job diário usando somente dados novos, sem escolher arquitetura ou alterar RF/RNF. | `prd/arquitetura.md` | ASR-01 a ASR-07; fontes e prioridades indicadas no documento; escopo e detalhes da rotina diária permanecem como perguntas abertas. |
+| 2026-11-02 | Inclusão da proposta complementar de arquitetura e do parecer independente do painel, com diagramas C4, análise ATAM, ADRs propostos, matriz de cobertura, riscos e experimentos; decisões e limiares permanecem pendentes. | `prd/arquitetura-proposta.md`, `prd/arquitetura.md`, `prd/painel-revisor-arquitetura.md` | Incrementalidade/ML permanece condicionada à confirmação de escopo e dados; divergências de checkpoint, auditoria, fonte e promoção registradas; nenhum risco formalmente aceito. |
 
 ## Próximos passos
 
