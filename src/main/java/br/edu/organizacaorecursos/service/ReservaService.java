@@ -8,9 +8,12 @@ import br.edu.organizacaorecursos.exception.RegraNegocioException;
 import br.edu.organizacaorecursos.exception.RecursoNaoEncontradoException;
 import br.edu.organizacaorecursos.repository.RecursoRepository;
 import br.edu.organizacaorecursos.repository.ReservaRepository;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -47,6 +50,22 @@ public class ReservaService {
 
         Reserva reservaSalva = reservaRepository.save(novaReserva);
         return mapearParaResponseDTO(reservaSalva);
+    }
+
+    @Transactional(readOnly = true)
+    public ReservaResponseDTO buscarReservaPorId(UUID id) {
+        Reserva reserva = reservaRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Reserva não encontrada para o ID informado."));
+        return mapearParaResponseDTO(reserva);
+    }
+
+    @Transactional
+    public void deletarReserva(UUID id) {
+        if (!reservaRepository.existsById(id)) {
+            throw new EntityNotFoundException("Reserva não encontrada para exclusão.");
+        }
+        reservaRepository.deleteById(id);
     }
 
     private ReservaResponseDTO mapearParaResponseDTO(Reserva reserva) {

@@ -1,5 +1,6 @@
 package br.edu.organizacaorecursos;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -98,6 +99,63 @@ class ReservaApiIntegrationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.recursoId").value(recurso.getId().toString()));
+    }
+
+    @Test
+    void buscaReservaPorId() throws Exception {
+        ReservaRequestDTO request = criarReserva();
+
+        mockMvc.perform(get("/reservas/{id}", reservaRepository.findAll().get(0).getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recursoId").value(request.getRecursoId().toString()))
+                .andExpect(jsonPath("$.usuarioResponsavel").value("usuario-api"));
+    }
+
+    @Test
+    void retornaNotFoundAoBuscarReservaInexistente() throws Exception {
+        mockMvc.perform(get("/reservas/{id}", UUID.randomUUID()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.erro")
+                        .value("Reserva não encontrada para o ID informado."));
+    }
+
+    @Test
+    void excluiReservaPorId() throws Exception {
+        criarReserva();
+        UUID reservaId = reservaRepository.findAll().get(0).getId();
+
+        mockMvc.perform(delete("/reservas/{id}", reservaId))
+                .andExpect(status().isNoContent());
+
+        org.assertj.core.api.Assertions.assertThat(reservaRepository.existsById(reservaId)).isFalse();
+    }
+
+    @Test
+    void retornaNotFoundAoExcluirReservaInexistente() throws Exception {
+        mockMvc.perform(delete("/reservas/{id}", UUID.randomUUID()))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.erro").value("Reserva não encontrada para exclusão."));
+    }
+
+    @Test
+    void rejeitaIdentificadorDeReservaComFormatoInvalido() throws Exception {
+        mockMvc.perform(get("/reservas/{id}", "id-invalido"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro")
+                        .value("O identificador informado possui formato inválido."));
+    }
+
+    @Test
+    void publicaDocumentacaoOpenApiEEndpointsDeReserva() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.info.title").value("API de Organização de Recursos"))
+                .andExpect(jsonPath("$.paths['/reservas/{id}'].get").exists())
+                .andExpect(jsonPath("$.paths['/reservas/{id}'].delete").exists())
+                .andExpect(jsonPath("$.paths['/recursos'].post").exists());
+
+        mockMvc.perform(get("/swagger-ui/index.html"))
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -254,6 +312,16 @@ class ReservaApiIntegrationTest {
 
     private Recurso criarRecurso() {
         return recursoRepository.save(new Recurso(null, "Sala 1", "SALA"));
+    }
+
+    private ReservaRequestDTO criarReserva() throws Exception {
+        Recurso recurso = criarRecurso();
+        ReservaRequestDTO request = reserva(recurso.getId(), inicioFuturo(), "usuario-api");
+        mockMvc.perform(post("/reservas")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+        return request;
     }
 
     private ReservaRequestDTO reserva(UUID recursoId, LocalDateTime inicio, String usuario) {
