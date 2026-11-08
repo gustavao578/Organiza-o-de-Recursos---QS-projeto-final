@@ -5,6 +5,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.hamcrest.Matchers.allOf;
+import static org.hamcrest.Matchers.containsString;
 
 import br.edu.organizacaorecursos.domain.Recurso;
 import br.edu.organizacaorecursos.domain.Usuario;
@@ -102,6 +104,18 @@ class ReservaApiIntegrationTest {
     }
 
     @Test
+    void rejeitaRecursoSemNomeOuTipoObrigatorios() throws Exception {
+        mockMvc.perform(post("/recursos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.nome").exists())
+                .andExpect(jsonPath("$.tipo").exists());
+
+        org.assertj.core.api.Assertions.assertThat(recursoRepository.count()).isZero();
+    }
+
+    @Test
     void mantemAliasAnteriorParaCriacaoDeReserva() throws Exception {
         Recurso recurso = criarRecurso();
         ReservaRequestDTO request = reserva(recurso.getId(), inicioFuturo(), "usuario-api");
@@ -187,6 +201,23 @@ class ReservaApiIntegrationTest {
                         .value("O recurso já está reservado neste período."));
 
         org.assertj.core.api.Assertions.assertThat(reservaRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void informaRecursoEIntervaloQuandoExisteConflitoDeReserva() throws Exception {
+        Recurso recurso = criarRecurso();
+        LocalDateTime inicioExistente = inicioFuturo();
+        ReservaRequestDTO reservaExistente = reserva(recurso.getId(), inicioExistente, "primeiro");
+        enviarReserva(reservaExistente).andExpect(status().isCreated());
+
+        enviarReserva(reserva(recurso.getId(), inicioExistente.plusMinutes(30), "segundo"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro")
+                        .value("O recurso já está reservado neste período."))
+                .andExpect(jsonPath("$.detalhes").value(allOf(
+                        containsString(recurso.getNome()),
+                        containsString(inicioExistente.toString()),
+                        containsString(reservaExistente.getDataFim().toString()))));
     }
 
     @Test
@@ -329,6 +360,24 @@ class ReservaApiIntegrationTest {
         mockMvc.perform(get("/manutencoes"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].recurso.id").value(recurso.getId().toString()));
+    }
+
+    @Test
+    void rejeitaManutencaoSemDatasOuDescricaoObrigatorias() throws Exception {
+        Recurso recurso = criarRecurso();
+        String request = """
+                {"recurso":{"id":"%s"}}
+                """.formatted(recurso.getId());
+
+        mockMvc.perform(post("/manutencoes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.dataInicio").exists())
+                .andExpect(jsonPath("$.dataFim").exists())
+                .andExpect(jsonPath("$.descricao").exists());
+
+        org.assertj.core.api.Assertions.assertThat(manutencaoRepository.count()).isZero();
     }
 
     @Test

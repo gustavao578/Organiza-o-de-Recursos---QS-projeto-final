@@ -1,9 +1,10 @@
 # Plano TDD — Sistema de Organização de Recursos
 
-> **Status:** fase red iniciada. Foram criados testes JUnit 5 e uma API
-> placeholder sem lógica de negócio. Resultados e cobertura por identificador
-> estão registrados na matriz ao final; pendências e verificações fora do
-> escopo unitário permanecem explicitamente sem teste.
+> **Status:** fase green parcial. A suíte RED histórica de 40 casos foi removida
+> durante a substituição do placeholder pela aplicação Spring Boot; não está
+> disponível como fonte executável. A suíte presente contém 29 testes e passa
+> com `mvn -B verify`. A matriz abaixo registra o que está coberto agora e
+> separa cobertura parcial das regras bloqueadas por decisões pendentes.
 > **Fonte de verdade:** requisitos funcionais, requisitos não funcionais,
 > personas, visão geral e arquitetura existentes em `prd/`. Os casos abaixo
 > verificam o comportamento declarado; pontos sem resultado especificado ficam
@@ -276,12 +277,13 @@ Busca por implementação e testes do produto:
 - **Na inspeção inicial:** não havia código Java do produto, testes da aplicação
   nem configuração JUnit/Maven/Gradle. Não foram encontrados stories em
   `docs/stories/`.
-- **Criados nesta fase red:** `pom.xml` configura JUnit 5; a API mínima
-  `src/main/java/br/edu/organizacaorecursos/OrganizationResourceService.java`
-  contém apenas tipos e assinaturas com retorno placeholder, sem regras de
-  negócio; os testes ficam em
-  `src/test/java/br/edu/organizacaorecursos/OrganizationResourceServiceRedTest.java`.
-  O package-lock preexistente não foi usado.
+- **Estado atual:** a API placeholder e a suíte RED original foram removidas.
+  A aplicação Java/Spring Boot está em `src/main/java/br/edu/organizacaorecursos/`;
+  os testes executáveis são `ReservaApiIntegrationTest`,
+  `ReservaServiceTest` e `RecursosPersistenceTest`. O repositório não contém
+  `./mvnw`, CI em `.github/workflows/` nem ADRs aprovados em arquivos separados.
+  Os ADRs propostos em `prd/arquitetura.md` permanecem pendentes e não foram
+  tratados como decisões.
 - **Encontrados, mas fora do escopo funcional do produto:** testes internos do
   framework em `.aiox-core/core/permissions/__tests__/`,
   `.aiox-core/infrastructure/tests/` e
@@ -298,87 +300,96 @@ Busca por implementação e testes do produto:
 - Resultados não especificados estão explicitamente marcados como pendentes.
 - O plano não define comportamento para lacunas ainda sem decisão.
 
-## 9. Matriz regra → caso → teste → status (fase red)
+## 9. Matriz regra → caso → teste → status (estado green parcial)
 
-**Status RED** significa que o teste compilou e falhou em asserção porque o
-placeholder ainda não fornece o resultado esperado. Não significa que a regra
-foi implementada ou que a falha foi reproduzida contra uma implementação real.
-Nenhum teste passou; portanto, não há caso aprovado por execução nesta fase.
+A matriz descreve a cobertura executável atual, não os 40 testes RED históricos,
+que não existem mais no repositório. **PASS** significa que o caso indicado
+passou na suíte atual; **PARCIAL** significa que somente parte da regra está
+coberta; **BLOQUEADO** significa que dados, política ou critérios necessários
+permanecem sem decisão ou que a funcionalidade não existe. Regras pendentes não
+foram transformadas em comportamento presumido.
 
-| Regra | Caso determinado exercitado | Teste JUnit | Status / cobertura restante |
+| Regra | Caso determinado exercitado | Teste JUnit atual | Status / cobertura restante |
 |---|---|---|---|
-| R-TDD-01 | Acesso permitido, usuário não autenticado, chamada direta e tentativa negada auditável | `R_TDD_01_authorizesPermittedUserAndDeniesUnauthenticatedOrDirectApiAccess` | **RED**; validar também mensagem/campos completos da tentativa após contrato de auditoria. |
-| R-TDD-02 | Perfil único e conjunto de perfis autorizados | `R_TDD_02_acceptsSingleAndAuthorizedMultipleRoles` | **RED**; composição e precedência de múltiplos perfis pendentes. |
-| R-TDD-03 | Permissão administrativa versus solicitante em operação de gestão e mudança de perfil | `R_TDD_03_requiresSpecificManagementAuthorizationAndProtectsRoleChanges` | **RED**; matriz de permissões e mudança autorizada de perfil pendentes. |
-| R-TDD-04 | Cadastro válido, duplicado e inconsistente | `R_TDD_04_registersValidResourcesAndRejectsDuplicateOrInconsistentRecords` | **RED**; regras de duplicidade e CRUD completo ainda parciais. |
-| R-TDD-05 | Dados mínimos válidos/ausentes de sala | `R_TDD_05_registersRoomWithRequiredFieldsAndRejectsMissingFields` | **RED**; limites de capacidade/status pendentes. |
-| R-TDD-06 | Dados mínimos válidos/ausentes de professor | `R_TDD_06_registersTeacherWithRequiredFieldsAndRejectsMissingFields` | **RED**; semântica de agenda/competência pendente. |
-| R-TDD-07 | Dados mínimos válidos/ausentes de material | `R_TDD_07_registersMaterialWithRequiredFieldsAndRejectsMissingFields` | **RED**; unidade, quantidade e regras de empréstimo pendentes. |
-| R-TDD-08 | Filtro de sala compatível e resultado atual | `R_TDD_08_searchReflectsCurrentResourceStatusAndFilters` | **RED**; consistência temporal/cache e filtros restantes parcialmente cobertos em R-TDD-09. |
-| R-TDD-09 | Filtro de capacidade/local e competência, exclui recurso bloqueado | `R_TDD_09_searchAppliesCapacityLocationAndTeacherCompetenceFilters` | **RED**; tipo, quantidade, localização, competência e data/horário; combinações e entradas inválidas ainda parciais. |
-| R-TDD-10 | Criar reserva válida para recurso disponível | `R_TDD_10_createsBookingForAvailableResourceAndValidPeriod` | **RED**; limite temporal coberto em R-TDD-36; campos mínimos pendentes. |
-| R-TDD-11 | Alteração autorizada e novo período | `R_TDD_11_amendsOnlyAuthorizedBookingAndRevalidatesAvailability` | **RED**; cenário de ator não autorizado e ausência de gravação parcial não exercitados isoladamente. |
-| R-TDD-12 | Cancelamento com justificativa e estado cancelado | `R_TDD_12_cancelsBookingWithReasonAndReturnsCanceledState` | **RED**; quando justificativa é obrigatória e repetição concorrente pendentes. |
-| R-TDD-13 | Conflito de sala e intervalo não conflitante | `R_TDD_13_detectsRoomOverlapAndAllowsNonConflictingPeriod` | **RED**; semântica de intervalos adjacentes pendente. |
-| R-TDD-14 | Conflito de agenda do professor | `R_TDD_14_detectsTeacherAgendaConflict` | **RED**; limites de agenda pendentes. |
-| R-TDD-15 | Conflito de material/equipamento no mesmo período | `R_TDD_15_detectsMaterialOverlapConflict` | **RED**; quantidade por unidade/estoque não testada, regra ainda pendente. |
-| R-TDD-16 | Manutenção sobreposta torna recurso indisponível | `R_TDD_16_detectsMaintenanceOverlapAndDoesNotTreatResourceAsAvailable` | **RED**; bordas do intervalo de manutenção pendentes. |
-| R-TDD-17 | Rejeição explícita e mensagem identifica recurso/intervalo | `R_TDD_17_conflictResponseIdentifiesResourceAndConflictingInterval` | **RED**; decisão rejeitar versus encaminhar para revisão precisa ser consolidada. |
-| R-TDD-18 | Requisição conflitante rejeitada sem resposta de sucesso | `R_TDD_18_rejectedBookingConflictDoesNotProducePartialSuccess` | **RED**; persistência/ausência de estado parcial exige teste de integração, ainda não disponível. |
-| R-TDD-19 | Duas requisições simultâneas produzem uma aceita | `R_TDD_19_simultaneousConflictingRequestsAcceptExactlyOne` | **RED**; concorrência real com persistência/Testcontainers não implementada nem validada. |
-| R-TDD-20 | Recurso restrito não confirma antes da aprovação; apenas Responsável aprova | `R_TDD_20_restrictedResourceRequiresResponsibleApprovalBeforeConfirmation` | **RED**; catálogo de restrições, motivo e corrida de decisões pendentes. |
-| R-TDD-21 | Aprovação e rejeição refletem estados correspondentes | `R_TDD_21_approvalAndRejectionUpdateBookingState` | **RED**; transições completas e pré-condições pendentes. |
-| R-TDD-22 | Administrador registra manutenção com campos requeridos | `R_TDD_22_authorizedAdministratorRegistersMaintenanceWithRequiredFields` | **RED**; validação temporal completa pendente. |
-| R-TDD-23 | Recurso em manutenção indisponível | `R_TDD_23_resourceIsUnavailableDuringMaintenance` | **RED**; bordas de data/horário pendentes. |
-| R-TDD-24 | Manutenção passada termina como concluída e aparece em histórico | `R_TDD_24_pastMaintenanceIsCompletedAndRemainsAuditable` | **RED**; prazo de atualização e acesso/retenção pendentes. |
-| R-TDD-25 | Retirada autorizada, não autorizada e devolução pendente | `R_TDD_25_checksOutMaterialsOnlyWithResponsibleAuthorizationAndTracksPendingReturn` | **RED**; disponibilidade por unidade e prazos pendentes. |
-| R-TDD-26 | Devolução com dano registra condição/observações | `R_TDD_26_returnRecordsDamagedConditionAndObservations` | **RED**; atraso não testado: não há prazo esperado definido. |
-| R-TDD-27 | Histórico identifica ator, momento e operação após mudança | `R_TDD_27_auditsRelevantChangesWithActorTimeOperationAndBeforeAfter` | **RED**; atomicidade, antes/depois aplicável e retenção precisam de integração/decisão. |
-| R-TDD-28 | Não apagar reserva iniciada nem evento crítico sem justificativa | `R_TDD_28_doesNotDeleteStartedBookingOrCriticalAuditWithoutReason` | **RED**; critério de alteração crítica e trilha de exclusão pendentes. |
-| R-TDD-29 | Notificações para criação, conflito e pendência/aprovação | `R_TDD_29_notifiesUsersAboutBookingAndApprovalEvents` | **RED**; destinatário/momento por evento e falha do canal pendentes. |
-| R-TDD-30 | Canais simulado e API externa como opções | `R_TDD_30_supportsSimulatedAndExternalNotificationChannels` | **RED**; seleção real do canal, retry e idempotência pendentes. |
-| R-TDD-31 | Consulta de relatório no período selecionado | `R_TDD_31_reportsExpectedMetricsForSelectedPeriod` | **RED**; fórmulas, valores e limites de período não testados por falta de definição. |
-| R-TDD-32 | Acesso autorizado e negado aos relatórios | `R_TDD_32_allowsAuthorizedReportAccessAndDeniesUnauthorizedAccess` | **RED**; matriz de acesso pendente. |
-| R-TDD-33 | Responsividade desktop/tablet/mobile | **Sem teste** | **SEM TESTE — bloqueado:** não existe UI nem framework/browser de E2E; não é verificável por JUnit unitário. |
-| R-TDD-34 | Feedback não nulo para entrada inválida e conflito | `R_TDD_34_returnsFeedbackForValidationAndConflictOutcomes` | **RED / parcial**; presença testada, compreensão e passos de correção dependem de critérios de UX. |
-| R-TDD-35 | Consistência dos documentos com fluxos/contratos públicos | **Sem teste** | **SEM TESTE — bloqueado:** não há contrato/API implementado ou ferramenta de validação documental configurada. |
-| R-TDD-36 | Término igual/anterior rejeitado; término posterior permitido | `R_TDD_36_requiresBookingEndAfterStart` | **RED**; duração mínima/máxima não definida. |
-| R-TDD-37 | Sobreposição do mesmo recurso é bloqueada | `R_TDD_37_blocksOverlappingReservationForSameResource` | **RED**; intervalos adjacentes pendentes. |
-| R-TDD-38 | Concorrência com exatamente uma reserva aceita | `R_TDD_38_concurrentConflictingRequestsYieldExactlyOneAcceptedReservation` | **RED**; teste unitário do contrato; persistência concorrente ainda sem teste de integração. |
-| R-TDD-39 | Recurso em manutenção não aparece disponível nem é confirmado | `R_TDD_39_neverOffersOrConfirmsResourceDuringMaintenance` | **RED**; conflito com reserva existente e semântica das bordas pendentes. |
-| R-TDD-40 | Fluxo documentado de estados principais | `R_TDD_40_allowsDocumentedMainBookingStateFlow` | **RED**; estados alternativos e demais transições pendentes. |
-| R-TDD-41 | Só Responsável aprova; mudança auditada; reserva iniciada não apagada | `R_TDD_41_onlyResponsibleApprovesAndStateChangesAreAudited` | **RED**; transações de auditoria e regras de transição dependem de integração/decisão. |
-| R-TDD-42 | Mensagem presente em sucesso, conflito e rejeição | `R_TDD_42_notifiesWithUnderstandableOutcomeForSuccessConflictAndRejection` | **RED / parcial**; clareza semântica não pode ser verificada sem critérios/conteúdo aprovado. |
+| R-TDD-01 | Autenticação, autorização e chamadas diretas protegidas | — | **BLOQUEADO**; autenticação/autorização e trilha de tentativas não implementadas. |
+| R-TDD-02 | Perfil único ou conjunto de perfis | — | **BLOQUEADO**; modelo e composição de perfis pendentes. |
+| R-TDD-03 | Autorização administrativa/responsável por operação | — | **BLOQUEADO**; matriz de acesso pendente. |
+| R-TDD-04 | Cadastro/listagem dos modelos simples de recurso e usuário; campos obrigatórios de Recurso | `criaEListaRecursosPelosEndpointsRest`, `criaEListaUsuariosPelaApi`, `rejeitaRecursoSemNomeOuTipoObrigatorios` | **PARCIAL**; sem atualização completa, duplicidade com erro de domínio e categorias sala/professor/material do RF-02. |
+| R-TDD-05 | Nome/tipo de Recurso obrigatórios | `rejeitaRecursoSemNomeOuTipoObrigatorios` | **PARCIAL**; capacidade, localização e status de sala não fazem parte do modelo atual. |
+| R-TDD-06 | Cadastro/consulta de professor com competência e agenda | — | **BLOQUEADO**; entidade e dados de professor não modelados. |
+| R-TDD-07 | Cadastro/consulta de material, quantidade e empréstimo | — | **BLOQUEADO**; entidade, estoque e regra por unidade não modelados. |
+| R-TDD-08 | Lista básica de recursos cadastrados | `criaEListaRecursosPelosEndpointsRest` | **PARCIAL**; filtros/status atualizados não implementados. |
+| R-TDD-09 | Busca por tipo, capacidade, local, competência e disponibilidade | — | **BLOQUEADO**; atributos e critérios de filtro ausentes. |
+| R-TDD-10 | Reserva válida somente para recurso e usuário existentes | `criaReservaEDevolveDtoSemExporEntidades`, `criaReservaQuandoDadosSaoValidosERecursoEstaDisponivel`, `retornaBadRequestQuandoRecursoNaoExiste`, `rejeitaUsuarioInexistente` | **PASS** para o fluxo básico; regras de aprovação/recurso adicionais permanecem fora deste caso. |
+| R-TDD-11 | Alterar reserva e revalidar autorização/disponibilidade | — | **BLOQUEADO**; endpoint e política de autorização/estados não implementados. |
+| R-TDD-12 | Cancelar com justificativa e refletir estado | — | **BLOQUEADO**; cancelamento e regra de justificativa não implementados/definidos. |
+| R-TDD-13 | Rejeitar sobreposição no mesmo recurso e permitir período adjacente | `rejeitaPeriodosSobrepostosParaMesmoRecurso`, `permiteReservasAdjacentes` | **PASS** para o modelo atual de recurso e fórmula de intervalo adotada; agenda de professor/material ainda ausente. |
+| R-TDD-14 | Conflito na agenda do professor | — | **BLOQUEADO**; modelo de agenda de professor ausente. |
+| R-TDD-15 | Conflito de material/equipamento e quantidade | — | **BLOQUEADO**; regra de unidade/estoque ainda depende de decisão. |
+| R-TDD-16 | Manutenção sobreposta impede nova reserva | `rejeitaReservaQuandoRecursoEstaEmManutencao`, `impedeReservaDuranteManutencao` | **PASS** para criação de reserva; limites adjacentes e busca de disponibilidade ainda não estão cobertos. |
+| R-TDD-17 | Resposta de conflito identifica Recurso e intervalo reservado conflitante | `informaRecursoEIntervaloQuandoExisteConflitoDeReserva` | **PASS**; os detalhes do conflito acompanham a mensagem mantendo o campo `erro` existente. |
+| R-TDD-18 | Reserva conflitante rejeitada sem gravação parcial | `rejeitaPeriodosSobrepostosParaMesmoRecurso` | **PASS** em integração H2; evidência com banco containerizado pendente. |
+| R-TDD-19 | Duas criações simultâneas conflitantes aceitam exatamente uma | `aceitaApenasUmaReservaEmSolicitacoesConflitantesSimultaneas` | **PARCIAL**; testado localmente com H2, falta repetição/robustez com Testcontainers conforme RNF-04. |
+| R-TDD-20 | Recurso restrito exige aprovação do Responsável | — | **BLOQUEADO**; catálogo, aprovador e transições pendentes. |
+| R-TDD-21 | Aprovar/rejeitar muda o estado da reserva | — | **BLOQUEADO**; estados e pré-condições não implementados/decididos. |
+| R-TDD-22 | Cadastro/listagem de manutenção e campos requeridos | `listaManutencoesPelaApi`, `rejeitaManutencaoSemDatasOuDescricaoObrigatorias` | **PARCIAL**; não há autorização administrativa nem regras de estado/validade temporal decididas. |
+| R-TDD-23 | Não confirmar reserva em período de manutenção | `impedeReservaDuranteManutencao` | **PASS** para criação de reserva; disponibilidade pesquisável ainda não implementada. |
+| R-TDD-24 | Manutenção passada concluída e consultável no histórico | — | **BLOQUEADO**; estados, atualização e retenção pendentes. |
+| R-TDD-25 | Retirada/devolução autorizada e pendente | — | **BLOQUEADO**; fluxo de empréstimo e estoque não modelados. |
+| R-TDD-26 | Devolução registra dano e observações | — | **BLOQUEADO**; modelo e campos de devolução ausentes. |
+| R-TDD-27 | Auditoria identifica ator, momento, operação e antes/depois | — | **BLOQUEADO**; auditoria e identidade autenticada não implementadas; retenção pendente. |
+| R-TDD-28 | Impedir exclusão de reserva iniciada | `excluiReservaPorId` cobre apenas exclusão de uma reserva existente | **PARCIAL/INCOMPLETO**; não existe estado de reserva nem regra para determinar início; não declarar esta proteção atendida. |
+| R-TDD-29 | Notificações de reserva, conflito e aprovação | — | **BLOQUEADO**; eventos, canal e destinatários pendentes. |
+| R-TDD-30 | Canais simulado e externo | — | **BLOQUEADO**; opção de integração não decidida. |
+| R-TDD-31 | Relatório e métricas por período | — | **BLOQUEADO**; fórmulas e categorias não especificadas. |
+| R-TDD-32 | Autorização e exportação de relatórios | — | **BLOQUEADO**; perfis, acesso e formato pendentes. |
+| R-TDD-33 | Interface responsiva em desktop/tablet/mobile | — | **BLOQUEADO**; não existe UI; critérios de viewport/navegador pendentes. |
+| R-TDD-34 | Respostas explícitas para campos inválidos, recurso/usuário ausente e conflito | `validaCamposObrigatoriosDoRequest`, `rejeitaManutencaoSemDatasOuDescricaoObrigatorias`, `retornaBadRequestQuandoRecursoNaoExiste`, `rejeitaUsuarioInexistente`, `informaRecursoEIntervaloQuandoExisteConflitoDeReserva` | **PARCIAL**; status/campos de erro exercitados, UX e passos de correção não definidos. |
+| R-TDD-35 | OpenAPI e Swagger expõem endpoints atuais | `publicaDocumentacaoOpenApiEEndpointsDeReserva` | **PARCIAL**; documentação básica passa; autenticação, exemplos/erros completos e verificação de sincronismo permanecem pendentes. |
+| R-TDD-36 | Início no passado e fim igual/anterior rejeitados; período futuro válido aceito | `rejeitaDataDeInicioNoPassado`, `rejeitaDataFimIgualAoInicio`, `rejeitaDataFimAnteriorAoInicio`, `criaReservaEDevolveDtoSemExporEntidades` | **PASS**; duração mínima/máxima não definida. |
+| R-TDD-37 | Impedir sobreposição no mesmo recurso | `rejeitaPeriodosSobrepostosParaMesmoRecurso`, `permiteReservasAdjacentes` | **PASS** para as reservas do recurso modelado; professor/material seguem sem implementação. |
+| R-TDD-38 | Concorrência resulta em uma única reserva aceita | `aceitaApenasUmaReservaEmSolicitacoesConflitantesSimultaneas` | **PARCIAL**; H2 local passa; falta Testcontainers e medição de concorrência em ambiente realista. |
+| R-TDD-39 | Recurso em manutenção não é reservado | `impedeReservaDuranteManutencao` | **PASS** no fluxo de criação; o catálogo de disponibilidade/busca não existe. |
+| R-TDD-40 | Fluxo `SOLICITADA → APROVADA → EM_USO → CONCLUÍDA` | — | **BLOQUEADO**; modelo de estados e pré-condições de transição pendentes. |
+| R-TDD-41 | Apenas Responsável aprova; auditoria; reserva iniciada não pode ser apagada | — | **BLOQUEADO**; autorização, estados e auditoria não implementados. |
+| R-TDD-42 | Mensagens de sucesso, conflito e rejeição compreensíveis | `criaReservaEDevolveDtoSemExporEntidades`, `informaRecursoEIntervaloQuandoExisteConflitoDeReserva`, `validaCamposObrigatoriosDoRequest` | **PARCIAL**; resposta explícita e contexto de conflito verificados; conteúdo/UX de outros fluxos pendentes. |
 
 ### 9.1 Matriz dos requisitos não funcionais
 
 | Origem | Caso / teste associado | Status |
 |---|---|---|
-| RNF-01 | R-TDD-01/R-TDD-03: autorização, acesso direto e negativa | **Parcial/RED**; sanitização de entradas, erros sem dados sensíveis e scan de vulnerabilidade não implementados. |
-| RNF-02 | R-TDD-18/R-TDD-19/R-TDD-38: conflito, concorrência e rejeição | **Parcial/RED**; atomicidade real de persistência não pode ser verificada sem banco e integração. |
+| RNF-01 | R-TDD-01/R-TDD-03: autorização, acesso direto e negativa | **PARCIAL**; validações de DTO/input estão presentes; autenticação, autorização, auditoria de negativas e scan não implementados. |
+| RNF-02 | R-TDD-18/R-TDD-19/R-TDD-38: conflito, concorrência e rejeição | **PARCIAL**; atomicidade/conflito e concorrência verificadas com H2; Testcontainers pendente. |
 | RNF-03 | JMeter: consulta/reserva, métricas e relatório | **SEM TESTE — bloqueado**; aplicação, JMeter e limites aprovados ausentes. |
-| RNF-04 | JUnit: testes unitários/parametrizados criados; arquitetura exige também integração, API, E2E, Testcontainers, WireMock e evidência TDD/BDD | **Parcial**; apenas os testes unitários de contrato existem; fronteiras restantes sem aplicação/integradores. |
+| RNF-04 | JUnit, integração/API, E2E, Testcontainers, WireMock e evidência TDD/BDD | **PARCIAL**; 4 unitários Mockito e 25 testes de integração/persistência executáveis; E2E, Testcontainers, WireMock e evidência formal de TDD/BDD não completos. |
 | RNF-05 | JaCoCo, cobertura mínima, RTM crítica e SonarCloud | **SEM TESTE — bloqueado**; configuração, implementação e lista aprovada de requisitos críticos não existem. |
-| RNF-06 | GitHub Actions em pull requests | **SEM TESTE — bloqueado**; workflow de CI do produto não configurado. |
-| RNF-07 | R-TDD-27/R-TDD-28/R-TDD-41: auditoria e reserva iniciada | **Parcial/RED**; histórico/imutabilidade ainda sem armazenamento real e política de retenção. |
+| RNF-06 | GitHub Actions em pull requests | **SEM TESTE — bloqueado**; não existe workflow em `.github/workflows/`. |
+| RNF-07 | R-TDD-27/R-TDD-28/R-TDD-41: auditoria e reserva iniciada | **BLOQUEADO**; auditoria, identidade autenticada, estados e política de retenção não implementados/decididos. |
 | RNF-08 | R-TDD-33/R-TDD-34: responsividade e mensagens | **SEM TESTE para responsividade; parcial para mensagem**; UI ausente e critérios objetivos pendentes. |
-| RNF-09 | R-TDD-35: contratos/documentação em sincronia | **SEM TESTE — bloqueado**; API/contrato público implementado não existe. |
+| RNF-09 | R-TDD-35: contratos/documentação em sincronia | **PARCIAL**; OpenAPI/Swagger existe, mas faltam verificação de sincronismo e documentação completa de autenticação, exemplos e erros. |
 
 **ASR-06 — cron diário usando somente dados novos:** **SEM TESTE**. Consta
 apenas como restrição explicitada na solicitação e está marcada na arquitetura
 como ausente dos RF/RNF; finalidade, fonte e semântica de “dados novos”
 continuam sem decisão. Não foi convertida em teste de negócio.
 
-## 10. Resultado da execução red
+## 10. Histórico RED e verificação green atual
 
-- Comando: `mvn -q test`.
-- Compilação: concluída; JUnit executou os 40 métodos identificados `R-TDD`.
-- Resultado: **40 testes, 40 falhas de asserção, 0 erros, 0 ignorados**.
-- Todas as falhas são asserções de comportamento contra resultados ausentes no
-  placeholder (`null`); o cenário concorrente agrega zero reservas aceitas em
-  vez de uma. Nenhuma falha foi causada por erro de compilação ou exceção
-  inesperada.
-- **Testes que passaram:** nenhum. Logo, não houve teste previamente verde a
-  investigar como caso mal escrito ou regra implementada.
-- As falhas confirmam que o placeholder está sem comportamento; não comprovam
-  a semântica de integração, persistência, UI ou infraestrutura.
+### Histórico RED
+
+Uma versão anterior deste plano registrou `mvn -q test` com 40 falhas de
+asserção contra um placeholder sem lógica. Os testes daquela execução foram
+removidos quando a aplicação Spring Boot substituiu o placeholder; portanto,
+o resultado é histórico e não pode ser reproduzido a partir do repositório
+atual. Ele não comprova os comportamentos da aplicação presente.
+
+### Verificação atual
+
+- Comando executado: `mvn -B verify` (o repositório não contém `./mvnw`).
+- Resultado: **BUILD SUCCESS — 29 testes, 0 falhas, 0 erros, 0 ignorados**.
+- Distribuição: `ReservaApiIntegrationTest` (24), `ReservaServiceTest` (4) e
+  `RecursosPersistenceTest` (1).
+- A suíte inclui os casos green explicitamente definidos registrados na
+  matriz. As regras marcadas **PARCIAL** ou **BLOQUEADO** não são declaradas
+  concluídas; dependem de cobertura adicional, funcionalidade ou decisões
+  ainda pendentes nos documentos de requisitos/arquitetura.

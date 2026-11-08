@@ -2,6 +2,7 @@ package br.edu.organizacaorecursos.controller;
 
 import br.edu.organizacaorecursos.domain.Recurso;
 import br.edu.organizacaorecursos.repository.RecursoRepository;
+import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -20,7 +21,7 @@ public class RecursoController {
     private final RecursoRepository recursoRepository;
 
     @PostMapping
-    public ResponseEntity<Recurso> criarRecurso(@RequestBody Recurso recurso) {
+    public ResponseEntity<Recurso> criarRecurso(@Valid @RequestBody Recurso recurso) {
         Recurso recursoSalvo = recursoRepository.save(recurso);
         return ResponseEntity.status(HttpStatus.CREATED).body(recursoSalvo);
     }

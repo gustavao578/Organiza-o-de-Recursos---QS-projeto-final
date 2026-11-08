@@ -27,6 +27,14 @@ public class ApiExceptionHandler {
         return ResponseEntity.badRequest().body(Map.of("erro", exception.getMessage()));
     }
 
+    @ExceptionHandler(ConflitoReservaException.class)
+    public ResponseEntity<Map<String, String>> handleConflitoReserva(
+            ConflitoReservaException exception) {
+        return ResponseEntity.badRequest().body(Map.of(
+                "erro", exception.getMessage(),
+                "detalhes", exception.getDetalhes()));
+    }
+
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<Map<String, String>> handleArgumentTypeMismatch(
             MethodArgumentTypeMismatchException exception) {

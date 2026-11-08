@@ -2,6 +2,7 @@ package br.edu.organizacaorecursos.controller;
 
 import br.edu.organizacaorecursos.domain.Manutencao;
 import br.edu.organizacaorecursos.exception.RegraNegocioException;
+import jakarta.validation.Valid;
 import br.edu.organizacaorecursos.repository.ManutencaoRepository;
 import br.edu.organizacaorecursos.repository.RecursoRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -24,7 +25,7 @@ public class ManutencaoController {
     private final RecursoRepository recursoRepository;
 
     @PostMapping
-    public ResponseEntity<Manutencao> criarManutencao(@RequestBody Manutencao manutencao) {
+    public ResponseEntity<Manutencao> criarManutencao(@Valid @RequestBody Manutencao manutencao) {
         if (manutencao.getRecurso() == null || manutencao.getRecurso().getId() == null) {
             throw new RegraNegocioException("O ID do recurso é obrigatório.");
         }

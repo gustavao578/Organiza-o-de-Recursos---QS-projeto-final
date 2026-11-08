@@ -5,6 +5,7 @@ import br.edu.organizacaorecursos.domain.Reserva;
 import br.edu.organizacaorecursos.domain.Usuario;
 import br.edu.organizacaorecursos.dto.ReservaRequestDTO;
 import br.edu.organizacaorecursos.dto.ReservaResponseDTO;
+import br.edu.organizacaorecursos.exception.ConflitoReservaException;
 import br.edu.organizacaorecursos.exception.RegraNegocioException;
 import br.edu.organizacaorecursos.exception.RecursoNaoEncontradoException;
 import br.edu.organizacaorecursos.repository.ManutencaoRepository;
@@ -16,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -54,7 +56,21 @@ public class ReservaService {
         boolean temConflito = reservaRepository.existeConflitoDeHorario(
                 recurso.getId(), dto.getDataInicio(), dto.getDataFim());
         if (temConflito) {
-            throw new RegraNegocioException("O recurso já está reservado neste período.");
+            Reserva conflito = reservaRepository.buscarConflitosDeHorario(
+                            recurso.getId(), dto.getDataInicio(), dto.getDataFim())
+                    .stream()
+                    .findFirst()
+                    .orElse(null);
+            LocalDateTime inicioConflitante = conflito == null
+                    ? dto.getDataInicio()
+                    : conflito.getDataInicio();
+            LocalDateTime fimConflitante = conflito == null
+                    ? dto.getDataFim()
+                    : conflito.getDataFim();
+            String detalhes = recurso.getNome() + ": período conflitante de "
+                    + inicioConflitante + " a " + fimConflitante + ".";
+            throw new ConflitoReservaException(
+                    "O recurso já está reservado neste período.", detalhes);
         }
 
         Reserva novaReserva = new Reserva();
