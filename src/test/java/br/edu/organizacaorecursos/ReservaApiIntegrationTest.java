@@ -381,6 +381,38 @@ class ReservaApiIntegrationTest {
     }
 
     @Test
+    void rejeitaManutencaoSemIdentificadorDeRecurso() throws Exception {
+        LocalDateTime inicio = inicioFuturo();
+        String request = """
+                {"recurso":{},"dataInicio":"%s","dataFim":"%s","descricao":"Reparo"}
+                """.formatted(inicio, inicio.plusHours(1));
+
+        mockMvc.perform(post("/manutencoes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("O ID do recurso é obrigatório."));
+
+        org.assertj.core.api.Assertions.assertThat(manutencaoRepository.count()).isZero();
+    }
+
+    @Test
+    void retornaNotFoundAoCriarManutencaoParaRecursoInexistente() throws Exception {
+        LocalDateTime inicio = inicioFuturo();
+        String request = """
+                {"recurso":{"id":"%s"},"dataInicio":"%s","dataFim":"%s","descricao":"Reparo"}
+                """.formatted(UUID.randomUUID(), inicio, inicio.plusHours(1));
+
+        mockMvc.perform(post("/manutencoes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.erro").value("Recurso não encontrado."));
+
+        org.assertj.core.api.Assertions.assertThat(manutencaoRepository.count()).isZero();
+    }
+
+    @Test
     void retornaBadRequestQuandoRecursoNaoExiste() throws Exception {
         enviarReserva(reserva(UUID.randomUUID(), inicioFuturo(), "usuario-api"))
                 .andExpect(status().isBadRequest())

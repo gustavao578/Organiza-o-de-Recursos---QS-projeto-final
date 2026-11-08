@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import br.edu.organizacaorecursos.domain.Recurso;
@@ -24,6 +25,8 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -64,6 +67,24 @@ class ReservaServiceTest {
         request.setUsuarioId(usuarioId);
         request.setDataInicio(inicio);
         request.setDataFim(inicio.plusHours(2));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"inicio", "fim"})
+    void rejeitaReservaQuandoDataObrigatoriaEstaAusente(String campo) {
+        if ("inicio".equals(campo)) {
+            request.setDataInicio(null);
+        } else {
+            request.setDataFim(null);
+        }
+
+        RegraNegocioException exception = assertThrows(
+                RegraNegocioException.class,
+                () -> reservaService.criarReserva(request));
+
+        assertEquals("As datas de início e fim são obrigatórias.", exception.getMessage());
+        verifyNoInteractions(
+                reservaRepository, recursoRepository, usuarioRepository, manutencaoRepository);
     }
 
     @Test
