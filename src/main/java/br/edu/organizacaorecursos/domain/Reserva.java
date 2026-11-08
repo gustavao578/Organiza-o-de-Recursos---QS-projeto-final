@@ -35,6 +35,7 @@ public class Reserva {
     @Column(nullable = false)
     private LocalDateTime dataFim;
 
-    @Column(nullable = false)
-    private String usuarioResponsavel;
+    @ManyToOne
+    @JoinColumn(name = "usuario_id", nullable = false)
+    private Usuario usuario;
 }

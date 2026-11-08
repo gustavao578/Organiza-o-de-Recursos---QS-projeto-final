@@ -1,7 +1,6 @@
 package br.edu.organizacaorecursos.dto;
 
 import jakarta.validation.constraints.FutureOrPresent;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -21,6 +20,6 @@ public class ReservaRequestDTO {
     @FutureOrPresent(message = "A data de fim deve ser no presente ou futuro.")
     private LocalDateTime dataFim;
 
-    @NotBlank(message = "O nome do responsável é obrigatório.")
-    private String usuarioResponsavel;
+    @NotNull(message = "O ID do usuário é obrigatório.")
+    private UUID usuarioId;
 }

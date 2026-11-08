@@ -10,7 +10,8 @@ public class ReservaResponseDTO {
     private UUID id;
     private UUID recursoId;
     private String nomeRecurso;
+    private UUID usuarioId;
+    private String nomeUsuario;
     private LocalDateTime dataInicio;
     private LocalDateTime dataFim;
-    private String usuarioResponsavel;
 }

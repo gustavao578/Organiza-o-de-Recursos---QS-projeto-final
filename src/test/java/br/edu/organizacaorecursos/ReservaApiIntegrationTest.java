@@ -7,10 +7,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.edu.organizacaorecursos.domain.Recurso;
+import br.edu.organizacaorecursos.domain.Usuario;
 import br.edu.organizacaorecursos.dto.ReservaRequestDTO;
 import br.edu.organizacaorecursos.exception.RegraNegocioException;
 import br.edu.organizacaorecursos.repository.RecursoRepository;
 import br.edu.organizacaorecursos.repository.ReservaRepository;
+import br.edu.organizacaorecursos.repository.UsuarioRepository;
+import br.edu.organizacaorecursos.repository.ManutencaoRepository;
 import br.edu.organizacaorecursos.service.ReservaService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
@@ -43,11 +46,19 @@ class ReservaApiIntegrationTest {
     private ReservaRepository reservaRepository;
 
     @Autowired
+    private UsuarioRepository usuarioRepository;
+
+    @Autowired
+    private ManutencaoRepository manutencaoRepository;
+
+    @Autowired
     private ReservaService reservaService;
 
     @BeforeEach
     void limparDados() {
         reservaRepository.deleteAll();
+        manutencaoRepository.deleteAll();
+        usuarioRepository.deleteAll();
         recursoRepository.deleteAll();
     }
 
@@ -63,7 +74,8 @@ class ReservaApiIntegrationTest {
                 .andExpect(jsonPath("$.id").isNotEmpty())
                 .andExpect(jsonPath("$.recursoId").value(recurso.getId().toString()))
                 .andExpect(jsonPath("$.nomeRecurso").value("Sala 1"))
-                .andExpect(jsonPath("$.usuarioResponsavel").value("usuario-api"));
+                .andExpect(jsonPath("$.usuarioId").value(request.getUsuarioId().toString()))
+                .andExpect(jsonPath("$.nomeUsuario").value("usuario-api"));
 
         org.assertj.core.api.Assertions.assertThat(reservaRepository.count()).isEqualTo(1);
     }
@@ -108,7 +120,8 @@ class ReservaApiIntegrationTest {
         mockMvc.perform(get("/reservas/{id}", reservaRepository.findAll().get(0).getId()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.recursoId").value(request.getRecursoId().toString()))
-                .andExpect(jsonPath("$.usuarioResponsavel").value("usuario-api"));
+                .andExpect(jsonPath("$.usuarioId").value(request.getUsuarioId().toString()))
+                .andExpect(jsonPath("$.nomeUsuario").value("usuario-api"));
     }
 
     @Test
@@ -152,7 +165,9 @@ class ReservaApiIntegrationTest {
                 .andExpect(jsonPath("$.info.title").value("API de Organização de Recursos"))
                 .andExpect(jsonPath("$.paths['/reservas/{id}'].get").exists())
                 .andExpect(jsonPath("$.paths['/reservas/{id}'].delete").exists())
-                .andExpect(jsonPath("$.paths['/recursos'].post").exists());
+                .andExpect(jsonPath("$.paths['/recursos'].post").exists())
+                .andExpect(jsonPath("$.paths['/usuarios'].post").exists())
+                .andExpect(jsonPath("$.paths['/manutencoes'].post").exists());
 
         mockMvc.perform(get("/swagger-ui/index.html"))
                 .andExpect(status().isOk());
@@ -195,7 +210,7 @@ class ReservaApiIntegrationTest {
         request.setRecursoId(recurso.getId());
         request.setDataInicio(inicio);
         request.setDataFim(inicio);
-        request.setUsuarioResponsavel("usuario-api");
+        request.setUsuarioId(criarUsuario("usuario-api").getId());
 
         enviarReserva(request)
                 .andExpect(status().isBadRequest())
@@ -229,7 +244,7 @@ class ReservaApiIntegrationTest {
                 .andExpect(jsonPath("$.recursoId").isNotEmpty())
                 .andExpect(jsonPath("$.dataInicio").isNotEmpty())
                 .andExpect(jsonPath("$.dataFim").isNotEmpty())
-                .andExpect(jsonPath("$.usuarioResponsavel").isNotEmpty());
+                .andExpect(jsonPath("$.usuarioId").isNotEmpty());
     }
 
     @Test
@@ -246,14 +261,74 @@ class ReservaApiIntegrationTest {
     }
 
     @Test
-    void rejeitaResponsavelEmBranco() throws Exception {
+    void rejeitaUsuarioInexistente() throws Exception {
         Recurso recurso = criarRecurso();
-        ReservaRequestDTO request = reserva(recurso.getId(), inicioFuturo(), " ");
+        ReservaRequestDTO request = reserva(recurso.getId(), inicioFuturo(), "usuario-api");
+        request.setUsuarioId(UUID.randomUUID());
 
         enviarReserva(request)
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.usuarioResponsavel")
-                        .value("O nome do responsável é obrigatório."));
+                .andExpect(jsonPath("$.erro").value("Usuário não encontrado."));
+    }
+
+    @Test
+    void impedeReservaDuranteManutencao() throws Exception {
+        Recurso recurso = criarRecurso();
+        LocalDateTime inicio = inicioFuturo();
+        var manutencao = new br.edu.organizacaorecursos.domain.Manutencao(
+                null,
+                recurso,
+                inicio,
+                inicio.plusHours(2),
+                "Reparo");
+
+        mockMvc.perform(post("/manutencoes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(manutencao)))
+                .andExpect(status().isCreated());
+
+        enviarReserva(reserva(recurso.getId(), inicio.plusMinutes(30), "usuario-api"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value(
+                        "O recurso não pode ser reservado pois estará em manutenção neste período."));
+
+        org.assertj.core.api.Assertions.assertThat(reservaRepository.count()).isZero();
+    }
+
+    @Test
+    void criaEListaUsuariosPelaApi() throws Exception {
+        String request = """
+                {"nome":"Usuário API","email":"usuario.api@example.com","matricula":"api-001"}
+                """;
+
+        mockMvc.perform(post("/usuarios")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").isNotEmpty())
+                .andExpect(jsonPath("$.nome").value("Usuário API"));
+
+        mockMvc.perform(get("/usuarios"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].email").value("usuario.api@example.com"));
+    }
+
+    @Test
+    void listaManutencoesPelaApi() throws Exception {
+        Recurso recurso = criarRecurso();
+        LocalDateTime inicio = inicioFuturo();
+        var manutencao = new br.edu.organizacaorecursos.domain.Manutencao(
+                null, recurso, inicio, inicio.plusHours(1), "Reparo");
+
+        mockMvc.perform(post("/manutencoes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(manutencao)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.descricao").value("Reparo"));
+
+        mockMvc.perform(get("/manutencoes"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].recurso.id").value(recurso.getId().toString()));
     }
 
     @Test
@@ -314,6 +389,14 @@ class ReservaApiIntegrationTest {
         return recursoRepository.save(new Recurso(null, "Sala 1", "SALA"));
     }
 
+    private Usuario criarUsuario(String nome) {
+        return usuarioRepository.save(new Usuario(
+                null,
+                nome,
+                nome + "@example.com",
+                "matricula-" + nome));
+    }
+
     private ReservaRequestDTO criarReserva() throws Exception {
         Recurso recurso = criarRecurso();
         ReservaRequestDTO request = reserva(recurso.getId(), inicioFuturo(), "usuario-api");
@@ -329,7 +412,7 @@ class ReservaApiIntegrationTest {
         request.setRecursoId(recursoId);
         request.setDataInicio(inicio);
         request.setDataFim(inicio.plusHours(1));
-        request.setUsuarioResponsavel(usuario);
+        request.setUsuarioId(criarUsuario(usuario).getId());
         return request;
     }
 
