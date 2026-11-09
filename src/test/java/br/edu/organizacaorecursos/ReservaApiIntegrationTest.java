@@ -127,6 +127,23 @@ class ReservaApiIntegrationTest {
     }
 
     @Test
+    void rejeitaAprovacaoPorUsuarioQueNaoEResponsavel() throws Exception {
+        Usuario responsavel = criarUsuario("responsavel-registrado");
+        Usuario outroUsuario = criarUsuario("outro-usuario");
+        UUID recursoId = criarRecursoRestrito(responsavel.getId());
+        enviarReserva(reserva(recursoId, inicioFuturo(), "solicitante-outro"))
+                .andExpect(status().isCreated());
+        UUID reservaId = reservaRepository.findAll().get(0).getId();
+
+        aprovarReserva(reservaId, outroUsuario.getId())
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/reservas/{id}", reservaId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SOLICITADA"));
+    }
+
+    @Test
     void criaEListaRecursosPelosEndpointsRest() throws Exception {
         String request = """
                 {"nome":"Sala de Reunião A","tipo":"SALA"}
