@@ -2,6 +2,7 @@ package br.edu.organizacaorecursos.service;
 
 import br.edu.organizacaorecursos.domain.Recurso;
 import br.edu.organizacaorecursos.domain.Reserva;
+import br.edu.organizacaorecursos.domain.StatusReserva;
 import br.edu.organizacaorecursos.domain.Usuario;
 import br.edu.organizacaorecursos.dto.ReservaRequestDTO;
 import br.edu.organizacaorecursos.dto.ReservaResponseDTO;
@@ -78,6 +79,7 @@ public class ReservaService {
         novaReserva.setDataInicio(dto.getDataInicio());
         novaReserva.setDataFim(dto.getDataFim());
         novaReserva.setUsuario(usuario);
+        novaReserva.setStatus(StatusReserva.SOLICITADA);
 
         Reserva reservaSalva = reservaRepository.save(novaReserva);
         return mapearParaResponseDTO(reservaSalva);
@@ -108,6 +110,7 @@ public class ReservaService {
         response.setNomeUsuario(reserva.getUsuario().getNome());
         response.setDataInicio(reserva.getDataInicio());
         response.setDataFim(reserva.getDataFim());
+        response.setStatus(reserva.getStatus());
         return response;
     }
 }

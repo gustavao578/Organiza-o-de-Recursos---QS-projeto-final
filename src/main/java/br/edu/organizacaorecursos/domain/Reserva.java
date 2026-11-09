@@ -2,6 +2,8 @@ package br.edu.organizacaorecursos.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -34,6 +36,14 @@ public class Reserva {
 
     @Column(nullable = false)
     private LocalDateTime dataFim;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private StatusReserva status;
+
+    public Reserva(UUID id, Recurso recurso, LocalDateTime dataInicio, LocalDateTime dataFim, Usuario usuario) {
+        this(id, recurso, dataInicio, dataFim, StatusReserva.SOLICITADA, usuario);
+    }
 
     @ManyToOne
     @JoinColumn(name = "usuario_id", nullable = false)

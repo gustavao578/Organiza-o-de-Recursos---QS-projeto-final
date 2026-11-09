@@ -2,6 +2,7 @@ package br.edu.organizacaorecursos.dto;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import br.edu.organizacaorecursos.domain.StatusReserva;
 import lombok.Data;
 
 @Data
@@ -14,4 +15,5 @@ public class ReservaResponseDTO {
     private String nomeUsuario;
     private LocalDateTime dataInicio;
     private LocalDateTime dataFim;
+    private StatusReserva status;
 }
