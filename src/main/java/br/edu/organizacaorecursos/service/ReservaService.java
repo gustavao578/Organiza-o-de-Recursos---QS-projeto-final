@@ -110,6 +110,19 @@ public class ReservaService {
                 return mapearParaResponseDTO(reservaRepository.save(reserva));
         }
 
+        @Transactional
+        public ReservaResponseDTO iniciarReserva(UUID reservaId) {
+                Reserva reserva = reservaRepository.findById(reservaId)
+                                .orElseThrow(() -> new EntityNotFoundException(
+                                                "Reserva não encontrada para o ID informado."));
+                if (reserva.getStatus() != StatusReserva.APROVADA) {
+                        throw new RegraNegocioException("Somente reservas aprovadas podem ser iniciadas.");
+                }
+
+                reserva.setStatus(StatusReserva.EM_USO);
+                return mapearParaResponseDTO(reservaRepository.save(reserva));
+        }
+
     @Transactional
     public void deletarReserva(UUID id) {
         if (!reservaRepository.existsById(id)) {
