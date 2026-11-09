@@ -129,10 +129,9 @@ public class ReservaService {
 
         @Transactional
         public ReservaResponseDTO rejeitarReserva(UUID reservaId, UUID atorId) {
-                Reserva reserva = buscarReserva(reservaId);
-                validarResponsavel(reserva, atorId);
-                return transicionarReserva(
-                                reserva,
+                return transicionarComoResponsavel(
+                        reservaId,
+                        atorId,
                                 StatusReserva.SOLICITADA,
                                 StatusReserva.REJEITADA,
                                 "Somente solicitações pendentes podem ser rejeitadas.");
@@ -153,14 +152,24 @@ public class ReservaService {
 
         @Transactional
         public ReservaResponseDTO marcarNaoComparecimento(UUID reservaId, UUID atorId) {
-                Reserva reserva = buscarReserva(reservaId);
-                validarResponsavel(reserva, atorId);
-                return transicionarReserva(
-                                reserva,
+                return transicionarComoResponsavel(
+                        reservaId,
+                        atorId,
                                 StatusReserva.APROVADA,
                                 StatusReserva.NÃO_COMPARECEU,
                                 "Somente reservas aprovadas podem ser marcadas como não comparecimento.");
         }
+
+            private ReservaResponseDTO transicionarComoResponsavel(
+                    UUID reservaId,
+                    UUID atorId,
+                    StatusReserva origem,
+                    StatusReserva destino,
+                    String mensagemInvalida) {
+                Reserva reserva = buscarReserva(reservaId);
+                validarResponsavel(reserva, atorId);
+                return transicionarReserva(reserva, origem, destino, mensagemInvalida);
+            }
 
         private ReservaResponseDTO transicionarReserva(
                         UUID reservaId, StatusReserva origem, StatusReserva destino, String mensagemInvalida) {
