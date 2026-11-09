@@ -220,6 +220,44 @@ class ReservaApiIntegrationTest {
                 .andExpect(jsonPath("$.status").value("SOLICITADA"));
     }
 
+        @ParameterizedTest(name = "{0} por {1} a partir de {2}")
+        @CsvSource({
+                        "REJEITADA, responsavel, SOLICITADA",
+                        "CANCELADA, solicitante, SOLICITADA",
+                        "NÃO_COMPARECEU, responsavel, APROVADA"
+        })
+        void aplicaTransicoesAlternativasPermitidas(
+                        String destino, String papelAtor, String origem) throws Exception {
+                Usuario responsavel = criarUsuario("responsavel-alternativo-" + destino);
+                Usuario solicitante = criarUsuario("solicitante-alternativo-" + destino);
+                UUID recursoId = criarRecursoRestrito(responsavel.getId());
+                ReservaRequestDTO request = new ReservaRequestDTO();
+                request.setRecursoId(recursoId);
+                request.setDataInicio(inicioFuturo());
+                request.setDataFim(request.getDataInicio().plusHours(1));
+                request.setUsuarioId(solicitante.getId());
+                enviarReserva(request).andExpect(status().isCreated());
+                UUID reservaId = reservaRepository.findAll().get(0).getId();
+                if ("APROVADA".equals(origem)) {
+                        aprovarReserva(reservaId, responsavel.getId()).andExpect(status().isOk());
+                }
+
+                UUID atorId = "solicitante".equals(papelAtor) ? solicitante.getId() : responsavel.getId();
+                String acao = switch (destino) {
+                        case "REJEITADA" -> "rejeitar";
+                        case "CANCELADA" -> "cancelar";
+                        case "NÃO_COMPARECEU" -> "nao-compareceu";
+                        default -> throw new IllegalArgumentException("Estado alternativo não suportado.");
+                };
+                mockMvc.perform(post("/reservas/{id}/{acao}", reservaId, acao)
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content("""
+                                                                {"atorId":"%s"}
+                                                                """.formatted(atorId)))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.status").value(destino));
+        }
+
     @Test
     void criaEListaRecursosPelosEndpointsRest() throws Exception {
         String request = """
