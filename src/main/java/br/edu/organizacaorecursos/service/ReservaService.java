@@ -106,8 +106,7 @@ public class ReservaService {
                         throw new RegraNegocioException("Somente o responsável pode aprovar esta reserva.");
                 }
 
-                reserva.setStatus(StatusReserva.APROVADA);
-                return mapearParaResponseDTO(reservaRepository.save(reserva));
+                return persistirStatus(reserva, StatusReserva.APROVADA);
         }
 
         @Transactional
@@ -119,8 +118,7 @@ public class ReservaService {
                         throw new RegraNegocioException("Somente reservas aprovadas podem ser iniciadas.");
                 }
 
-                reserva.setStatus(StatusReserva.EM_USO);
-                return mapearParaResponseDTO(reservaRepository.save(reserva));
+                return persistirStatus(reserva, StatusReserva.EM_USO);
         }
 
     @Transactional
@@ -143,4 +141,9 @@ public class ReservaService {
         response.setStatus(reserva.getStatus());
         return response;
     }
+
+        private ReservaResponseDTO persistirStatus(Reserva reserva, StatusReserva status) {
+                reserva.setStatus(status);
+                return mapearParaResponseDTO(reservaRepository.save(reserva));
+        }
 }
