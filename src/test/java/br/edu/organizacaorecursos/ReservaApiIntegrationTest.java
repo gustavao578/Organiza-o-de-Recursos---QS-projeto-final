@@ -25,6 +25,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -141,6 +143,35 @@ class ReservaApiIntegrationTest {
         mockMvc.perform(get("/reservas/{id}", reservaId))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("SOLICITADA"));
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @CsvSource({
+            "termina no início da manutenção, 2026-11-10T09:00:00, 2026-11-10T10:00:00, 201, true",
+            "começa no fim da manutenção, 2026-11-10T11:00:00, 2026-11-10T12:00:00, 201, true",
+            "cruza um segundo da manutenção, 2026-11-10T09:00:00, 2026-11-10T10:00:01, 400, false"
+    })
+    void aplicaFronteirasDoIntervaloDeManutencao(
+            String caso,
+            LocalDateTime inicioReserva,
+            LocalDateTime fimReserva,
+            int statusEsperado,
+            boolean devePersistir) throws Exception {
+        Recurso recurso = criarRecurso();
+        LocalDateTime inicioManutencao = LocalDateTime.of(2026, 11, 10, 10, 0);
+        manutencaoRepository.save(new br.edu.organizacaorecursos.domain.Manutencao(
+                null, recurso, inicioManutencao, inicioManutencao.plusHours(1), "Reparo"));
+        ReservaRequestDTO request = new ReservaRequestDTO();
+        request.setRecursoId(recurso.getId());
+        request.setDataInicio(inicioReserva);
+        request.setDataFim(fimReserva);
+        request.setUsuarioId(criarUsuario("usuario-" + caso.replace(' ', '-')).getId());
+
+        enviarReserva(request)
+                .andExpect(status().is(statusEsperado));
+
+        org.assertj.core.api.Assertions.assertThat(reservaRepository.count())
+                .isEqualTo(devePersistir ? 1 : 0);
     }
 
     @Test
