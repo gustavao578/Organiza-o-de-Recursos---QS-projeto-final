@@ -98,6 +98,9 @@ public class ReservaService {
                 Reserva reserva = reservaRepository.findById(reservaId)
                                 .orElseThrow(() -> new EntityNotFoundException(
                                                 "Reserva não encontrada para o ID informado."));
+                if (reserva.getStatus() != StatusReserva.SOLICITADA) {
+                    throw new RegraNegocioException("Somente solicitações pendentes podem ser aprovadas.");
+                }
                 if (reserva.getUsuario().getId().equals(atorId)) {
                     throw new RegraNegocioException("O solicitante não pode aprovar a própria reserva.");
                 }
