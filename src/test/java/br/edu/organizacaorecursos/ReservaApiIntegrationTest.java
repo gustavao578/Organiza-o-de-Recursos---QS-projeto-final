@@ -84,7 +84,7 @@ class ReservaApiIntegrationTest {
 
     @Test
     void mantemSolicitacaoRestritaPendenteAteAprovacao() throws Exception {
-        UUID recursoId = criarRecursoRestrito();
+                UUID recursoId = criarRecursoRestrito(null);
 
         enviarReserva(reserva(recursoId, inicioFuturo(), "solicitante-restrito"))
                 .andExpect(status().isCreated())
@@ -94,17 +94,7 @@ class ReservaApiIntegrationTest {
     @Test
     void aprovaSolicitacaoRestritaQuandoResponsavelExecuta() throws Exception {
         Usuario responsavel = criarUsuario("responsavel-aprovador");
-        String recursoJson = """
-                {"nome":"Sala Restrita","tipo":"SALA","restrito":true,"responsavelId":"%s"}
-                """.formatted(responsavel.getId());
-        String recursoResponse = mockMvc.perform(post("/recursos")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(recursoJson))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        UUID recursoId = UUID.fromString(objectMapper.readTree(recursoResponse).get("id").asText());
+        UUID recursoId = criarRecursoRestrito(responsavel.getId());
 
         enviarReserva(reserva(recursoId, inicioFuturo(), "solicitante-aprovacao"))
                 .andExpect(status().isCreated());
@@ -507,19 +497,22 @@ class ReservaApiIntegrationTest {
         return recursoRepository.save(new Recurso(null, "Sala 1", "SALA"));
     }
 
-        private UUID criarRecursoRestrito() throws Exception {
-                String recursoJson = """
-                                {"nome":"Sala Restrita","tipo":"SALA","restrito":true}
-                                """;
-                String recursoResponse = mockMvc.perform(post("/recursos")
-                                                .contentType(MediaType.APPLICATION_JSON)
-                                                .content(recursoJson))
-                                .andExpect(status().isCreated())
-                                .andReturn()
-                                .getResponse()
-                                .getContentAsString();
-                return UUID.fromString(objectMapper.readTree(recursoResponse).get("id").asText());
-        }
+    private UUID criarRecursoRestrito(UUID responsavelId) throws Exception {
+        String responsavelJson = responsavelId == null
+                ? ""
+                : ",\"responsavelId\":\"" + responsavelId + "\"";
+        String recursoJson = """
+                {"nome":"Sala Restrita","tipo":"SALA","restrito":true%s}
+                """.formatted(responsavelJson);
+        String recursoResponse = mockMvc.perform(post("/recursos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(recursoJson))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        return UUID.fromString(objectMapper.readTree(recursoResponse).get("id").asText());
+    }
 
     private Usuario criarUsuario(String nome) {
         return usuarioRepository.save(new Usuario(

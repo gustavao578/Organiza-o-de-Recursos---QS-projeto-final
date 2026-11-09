@@ -1,8 +1,8 @@
 package br.edu.organizacaorecursos.dto;
 
+import br.edu.organizacaorecursos.domain.StatusReserva;
 import java.time.LocalDateTime;
 import java.util.UUID;
-import br.edu.organizacaorecursos.domain.StatusReserva;
 import lombok.Data;
 
 @Data

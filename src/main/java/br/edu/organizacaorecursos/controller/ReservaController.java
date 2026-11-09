@@ -1,8 +1,8 @@
 package br.edu.organizacaorecursos.controller;
 
+import br.edu.organizacaorecursos.dto.AprovacaoRequestDTO;
 import br.edu.organizacaorecursos.dto.ReservaRequestDTO;
 import br.edu.organizacaorecursos.dto.ReservaResponseDTO;
-import br.edu.organizacaorecursos.dto.AprovacaoRequestDTO;
 import br.edu.organizacaorecursos.service.ReservaService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
