@@ -258,6 +258,28 @@ class ReservaApiIntegrationTest {
                                 .andExpect(jsonPath("$.status").value(destino));
         }
 
+                    @Test
+                    void rejeitaAprovacaoDeReservaJaRejeitadaEPreservaEstado() throws Exception {
+                        Usuario responsavel = criarUsuario("responsavel-reaprovacao");
+                        UUID recursoId = criarRecursoRestrito(responsavel.getId());
+                        enviarReserva(reserva(recursoId, inicioFuturo(), "solicitante-reaprovacao"))
+                                .andExpect(status().isCreated());
+                        UUID reservaId = reservaRepository.findAll().get(0).getId();
+                        mockMvc.perform(post("/reservas/{id}/rejeitar", reservaId)
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content("""
+                                                {"atorId":"%s"}
+                                                """.formatted(responsavel.getId())))
+                                .andExpect(status().isOk());
+
+                        aprovarReserva(reservaId, responsavel.getId())
+                                .andExpect(status().isBadRequest());
+
+                        mockMvc.perform(get("/reservas/{id}", reservaId))
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$.status").value("REJEITADA"));
+                    }
+
     @Test
     void criaEListaRecursosPelosEndpointsRest() throws Exception {
         String request = """
