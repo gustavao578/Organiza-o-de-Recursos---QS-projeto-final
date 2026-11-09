@@ -111,26 +111,32 @@ public class ReservaService {
 
         @Transactional
         public ReservaResponseDTO iniciarReserva(UUID reservaId) {
-                Reserva reserva = reservaRepository.findById(reservaId)
-                                .orElseThrow(() -> new EntityNotFoundException(
-                                                "Reserva não encontrada para o ID informado."));
-                if (reserva.getStatus() != StatusReserva.APROVADA) {
-                        throw new RegraNegocioException("Somente reservas aprovadas podem ser iniciadas.");
-                }
-
-                return persistirStatus(reserva, StatusReserva.EM_USO);
+                return transicionarReserva(
+                                reservaId,
+                                StatusReserva.APROVADA,
+                                StatusReserva.EM_USO,
+                                "Somente reservas aprovadas podem ser iniciadas.");
         }
 
         @Transactional
         public ReservaResponseDTO concluirReserva(UUID reservaId) {
+                return transicionarReserva(
+                                reservaId,
+                                StatusReserva.EM_USO,
+                                StatusReserva.CONCLUÍDA,
+                                "Somente reservas em uso podem ser concluídas.");
+        }
+
+        private ReservaResponseDTO transicionarReserva(
+                        UUID reservaId, StatusReserva origem, StatusReserva destino, String mensagemInvalida) {
                 Reserva reserva = reservaRepository.findById(reservaId)
                                 .orElseThrow(() -> new EntityNotFoundException(
                                                 "Reserva não encontrada para o ID informado."));
-                if (reserva.getStatus() != StatusReserva.EM_USO) {
-                        throw new RegraNegocioException("Somente reservas em uso podem ser concluídas.");
+                if (reserva.getStatus() != origem) {
+                        throw new RegraNegocioException(mensagemInvalida);
                 }
 
-                return persistirStatus(reserva, StatusReserva.CONCLUÍDA);
+                return persistirStatus(reserva, destino);
         }
 
     @Transactional
