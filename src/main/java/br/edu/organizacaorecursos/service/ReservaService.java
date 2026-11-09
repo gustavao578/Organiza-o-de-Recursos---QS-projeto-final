@@ -127,16 +127,66 @@ public class ReservaService {
                                 "Somente reservas em uso podem ser concluídas.");
         }
 
+        @Transactional
+        public ReservaResponseDTO rejeitarReserva(UUID reservaId, UUID atorId) {
+                Reserva reserva = buscarReserva(reservaId);
+                validarResponsavel(reserva, atorId);
+                return transicionarReserva(
+                                reserva,
+                                StatusReserva.SOLICITADA,
+                                StatusReserva.REJEITADA,
+                                "Somente solicitações pendentes podem ser rejeitadas.");
+        }
+
+        @Transactional
+        public ReservaResponseDTO cancelarReserva(UUID reservaId, UUID atorId) {
+                Reserva reserva = buscarReserva(reservaId);
+                if (!reserva.getUsuario().getId().equals(atorId)) {
+                        throw new RegraNegocioException("Somente o solicitante pode cancelar a reserva.");
+                }
+                return transicionarReserva(
+                                reserva,
+                                StatusReserva.SOLICITADA,
+                                StatusReserva.CANCELADA,
+                                "Somente solicitações pendentes podem ser canceladas.");
+        }
+
+        @Transactional
+        public ReservaResponseDTO marcarNaoComparecimento(UUID reservaId, UUID atorId) {
+                Reserva reserva = buscarReserva(reservaId);
+                validarResponsavel(reserva, atorId);
+                return transicionarReserva(
+                                reserva,
+                                StatusReserva.APROVADA,
+                                StatusReserva.NÃO_COMPARECEU,
+                                "Somente reservas aprovadas podem ser marcadas como não comparecimento.");
+        }
+
         private ReservaResponseDTO transicionarReserva(
                         UUID reservaId, StatusReserva origem, StatusReserva destino, String mensagemInvalida) {
-                Reserva reserva = reservaRepository.findById(reservaId)
-                                .orElseThrow(() -> new EntityNotFoundException(
-                                                "Reserva não encontrada para o ID informado."));
+                return transicionarReserva(buscarReserva(reservaId), origem, destino, mensagemInvalida);
+        }
+
+        private ReservaResponseDTO transicionarReserva(
+                        Reserva reserva, StatusReserva origem, StatusReserva destino, String mensagemInvalida) {
                 if (reserva.getStatus() != origem) {
                         throw new RegraNegocioException(mensagemInvalida);
                 }
 
                 return persistirStatus(reserva, destino);
+        }
+
+        private Reserva buscarReserva(UUID reservaId) {
+                return reservaRepository.findById(reservaId)
+                                .orElseThrow(() -> new EntityNotFoundException(
+                                                "Reserva não encontrada para o ID informado."));
+        }
+
+        private void validarResponsavel(Reserva reserva, UUID atorId) {
+                UUID responsavelId = reserva.getRecurso().getResponsavelId();
+                if (responsavelId == null || !responsavelId.equals(atorId)) {
+                        throw new RegraNegocioException("Somente o responsável pode alterar esta reserva.");
+                }
         }
 
     @Transactional

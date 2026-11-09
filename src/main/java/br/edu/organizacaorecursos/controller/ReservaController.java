@@ -47,6 +47,24 @@ public class ReservaController {
         return ResponseEntity.ok(reservaService.concluirReserva(id));
     }
 
+    @PostMapping("/{id}/rejeitar")
+    public ResponseEntity<ReservaResponseDTO> rejeitarReserva(
+            @PathVariable UUID id, @Valid @RequestBody AprovacaoRequestDTO request) {
+        return ResponseEntity.ok(reservaService.rejeitarReserva(id, request.getAtorId()));
+    }
+
+    @PostMapping("/{id}/cancelar")
+    public ResponseEntity<ReservaResponseDTO> cancelarReserva(
+            @PathVariable UUID id, @Valid @RequestBody AprovacaoRequestDTO request) {
+        return ResponseEntity.ok(reservaService.cancelarReserva(id, request.getAtorId()));
+    }
+
+    @PostMapping("/{id}/nao-compareceu")
+    public ResponseEntity<ReservaResponseDTO> marcarNaoComparecimento(
+            @PathVariable UUID id, @Valid @RequestBody AprovacaoRequestDTO request) {
+        return ResponseEntity.ok(reservaService.marcarNaoComparecimento(id, request.getAtorId()));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ReservaResponseDTO> buscarPorId(@PathVariable UUID id) {
         return ResponseEntity.ok(reservaService.buscarReservaPorId(id));

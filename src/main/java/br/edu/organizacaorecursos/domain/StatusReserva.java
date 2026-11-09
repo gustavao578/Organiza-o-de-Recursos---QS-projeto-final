@@ -4,5 +4,8 @@ public enum StatusReserva {
     SOLICITADA,
     APROVADA,
     EM_USO,
-    CONCLUÍDA
+    CONCLUÍDA,
+    REJEITADA,
+    CANCELADA,
+    NÃO_COMPARECEU
 }
