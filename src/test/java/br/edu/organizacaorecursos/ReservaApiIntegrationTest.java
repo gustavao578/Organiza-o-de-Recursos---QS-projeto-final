@@ -100,11 +100,7 @@ class ReservaApiIntegrationTest {
                 .andExpect(status().isCreated());
         UUID reservaId = reservaRepository.findAll().get(0).getId();
 
-        mockMvc.perform(post("/reservas/{id}/aprovar", reservaId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"atorId":"%s"}
-                                """.formatted(responsavel.getId())))
+        aprovarReserva(reservaId, responsavel.getId())
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("APROVADA"));
     }
@@ -122,11 +118,7 @@ class ReservaApiIntegrationTest {
         enviarReserva(request).andExpect(status().isCreated());
         UUID reservaId = reservaRepository.findAll().get(0).getId();
 
-        mockMvc.perform(post("/reservas/{id}/aprovar", reservaId)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {"atorId":"%s"}
-                                """.formatted(solicitante.getId())))
+        aprovarReserva(reservaId, solicitante.getId())
                 .andExpect(status().isBadRequest());
 
         mockMvc.perform(get("/reservas/{id}", reservaId))
@@ -516,6 +508,15 @@ class ReservaApiIntegrationTest {
         return mockMvc.perform(post("/reservas")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request)));
+    }
+
+    private org.springframework.test.web.servlet.ResultActions aprovarReserva(UUID reservaId, UUID atorId)
+            throws Exception {
+        return mockMvc.perform(post("/reservas/{id}/aprovar", reservaId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("""
+                        {"atorId":"%s"}
+                        """.formatted(atorId)));
     }
 
     private Recurso criarRecurso() {
