@@ -34,7 +34,9 @@ public class Recurso {
     @Column(nullable = false)
     private boolean restrito;
 
+    private UUID responsavelId;
+
     public Recurso(UUID id, String nome, String tipo) {
-        this(id, nome, tipo, false);
+        this(id, nome, tipo, false, null);
     }
 }

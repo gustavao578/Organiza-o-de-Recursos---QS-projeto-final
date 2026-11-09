@@ -2,6 +2,7 @@ package br.edu.organizacaorecursos.controller;
 
 import br.edu.organizacaorecursos.dto.ReservaRequestDTO;
 import br.edu.organizacaorecursos.dto.ReservaResponseDTO;
+import br.edu.organizacaorecursos.dto.AprovacaoRequestDTO;
 import br.edu.organizacaorecursos.service.ReservaService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +29,12 @@ public class ReservaController {
     public ResponseEntity<ReservaResponseDTO> criarReserva(
             @Valid @RequestBody ReservaRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(reservaService.criarReserva(request));
+    }
+
+    @PostMapping("/{id}/aprovar")
+    public ResponseEntity<ReservaResponseDTO> aprovarReserva(
+            @PathVariable UUID id, @Valid @RequestBody AprovacaoRequestDTO request) {
+        return ResponseEntity.ok(reservaService.aprovarReserva(id, request.getAtorId()));
     }
 
     @GetMapping("/{id}")

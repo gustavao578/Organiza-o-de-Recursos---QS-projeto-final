@@ -93,6 +93,20 @@ public class ReservaService {
         return mapearParaResponseDTO(reserva);
     }
 
+        @Transactional
+        public ReservaResponseDTO aprovarReserva(UUID reservaId, UUID atorId) {
+                Reserva reserva = reservaRepository.findById(reservaId)
+                                .orElseThrow(() -> new EntityNotFoundException(
+                                                "Reserva não encontrada para o ID informado."));
+                UUID responsavelId = reserva.getRecurso().getResponsavelId();
+                if (responsavelId == null || !responsavelId.equals(atorId)) {
+                        throw new RegraNegocioException("Somente o responsável pode aprovar esta reserva.");
+                }
+
+                reserva.setStatus(StatusReserva.APROVADA);
+                return mapearParaResponseDTO(reservaRepository.save(reserva));
+        }
+
     @Transactional
     public void deletarReserva(UUID id) {
         if (!reservaRepository.existsById(id)) {
