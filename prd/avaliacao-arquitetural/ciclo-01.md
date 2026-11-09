@@ -21,16 +21,24 @@ Os riscos mais relevantes para os direcionadores do produto continuam sendo:
 2. O domínio não representa estados de reserva ou eventos de auditoria; a
    exclusão atual não verifica se uma reserva já começou.
 3. A API cobre somente parte do modelo de recurso e dos fluxos previstos.
-4. Não há evidência de Testcontainers, cobertura JaCoCo, JMeter, SonarCloud ou
-   execução remota de CI nesta avaliação.
+4. Há evidência local de JaCoCo e suíte Maven; Testcontainers e JMeter seguem
+  ausentes. O workflow foi configurado para SonarCloud, mas ainda não existe
+  relatório/issues nem Quality Gate remoto observável.
 
-**Limite de evidência remota:** o GitHub Actions reportou zero workflows e zero
-runs para o repositório durante a consulta. O workflow local em
-[ci.yml](../../.github/workflows/ci.yml) está no commit `f33aab9` da branch
-`ci/maven-21-github-actions`, que não está publicada no remoto observado. Não
-foi possível avaliar um run remoto nem o check de um pull request. O plano TDD
-registra a última execução local como `mvn -B verify`, com 29 testes verdes
-([plano-tdd.md](../testes/plano-tdd.md#L380)).
+**Limite de evidência remota:** o workflow está na branch do
+[PR #1](https://github.com/gustavao578/Organiza-o-de-Recursos---QS-projeto-final/pull/1),
+mas ainda não foi integrado à `main`. Seus checks de push e PR passaram por
+Maven/JaCoCo, mas falharam na guarda do passo Sonar. O log confirmou que
+`SONAR_TOKEN`, `SONAR_ORGANIZATION` e `SONAR_PROJECT_KEY` não estão configurados;
+o scanner não iniciou. A API GitHub negou a listagem de secrets com HTTP 403; nenhum token foi
+acessado, impresso ou exposto. Não há Quality Gate ou issue Sonar a avaliar; a
+classificação de issues fica bloqueada até que os valores sejam configurados
+diretamente nas definições do repositório. A verificação local atual é
+`mvn -B clean verify`: 39 testes
+passaram, com JaCoCo em 101/105 linhas (96,2%) e 22/26 branches (84,6%);
+`ReservaService` está em 51/51 linhas e 16/16 branches. Relatórios locais:
+`target/site/jacoco/index.html` e `target/site/jacoco/jacoco.xml`. Esses dados
+não substituem o relatório do SonarCloud nem uma execução remota.
 
 ### Base documental
 
@@ -171,11 +179,12 @@ Utilidade do sistema
 - **Artefato:** workflow GitHub Actions e job de verificação.
 - **Ambiente:** GitHub Actions para um pull request contra o repositório.
 - **Resposta:** executar verificações previstas, expor estado no PR e preservar
-  relatórios de testes para consulta.
-- **Medida de resposta:** cada PR abrangido tem execução e resultado consultável;
-  sucesso depende de todas as verificações configuradas passarem. O conjunto
-  completo de ferramentas permanece requisito, não necessariamente parte do
-  workflow já instalado.
+  relatórios de testes e análise estática para consulta.
+- **Medida de resposta:** o workflow local executa Maven verify, publica o
+  artifact JaCoCo e invoca SonarCloud com `fetch-depth: 0`, XML JaCoCo,
+  `SONAR_TOKEN` e espera pelo Quality Gate. A configuração está no worktree; sem
+  secret/variáveis confirmados e execução no PR, status do gate e lista de issues
+  continuam sem evidência.
 - **Rastreabilidade:** RNF-04–RNF-06; D5.
 
 ### AT-06 — Desempenho de consulta e reserva
@@ -218,7 +227,7 @@ descreve implementação, não garante comportamento em produção.
 | **AT-02 — manutenção** | Uma consulta JPA detecta a interseção de intervalos de manutenção e reserva ([ManutencaoRepository.java](../../src/main/java/br/edu/organizacaorecursos/repository/ManutencaoRepository.java#L12)); o serviço rejeita antes de checar conflito de reservas ou salvar ([ReservaService.java](../../src/main/java/br/edu/organizacaorecursos/service/ReservaService.java#L49)). | O caso de criação está coberto por teste unitário e integração ([ReservaServiceTest.java](../../src/test/java/br/edu/organizacaorecursos/service/ReservaServiceTest.java#L84), [ReservaApiIntegrationTest.java](../../src/test/java/br/edu/organizacaorecursos/ReservaApiIntegrationTest.java#L306)). Não existe busca de disponibilidade para comprovar que manutenção seja excluída dos resultados de pesquisa. |
 | **AT-03 — autorização** | **Nenhuma tática de autenticação/autorização observada.** Os controllers expõem endpoints REST de criação, leitura e exclusão sem anotação ou componente de segurança nesses controllers ([ReservaController.java](../../src/main/java/br/edu/organizacaorecursos/controller/ReservaController.java#L20), [RecursoController.java](../../src/main/java/br/edu/organizacaorecursos/controller/RecursoController.java#L17), [UsuarioController.java](../../src/main/java/br/edu/organizacaorecursos/controller/UsuarioController.java#L16)). | Validação de DTO/entrada e tratamento de erros existem, mas não substituem identidade, autorização e registro de acesso. Não foi localizada implementação de segurança nos arquivos de aplicação inspecionados. |
 | **AT-04 — auditoria** | **Não há entidade, repositório ou serviço de auditoria na aplicação atual.** `Reserva` contém recurso, intervalo e usuário, sem estado ou metadados de mudança ([Reserva.java](../../src/main/java/br/edu/organizacaorecursos/domain/Reserva.java#L17)). A exclusão verifica existência e apaga sem condição de estado ([ReservaService.java](../../src/main/java/br/edu/organizacaorecursos/service/ReservaService.java#L94)). | A resposta HTTP não demonstra histórico persistente, antes/depois, imutabilidade nem consistência transacional da auditoria. |
-| **AT-05 — CI** | O workflow local configura `pull_request`, Java Temurin 21, Maven cache, timeout e execução de `./mvnw -B verify` ([ci.yml](../../.github/workflows/ci.yml#L1)). | A branch local contém essa configuração, mas o GitHub Actions consultado reportou zero workflows e zero runs; portanto o requisito de resultado remoto não está demonstrado. |
+| **AT-05 — CI e análise estática** | O workflow usa checkout `fetch-depth: 0`, Java Temurin 21, `mvn --batch-mode verify`, Sonar Maven Scanner em `https://sonarcloud.io`, importação de `target/site/jacoco/jacoco.xml`, espera pelo Quality Gate e upload JaCoCo ([ci.yml](../../.github/workflows/ci.yml)). PR [#1](https://github.com/gustavao578/Organiza-o-de-Recursos---QS-projeto-final/pull/1) aberto. | Execução local: 39 testes verdes; JaCoCo global 96,2% linhas/84,6% branches. Checks remotos de push/PR passaram por Maven/JaCoCo e falharam na guarda Sonar porque secret `SONAR_TOKEN` e vars `SONAR_ORGANIZATION`/`SONAR_PROJECT_KEY` não estão configurados. Scanner não iniciou; sem relatório, Quality Gate ou issues. |
 | **AT-06 — desempenho** | **Nenhuma tática de medição/performance observada.** O serviço executa consultas de conflito e, quando há conflito, busca detalhes em uma consulta adicional ([ReservaService.java](../../src/main/java/br/edu/organizacaorecursos/service/ReservaService.java#L56), [ReservaRepository.java](../../src/main/java/br/edu/organizacaorecursos/repository/ReservaRepository.java#L25)). | O banco configurado é H2 em memória ([application.properties](../../src/main/resources/application.properties#L1)); não há evidência JMeter ou perfil de carga. Não se pode concluir desempenho ou falha contra limite inexistente. |
 | **AT-07 — erros/contratos** | `@RestControllerAdvice` mapeia erro de negócio, conflito, tipo inválido e validação em respostas 4xx ([ApiExceptionHandler.java](../../src/main/java/br/edu/organizacaorecursos/exception/ApiExceptionHandler.java#L14)). OpenAPI/Swagger existe conforme cobertura registrada em [plano-tdd](../testes/plano-tdd.md#L356). | Há feedback de erro básico, mas não existe UI responsiva. A documentação não demonstra autenticação, fluxos completos ou sincronização contínua com todos os requisitos. |
 
@@ -233,7 +242,8 @@ descreve implementação, não garante comportamento em produção.
 | Modelo do domínio | AT-01–AT-04; D1/D2/D4 | O tipo de recurso é string; a reserva não contém estado; usuários não possuem perfil no modelo atual. Essas lacunas limitam conflitos por professor/material, aprovação e autorização. |
 | Banco H2 em memória e DDL mutável | AT-01, AT-04, AT-06; D3–D5 | `jdbc:h2:mem` e `ddl-auto=update` favorecem protótipo, mas não provam persistência durável, recuperação nem equivalência com engine de produção. |
 | Perfil/carga e limites | AT-06; D5 | RNF-03 exige medir mas deixa carga, volumes, latência e taxa de erro para aprovação; não é possível fechar conformidade sem esses parâmetros. |
-| Publicação e proteção de branch | AT-05; D5 | Workflow em branch não executa no remoto até ser publicado. Check obrigatório `verify`, PR/run e branch protection não foram confirmados. |
+| Configuração SonarCloud e credenciais | AT-05; D5 | Checks do PR #1 confirmaram ausentes `SONAR_TOKEN`, `SONAR_ORGANIZATION` e `SONAR_PROJECT_KEY`; API de secrets retorna 403. Scanner não executou, portanto Quality Gate/issues desconhecidos. |
+| Publicação e proteção de branch | AT-05; D5 | PR #1 e runs de push/PR existem. Maven/JaCoCo passaram; Sonar falhou na validação de configuração. Check obrigatório `verify`/Quality Gate e branch protection não foram confirmados. |
 
 ## 7. Pontos de trade-off
 
@@ -257,14 +267,16 @@ descreve implementação, não garante comportamento em produção.
 | R3 | Falta de auditoria impede rastrear ator, momento, operação e antes/depois, e pode deixar alterações sem trilha. | D4; AT-04 | Adicionar persistência de auditoria com garantia de consistência definida e teste de falha entre operação e evento. |
 | R4 | O domínio de `Recurso` não representa sala, professor e material conforme dados mínimos; consulta pode não atender filtros/agenda e conflito de todas as categorias. | D1/D3; AT-01/02 | Fechar modelo de domínio e regras por categoria; cruzar com RF-02/03/05. |
 | R5 | Lock pessimista validado em H2 pode não demonstrar RNF-02 para o banco operacional; falta Testcontainers. | D3/D5; AT-01 | Teste concorrente repetível no engine escolhido, medindo uma aceitação e zero estado parcial. |
-| R6 | Sem fluxo remoto de CI observado, alterações em PR podem não receber os checks exigidos e relatórios acessíveis. | D5; AT-05 | Publicar workflow, confirmar runs e tornar `verify` check obrigatório na branch protegida. |
+| R6 | O workflow publicado no PR #1 executa Maven/JaCoCo, mas a análise estática Sonar não inicia sem secret/vars; o Quality Gate ainda não protege alterações. | D5; AT-05 | Checks de push e PR registram Maven/JaCoCo aprovados e guarda Sonar falha por configuração ausente. Publicar secret/vars e obter Quality Gate remoto; branch protection continua sem confirmação. |
 | R7 | Ausência de JMeter, perfil de carga aprovado e metas impede identificar regressão ou declarar desempenho conforme. | D5; AT-06 | Definir perfil/limites e produzir relatório de medição; não inferir SLA. |
 | R8 | Rotas de cadastro retornam entidades diretamente e os contratos de erro/documentação são parciais; sem auth, exposição e evolução de contrato não estão controladas por perfil. | D2/D6; AT-03/07 | Decidir DTOs públicos, campos por perfil e política de contrato/documentação; validar RF-14. |
+| R9 | Sem `SONAR_TOKEN` e identificadores SonarCloud, a análise não produz Quality Gate nem lista de issues; tratar a falha de configuração como aprovação esconderia risco estático. | D5; AT-05 | Checks do PR #1 confirmam configuração ausente; scanner não iniciou. Adicionar secret/vars nas configurações do repo e ler o gate antes de classificar qualquer issue. |
 
 ### Não-riscos nesta avaliação
 
 | Item | Por que não é risco confirmado agora | Reclassificação |
 |---|---|---|
+| Quatro linhas e quatro branches sem cobertura no bundle | O relatório por classe localiza o restante em fallback de `ManutencaoController`, tratamento genérico de erros e `main`; as regras implementadas de criação em `ReservaService` têm 100% de linhas/branches e os caminhos críticos de manutenção têm asserts de integração. Isto não prova ausência de defeitos, mas não confirma lacuna de regra de negócio neste ciclo. | Reavaliar se SonarCloud apontar issue nesses trechos ou se os caminhos de entrada mudarem; sem relatório Sonar não classificar issue como falso positivo. |
 | Não escolheram fornecedor de banco ou cloud | A arquitetura registra essas escolhas como pendentes e não há requisito de fornecedor específico. O risco está na ausência de prova do requisito de concorrência/durabilidade, não em não usar um fornecedor determinado. | Quando deployment e engine forem escolhidos, verificar lock, recuperação, segurança e custo. |
 | Não atingir um valor específico de latência | RNF-03 não aprova limite quantitativo. Não há base para declarar violação de SLA inexistente. | Produto/equipe aprova carga e limites; então executar JMeter. |
 | Inferência ML no fluxo de reservas | Não há caso de uso ou requisito funcional que conecte modelo à reserva; arquitetura marca inferência como condicional. | Só reavaliar se requisito aprovado introduzir previsão no caminho transacional. |
@@ -280,8 +292,9 @@ descreve implementação, não garante comportamento em produção.
   retenção, autorização de consulta e proteção contra exclusão de reservas em
   andamento.
 - **D5 — evidência verificável:** banco representativo, suíte nos limites
-  relevantes, cobertura rastreável, CI publicado e critérios quantitativos
-  aprovados.
+  relevantes, cobertura rastreável (JaCoCo local acima das metas), CI publicado,
+  Quality Gate SonarCloud consultado e critérios quantitativos aprovados. A
+  cobertura está evidenciada; CI/Sonar remotos ainda não.
 - **D6 — uso e compreensão:** contratos claros, UI inexistente neste escopo
   corrente e documentação que reflita comportamento real.
 
@@ -299,7 +312,7 @@ não uma afirmação sobre qualquer branch ou ambiente não acessível.
 | Pesquisa por filtros e disponibilidade (RF-03) | Endpoint de recurso somente cadastra/lista tudo; endpoint não recebe filtros nem período ([RecursoController.java](../../src/main/java/br/edu/organizacaorecursos/controller/RecursoController.java#L17)). | **Não implementado.** |
 | Criar, alterar e cancelar reservas com estado e justificativa (RF-04) | Reserva permite POST, GET por ID e DELETE; não há PUT/PATCH, cancelamento com motivo ou estado no domínio ([ReservaController.java](../../src/main/java/br/edu/organizacaorecursos/controller/ReservaController.java#L20), [Reserva.java](../../src/main/java/br/edu/organizacaorecursos/domain/Reserva.java#L22)). | **Parcial; exclusão física não equivale a cancelamento.** |
 | Detectar conflito de sala/material/professor e agenda (RF-05) | Consulta de conflito filtra pelo ID de `Recurso` e intervalo ([ReservaRepository.java](../../src/main/java/br/edu/organizacaorecursos/repository/ReservaRepository.java#L13)); modelo não representa agenda de professor/estoque de material. | **Parcial** para o recurso atual; cobertura multi-recurso ausente. |
-| Uma reserva aceita sob corrida (RF-06/RNF-02) | Lock pessimista por recurso, transação e teste simultâneo H2; plano informa 29 testes verdes e registra Testcontainers como pendente ([plano-tdd](../testes/plano-tdd.md#L331), [plano-tdd](../testes/plano-tdd.md#L380)). | **Evidência parcial, não prova independente do engine.** |
+| Uma reserva aceita sob corrida (RF-06/RNF-02) | Lock pessimista por recurso, transação e teste simultâneo H2; plano atual informa 39 testes verdes e registra Testcontainers como pendente ([plano-tdd](../testes/plano-tdd.md#L331), [plano-tdd](../testes/plano-tdd.md#L380)). | **Evidência parcial, não prova independente do engine.** |
 | Aprovação de recurso restrito e estados (RF-07) | Não há estado de reserva, aprovador ou endpoint de decisão no domínio/API inspecionados. | **Não implementado.** |
 | Manutenção bloqueia reserva (RF-08) | Cadastro/listagem de manutenção e teste de bloqueio no fluxo de criação; status de disponibilidade não existe na pesquisa. | **Parcial.** |
 | Retirada/devolução de material (RF-09) | Não há modelo/fluxos de movimentação observados. | **Não implementado.** |
@@ -309,25 +322,26 @@ não uma afirmação sobre qualquer branch ou ambiente não acessível.
 | UI responsiva e acessível (RF-13/RNF-08) | O inventário do workspace mostra aplicação Java/API e nenhum cliente de UI para os fluxos do produto. | **Não implementado.** |
 | Documentação de contratos completos (RF-14/RNF-09) | Swagger/OpenAPI está habilitado e um teste verifica publicação; não cobre evidência de autorização, exemplos/erros completos nem todos os fluxos de negócio. | **Parcial.** |
 | Segurança e negação de acesso (RF-01/RNF-01) | Nenhum filtro/configuração de autenticação ou autorização observado; controllers publicados sem anotação de autorização. | **Não implementado/sem evidência.** |
-| Testes exigidos (RNF-04) | Há 4 unitários Mockito e 25 testes de integração/persistência segundo plano atualizado; sem evidência local de Testcontainers, WireMock ou E2E. | **Parcial.** |
-| Cobertura e análise (RNF-05) | Não há evidência consultada de JaCoCo, meta 80/70, RTM completa ou SonarCloud. | **Sem evidência.** |
-| CI em PR (RNF-06) | Workflow existe apenas no commit da branch local; Actions API remota informou zero workflows e zero runs. | **Não demonstrado no remoto.** |
+| Testes exigidos (RNF-04) | `mvn -B clean verify` executou 39 testes (12 unitários/validação, 26 API e 1 persistência); Testcontainers, WireMock e E2E continuam sem evidência. | **Parcial.** |
+| Cobertura JaCoCo (RNF-05) | Relatório local: 101/105 linhas (96,2%) e 22/26 branches (84,6%), com gates globais 80/70 aprovados; `ReservaService` 51/51 linhas e 16/16 branches. Arquivos `target/site/jacoco/index.html` e `target/site/jacoco/jacoco.xml`. | **Atende metas locais de cobertura; não prova qualidade estática nem RTM completa.** |
+| Análise SonarCloud (RNF-05) | PR #1: workflow configura Maven SonarScanner, `fetch-depth: 0`, XML JaCoCo, endpoint SonarCloud e espera pelo Quality Gate; check falhou antes do scanner porque `SONAR_TOKEN` e vars de projeto estão ausentes. | **Integração configurada; análise, gate e issues sem evidência. Não aprovar.** |
+| CI em PR (RNF-06) | PR #1 executou push/PR; Maven verify e artifact JaCoCo passaram. O passo Sonar falhou na validação de configuração. | **Parcial; runs remotos existem, Quality Gate bloqueado por configuração.** |
 | Desempenho mensurável (RNF-03) | Não foi encontrado perfil nem relatório JMeter. | **Sem evidência; critérios quantitativos pendentes.** |
 | Batch/ML diário incremental | Arquitetura tem propostas de componentes/ADRs, marcadas condicionais/pendentes ([arquitetura](../arquitetura.md#L515), [ADR-002](../arquitetura.md#L1329)); código não contém pipeline batch. | **Não é divergência com RF/RNF validados; escopo não aprovado.** |
 
 ## 10. Ações priorizadas para o próximo ciclo
 
-| Prioridade | Ação | Direcionadores/cenários | Evidência de saída para reavaliação |
-|---|---|---|---|
-| **P0** | Definir e implementar identidade, perfis e matriz de autorização para cada operação; testar também acesso direto à API. | D2; AT-03; RF-01/RNF-01 | Matriz aprovada, testes anônimo/sem perfil por endpoint, registro de tentativas não autorizadas. |
-| **P0** | Definir estados e transições da reserva; implementar auditoria e impedir exclusão física de reserva iniciada, com política de retenção/acesso. | D3/D4; AT-04; RF-04/RF-10/RNF-07 | Modelo de estados aprovado; teste de consistência operação-auditoria, acesso autorizado e bloqueio de exclusão. |
-| **P0** | Publicar o workflow de CI no remoto e configurar `verify` como check requerido na `main`. | D5; AT-05; RNF-06 | Run remoto verde verificável no PR, artifact de testes e regra de proteção aplicada. |
-| **P1** | Selecionar/confirmar banco de destino e testar concorrência e persistência com Testcontainers nesse engine. | D3/D5; AT-01 | Repetições concorrentes: no máximo uma aceita, zero estado parcial; evidência do engine de destino. |
-| **P1** | Fechar o domínio e critérios de conflito para salas, professores e materiais; decidir como manutenção interage com reservas existentes e com busca. | D1/D3; AT-01/02; RF-02/RF-03/RF-05/RF-08 | Modelo validado, testes por categoria, filtro de disponibilidade e casos de manutenção. |
-| **P1** | Aprovar perfil de carga e limites quantitativos de desempenho; medir consulta e criação com JMeter. | D5; AT-06; RNF-03 | Cenários, dataset, duração, volume e falhas reportados; limites aprovados antes de declarar conformidade. |
-| **P2** | Completar testes requeridos (Testcontainers, E2E, WireMock onde houver integração), JaCoCo/RTM/SonarCloud, sem reduzir escopo das asserções. | D5; RNF-04/RNF-05 | Evidências e métricas publicadas e ligadas a requisitos críticos. |
-| **P2** | Definir contratos DTO/API, códigos e conteúdo de erro; completar documentação de fluxos e decidir a UI responsiva. | D6; AT-07; RF-13/RF-14 | Contratos e exemplos sincronizados; critérios de viewport/navegador e testes de UI aprovados. |
-| **P3 — condicional** | Confirmar se o cron/treinamento incremental pertence ao produto; somente então estabelecer finalidade, fonte, semântica de dados novos, avaliação e governança em ciclo ATAM separado. | Escopo não aprovado | Decisão de produto rastreável; não implementar inferência/batch por inferência a partir da arquitetura proposta. |
+| Prioridade | Ação | Direcionadores/cenários | Evidência de saída para reavaliação | Status deste ciclo |
+|---|---|---|---|---|
+| **P0** | Definir e implementar identidade, perfis e matriz de autorização para cada operação; testar também acesso direto à API. | D2; AT-03; RF-01/RNF-01 | Matriz aprovada, testes anônimo/sem perfil por endpoint, registro de tentativas não autorizadas. | **Pendente**; sem mudança neste ciclo. |
+| **P0** | Definir estados e transições da reserva; implementar auditoria e impedir exclusão física de reserva iniciada, com política de retenção/acesso. | D3/D4; AT-04; RF-04/RF-10/RNF-07 | Modelo de estados aprovado; teste de consistência operação-auditoria, acesso autorizado e bloqueio de exclusão. | **Pendente**; sem mudança neste ciclo. |
+| **P0** | Publicar o workflow de CI no remoto e configurar `verify`/Quality Gate como checks requeridos na `main`. | D5; AT-05; RNF-06 | Run remoto verde verificável no PR, artifacts JaCoCo/Sonar e regra de proteção aplicada. | **Parcial**; PR #1 e runs de push/PR existem; Maven/JaCoCo passaram. Sonar falhou antes da análise por falta de secret/vars; Quality Gate e branch protection ainda pendentes. |
+| **P1** | Selecionar/confirmar banco de destino e testar concorrência e persistência com Testcontainers nesse engine. | D3/D5; AT-01 | Repetições concorrentes: no máximo uma aceita, zero estado parcial; evidência do engine de destino. | **Pendente**; suíte continua em H2. |
+| **P1** | Fechar o domínio e critérios de conflito para salas, professores e materiais; decidir como manutenção interage com reservas existentes e com busca. | D1/D3; AT-01/02; RF-02/RF-03/RF-05/RF-08 | Modelo validado, testes por categoria, filtro de disponibilidade e casos de manutenção. | **Parcial**; testes da API rejeitam manutenção sem ID/recurso existente; domínio multi-recurso e busca seguem pendentes. |
+| **P1** | Aprovar perfil de carga e limites quantitativos de desempenho; medir consulta e criação com JMeter. | D5; AT-06; RNF-03 | Cenários, dataset, duração, volume e falhas reportados; limites aprovados antes de declarar conformidade. | **Pendente**; JaCoCo não é evidência de desempenho. |
+| **P2** | Completar testes requeridos (Testcontainers, E2E, WireMock onde houver integração), JaCoCo/RTM/SonarCloud, sem reduzir escopo das asserções. | D5; RNF-04/RNF-05 | Evidências e métricas publicadas e ligadas a requisitos críticos. | **Parcial**; JaCoCo configurado, metas atingidas localmente e artifact publicado nos runs. SonarCloud configurado, mas sem análise/gate/issues por falta de config. RTM completa e demais suites pendentes. |
+| **P2** | Definir contratos DTO/API, códigos e conteúdo de erro; completar documentação de fluxos e decidir a UI responsiva. | D6; AT-07; RF-13/RF-14 | Contratos e exemplos sincronizados; critérios de viewport/navegador e testes de UI aprovados. | **Pendente**; sem mudança neste ciclo. |
+| **P3 — condicional** | Confirmar se o cron/treinamento incremental pertence ao produto; somente então estabelecer finalidade, fonte, semântica de dados novos, avaliação e governança em ciclo ATAM separado. | Escopo não aprovado | Decisão de produto rastreável; não implementar inferência/batch por inferência a partir da arquitetura proposta. | **Pendente**; escopo segue não aprovado. |
 
 ## 11. Referências de código e testes
 
@@ -342,4 +356,8 @@ não uma afirmação sobre qualquer branch ou ambiente não acessível.
 - [application.properties](../../src/main/resources/application.properties)
 - [ReservaApiIntegrationTest.java](../../src/test/java/br/edu/organizacaorecursos/ReservaApiIntegrationTest.java)
 - [ReservaServiceTest.java](../../src/test/java/br/edu/organizacaorecursos/service/ReservaServiceTest.java)
+- [ReservaRequestDTOTest.java](../../src/test/java/br/edu/organizacaorecursos/ReservaRequestDTOTest.java)
+- Relatório JaCoCo HTML: `target/site/jacoco/index.html` (96,2% linhas; 84,6% branches).
+- Relatório JaCoCo XML: `target/site/jacoco/jacoco.xml` (consumido pelo passo Sonar Maven).
+- Relatório SonarCloud/Quality Gate: **não gerado nesta execução**; requer secret `SONAR_TOKEN` e variáveis `SONAR_ORGANIZATION`/`SONAR_PROJECT_KEY`, além de run do workflow no PR.
 - [ci.yml](../../.github/workflows/ci.yml)

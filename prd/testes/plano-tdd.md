@@ -2,9 +2,11 @@
 
 > **Status:** fase green parcial. A suíte RED histórica de 40 casos foi removida
 > durante a substituição do placeholder pela aplicação Spring Boot; não está
-> disponível como fonte executável. A suíte presente contém 29 testes e passa
-> com `mvn -B verify`. A matriz abaixo registra o que está coberto agora e
-> separa cobertura parcial das regras bloqueadas por decisões pendentes.
+> disponível como fonte executável. A suíte presente contém 39 casos de teste
+> (incluindo invocações parametrizadas) e passa com `mvn -B verify`; JaCoCo gera
+> relatórios HTML/XML e aplica os gates no bundle da aplicação. A matriz abaixo
+> registra o que está coberto agora e separa cobertura parcial das regras
+> bloqueadas por decisões pendentes.
 > **Fonte de verdade:** requisitos funcionais, requisitos não funcionais,
 > personas, visão geral e arquitetura existentes em `prd/`. Os casos abaixo
 > verificam o comportamento declarado; pontos sem resultado especificado ficam
@@ -162,7 +164,7 @@ na estratégia e na rastreabilidade.
 | RNF-02 — Integridade/concorrência | Reutilizar R-TDD-18/19/38; comprovar atomicidade com falha/conflito, no máximo uma reserva conflitante aceita e nenhuma gravação parcial. |
 | RNF-03 — Desempenho mensurável | Executar JMeter em consulta de disponibilidade e criação de reserva, incluindo concorrência relevante; relatório contém duração, volume, falhas, cenários e carga. Não emitir veredito de conformidade quantitativa enquanto limites de carga, latência e taxa de erro não forem aprovados. |
 | RNF-04 — Estratégia/evidência de testes | Planejar JUnit 5 e testes unitários parametrizados; integração; API caixa-preta; end-to-end; persistência via Testcontainers; integração externa via WireMock; mocks somente em testes unitários isolados. Incluir evidência de ao menos uma funcionalidade desenvolvida com TDD/BDD. Cobrir caminhos válidos, inválidos e conflitos aplicáveis. |
-| RNF-05 — Cobertura e rastreabilidade | Coletar JaCoCo; metas 80% linhas e 70% branches. Manter RTM ligando 100% dos requisitos críticos a evidências. Verificar qualidade comportamental dos testes, não só percentuais. Integração SonarCloud deve estar presente. |
+| RNF-05 — Cobertura e rastreabilidade | JaCoCo gera HTML/XML e aplica no bundle global gates mínimos de 80% linhas e 70% branches durante `verify`; resultado local: 96,2% linhas e 84,6% branches. O workflow configura SonarCloud pelo plugin Maven, mas `SONAR_TOKEN`, `SONAR_ORGANIZATION` e `SONAR_PROJECT_KEY` não foram confirmados; relatório/Quality Gate remotos pendentes. Manter RTM ligando 100% dos requisitos críticos a evidências e avaliar qualidade comportamental, não só percentuais. |
 | RNF-06 — CI | Em pull request, GitHub Actions executa testes e verificações de qualidade configuradas; resultados disponíveis para consulta. |
 | RNF-07 — Auditoria | Reusar R-TDD-27/28; toda mudança de estado gera auditoria identificável; reserva iniciada não é apagada; consulta de histórico restrita a usuários autorizados. Retenção e acesso detalhados estão pendentes. |
 | RNF-08 — Responsividade | Executar fluxos cobertos em desktop, tablet e mobile; confirmar usabilidade, erros/conflitos/bloqueios/rejeições/confirmações compreensíveis e feedback explícito. Viewports/navegadores de aceite pendentes. |
@@ -187,6 +189,42 @@ na estratégia e na rastreabilidade.
 
 Esta ordem é uma proposta de organização de TDD baseada nas regras críticas
 documentadas; não altera prioridade de negócio nem aprova tecnologia.
+
+### 5.1 Matriz de cobertura JaCoCo das regras de negócio
+
+O gate cobre o bundle inteiro da aplicação. A revisão por classe separou as
+regras de negócio/API dos fallbacks estruturais. O primeiro relatório apontou
+lacunas de risco em `ReservaService` e `ManutencaoController`; os testes abaixo
+fecharam os caminhos acessíveis, mantendo sem testes somente defesas cosméticas.
+
+| Classe e ponto inicial | Regra relacionada | Lacuna e classificação | Teste/evidência após correção |
+|---|---|---|---|
+| `ReservaService.java:34` — 2 de 4 branches não cobertos: `dataInicio == null` e, com início presente, `dataFim == null`. | RF-04; R-TDD-10 | **Risco:** caminhos de entrada com uma das datas ausente não tinham evidência de rejeição. | `ReservaServiceTest.rejeitaReservaQuandoDataObrigatoriaEstaAusente` testa os dois casos, verifica a mensagem e prova que nenhum repositório é acessado. 4/4 branches cobertos. |
+| `ReservaService.java:35` — exceção para datas obrigatórias sem execução. | RF-04; R-TDD-10 | **Risco:** não havia teste da resposta funcional para datas incompletas. | Mesmo teste parametrizado; a asserção confirma `RegraNegocioException` e a mensagem definida. Linha coberta. |
+| `ManutencaoController.java:29-30` — faltavam os caminhos com recurso/ID ausente. | RF-08; R-TDD-22 | **Risco:** cadastro sem ID de recurso poderia não devolver rejeição explícita. | `rejeitaManutencaoSemIdentificadorDeRecurso` confirma HTTP 400, mensagem de erro e ausência de persistência; resta somente a ramificação de objeto `recurso` nulo, bloqueada por `@NotNull` antes da execução do controller. |
+| `ManutencaoController.java:33` — lookup sem recurso persistido não exercitado. | RF-08; R-TDD-22 | **Risco:** referência inexistente precisava rejeitar cadastro sem gravar manutenção. | `retornaNotFoundAoCriarManutencaoParaRecursoInexistente` confirma HTTP 404, mensagem e ausência de persistência. Linha coberta. |
+
+O relatório final ainda marca como **cosméticos** (sem teste dedicado):
+`ManutencaoController.java:29`, ramo `recurso == null`, pois a validação
+`@NotNull` rejeita o corpo antes do controller; `ApiExceptionHandler.java:50`
+e `:52`, fallback para erros que não são `FieldError`; `:53-54`, mensagem
+ausente em uma violação; `:59-60`, lista de erros vazia; e
+`OrganizationResourcesApplication.java:10-11`, chamada do `main` não usada pelo
+bootstrap dos testes Spring. Nenhum desses caminhos corresponde a uma regra de
+negócio exercitada por entradas atuais. Após os testes, `ReservaService` tem
+51/51 linhas e 16/16 branches cobertos. `ReservaRequestDTOTest` complementa a
+fronteira temporal dos dois campos com `@ParameterizedTest` em `-1`, `0` e `+1`
+segundos usando `Clock.fixed`, sem depender de espera ou relógio de parede.
+
+No bundle, o resultado final é 101/105 linhas (96,2%) e 22/26 branches (84,6%),
+acima das metas de 80% e 70%.
+
+| Regra / caso | Evidência automatizada atual | Resultado |
+|---|---|---|
+| RF-04; R-TDD-10 — datas obrigatórias | Datas de início e fim ausentes, com assert de erro e ausência de efeitos em repositórios. | Coberto |
+| RF-04; R-TDD-10/R-TDD-36 — datas no passado, presente e futuro imediato | `ReservaRequestDTOTest`, ambos os campos, `-1/0/+1` segundos com relógio injetado. | Coberto |
+| RF-05/RF-08; R-TDD-13/R-TDD-23 — conflitos de reserva e manutenção | Testes de serviço, integração e persistência existentes; branches do serviço exercitados. | Coberto |
+| RF-08; R-TDD-22 — manutenção com recurso obrigatório e existente | HTTP 400 para ID ausente e HTTP 404 para recurso não cadastrado, ambos sem persistência. | Coberto |
 
 ## 6. Ambiguidades, lacunas e perguntas para decisão
 
@@ -278,12 +316,14 @@ Busca por implementação e testes do produto:
   nem configuração JUnit/Maven/Gradle. Não foram encontrados stories em
   `docs/stories/`.
 - **Estado atual:** a API placeholder e a suíte RED original foram removidas.
-  A aplicação Java/Spring Boot está em `src/main/java/br/edu/organizacaorecursos/`;
-  os testes executáveis são `ReservaApiIntegrationTest`,
-  `ReservaServiceTest` e `RecursosPersistenceTest`. O repositório não contém
-  `./mvnw`, CI em `.github/workflows/` nem ADRs aprovados em arquivos separados.
-  Os ADRs propostos em `prd/arquitetura.md` permanecem pendentes e não foram
-  tratados como decisões.
+   A aplicação Java/Spring Boot está em `src/main/java/br/edu/organizacaorecursos/`;
+   os testes executáveis são `ReservaApiIntegrationTest`,
+   `ReservaRequestDTOTest`, `ReservaServiceTest` e `RecursosPersistenceTest`.
+   O repositório não contém `./mvnw`; a CI em `.github/workflows/ci.yml` executa
+   Maven e publica o relatório JaCoCo como artifact. Não há ADRs aprovados em
+   arquivos separados.
+   Os ADRs propostos em `prd/arquitetura.md` permanecem pendentes e não foram
+   tratados como decisões.
 - **Encontrados, mas fora do escopo funcional do produto:** testes internos do
   framework em `.aiox-core/core/permissions/__tests__/`,
   `.aiox-core/infrastructure/tests/` e
@@ -320,7 +360,7 @@ foram transformadas em comportamento presumido.
 | R-TDD-07 | Cadastro/consulta de material, quantidade e empréstimo | — | **BLOQUEADO**; entidade, estoque e regra por unidade não modelados. |
 | R-TDD-08 | Lista básica de recursos cadastrados | `criaEListaRecursosPelosEndpointsRest` | **PARCIAL**; filtros/status atualizados não implementados. |
 | R-TDD-09 | Busca por tipo, capacidade, local, competência e disponibilidade | — | **BLOQUEADO**; atributos e critérios de filtro ausentes. |
-| R-TDD-10 | Reserva válida somente para recurso e usuário existentes | `criaReservaEDevolveDtoSemExporEntidades`, `criaReservaQuandoDadosSaoValidosERecursoEstaDisponivel`, `retornaBadRequestQuandoRecursoNaoExiste`, `rejeitaUsuarioInexistente` | **PASS** para o fluxo básico; regras de aprovação/recurso adicionais permanecem fora deste caso. |
+| R-TDD-10 | Reserva válida exige datas, recurso e usuário existentes | `rejeitaReservaQuandoDataObrigatoriaEstaAusente`, `criaReservaEDevolveDtoSemExporEntidades`, `criaReservaQuandoDadosSaoValidosERecursoEstaDisponivel`, `retornaBadRequestQuandoRecursoNaoExiste`, `rejeitaUsuarioInexistente` | **PASS** para obrigatoriedade, lookup e fluxo básico; regras de aprovação/recurso adicionais permanecem fora deste caso. |
 | R-TDD-11 | Alterar reserva e revalidar autorização/disponibilidade | — | **BLOQUEADO**; endpoint e política de autorização/estados não implementados. |
 | R-TDD-12 | Cancelar com justificativa e refletir estado | — | **BLOQUEADO**; cancelamento e regra de justificativa não implementados/definidos. |
 | R-TDD-13 | Rejeitar sobreposição no mesmo recurso e permitir período adjacente | `rejeitaPeriodosSobrepostosParaMesmoRecurso`, `permiteReservasAdjacentes` | **PASS** para o modelo atual de recurso e fórmula de intervalo adotada; agenda de professor/material ainda ausente. |
@@ -332,7 +372,7 @@ foram transformadas em comportamento presumido.
 | R-TDD-19 | Duas criações simultâneas conflitantes aceitam exatamente uma | `aceitaApenasUmaReservaEmSolicitacoesConflitantesSimultaneas` | **PARCIAL**; testado localmente com H2, falta repetição/robustez com Testcontainers conforme RNF-04. |
 | R-TDD-20 | Recurso restrito exige aprovação do Responsável | — | **BLOQUEADO**; catálogo, aprovador e transições pendentes. |
 | R-TDD-21 | Aprovar/rejeitar muda o estado da reserva | — | **BLOQUEADO**; estados e pré-condições não implementados/decididos. |
-| R-TDD-22 | Cadastro/listagem de manutenção e campos requeridos | `listaManutencoesPelaApi`, `rejeitaManutencaoSemDatasOuDescricaoObrigatorias` | **PARCIAL**; não há autorização administrativa nem regras de estado/validade temporal decididas. |
+| R-TDD-22 | Cadastro/listagem de manutenção, referência válida e campos requeridos | `listaManutencoesPelaApi`, `rejeitaManutencaoSemDatasOuDescricaoObrigatorias`, `rejeitaManutencaoSemIdentificadorDeRecurso`, `retornaNotFoundAoCriarManutencaoParaRecursoInexistente` | **PARCIAL**; caminhos de referência inválida cobertos; autorização administrativa e regras de estado/validade temporal seguem pendentes. |
 | R-TDD-23 | Não confirmar reserva em período de manutenção | `impedeReservaDuranteManutencao` | **PASS** para criação de reserva; disponibilidade pesquisável ainda não implementada. |
 | R-TDD-24 | Manutenção passada concluída e consultável no histórico | — | **BLOQUEADO**; estados, atualização e retenção pendentes. |
 | R-TDD-25 | Retirada/devolução autorizada e pendente | — | **BLOQUEADO**; fluxo de empréstimo e estoque não modelados. |
@@ -346,7 +386,7 @@ foram transformadas em comportamento presumido.
 | R-TDD-33 | Interface responsiva em desktop/tablet/mobile | — | **BLOQUEADO**; não existe UI; critérios de viewport/navegador pendentes. |
 | R-TDD-34 | Respostas explícitas para campos inválidos, recurso/usuário ausente e conflito | `validaCamposObrigatoriosDoRequest`, `rejeitaManutencaoSemDatasOuDescricaoObrigatorias`, `retornaBadRequestQuandoRecursoNaoExiste`, `rejeitaUsuarioInexistente`, `informaRecursoEIntervaloQuandoExisteConflitoDeReserva` | **PARCIAL**; status/campos de erro exercitados, UX e passos de correção não definidos. |
 | R-TDD-35 | OpenAPI e Swagger expõem endpoints atuais | `publicaDocumentacaoOpenApiEEndpointsDeReserva` | **PARCIAL**; documentação básica passa; autenticação, exemplos/erros completos e verificação de sincronismo permanecem pendentes. |
-| R-TDD-36 | Início no passado e fim igual/anterior rejeitados; período futuro válido aceito | `rejeitaDataDeInicioNoPassado`, `rejeitaDataFimIgualAoInicio`, `rejeitaDataFimAnteriorAoInicio`, `criaReservaEDevolveDtoSemExporEntidades` | **PASS**; duração mínima/máxima não definida. |
+| R-TDD-36 | Início no passado e fim igual/anterior rejeitados; presente/futuro imediato válido | `ReservaRequestDTOTest.validaDatasNaFronteiraDoRelogioInjetado`, `rejeitaDataDeInicioNoPassado`, `rejeitaDataFimIgualAoInicio`, `rejeitaDataFimAnteriorAoInicio`, `criaReservaEDevolveDtoSemExporEntidades` | **PASS**; os campos de início/fim são testados em -1, 0 e +1 segundo com `Clock.fixed`; duração mínima/máxima não definida. |
 | R-TDD-37 | Impedir sobreposição no mesmo recurso | `rejeitaPeriodosSobrepostosParaMesmoRecurso`, `permiteReservasAdjacentes` | **PASS** para as reservas do recurso modelado; professor/material seguem sem implementação. |
 | R-TDD-38 | Concorrência resulta em uma única reserva aceita | `aceitaApenasUmaReservaEmSolicitacoesConflitantesSimultaneas` | **PARCIAL**; H2 local passa; falta Testcontainers e medição de concorrência em ambiente realista. |
 | R-TDD-39 | Recurso em manutenção não é reservado | `impedeReservaDuranteManutencao` | **PASS** no fluxo de criação; o catálogo de disponibilidade/busca não existe. |
@@ -361,9 +401,9 @@ foram transformadas em comportamento presumido.
 | RNF-01 | R-TDD-01/R-TDD-03: autorização, acesso direto e negativa | **PARCIAL**; validações de DTO/input estão presentes; autenticação, autorização, auditoria de negativas e scan não implementados. |
 | RNF-02 | R-TDD-18/R-TDD-19/R-TDD-38: conflito, concorrência e rejeição | **PARCIAL**; atomicidade/conflito e concorrência verificadas com H2; Testcontainers pendente. |
 | RNF-03 | JMeter: consulta/reserva, métricas e relatório | **SEM TESTE — bloqueado**; aplicação, JMeter e limites aprovados ausentes. |
-| RNF-04 | JUnit, integração/API, E2E, Testcontainers, WireMock e evidência TDD/BDD | **PARCIAL**; 4 unitários Mockito e 25 testes de integração/persistência executáveis; E2E, Testcontainers, WireMock e evidência formal de TDD/BDD não completos. |
-| RNF-05 | JaCoCo, cobertura mínima, RTM crítica e SonarCloud | **SEM TESTE — bloqueado**; configuração, implementação e lista aprovada de requisitos críticos não existem. |
-| RNF-06 | GitHub Actions em pull requests | **SEM TESTE — bloqueado**; não existe workflow em `.github/workflows/`. |
+| RNF-04 | JUnit, integração/API, E2E, Testcontainers, WireMock e evidência TDD/BDD | **PARCIAL**; 12 invocações unitárias (Mockito/validação), 26 de API e 1 de persistência; E2E, Testcontainers, WireMock e evidência formal de TDD/BDD não completos. |
+| RNF-05 | JaCoCo, cobertura mínima, RTM crítica e SonarCloud | **PARCIAL**; HTML/XML e gates globais de 80% linhas/70% branches em `verify`; resultado 96,2% linhas e 84,6% branches. Lista aprovada de requisitos críticos e SonarCloud continuam pendentes. |
+| RNF-06 | GitHub Actions em pull requests | **PARCIAL**; workflow executa `mvn --batch-mode verify` em push/PR e publica artifact JaCoCo; execução remota ainda não observada. |
 | RNF-07 | R-TDD-27/R-TDD-28/R-TDD-41: auditoria e reserva iniciada | **BLOQUEADO**; auditoria, identidade autenticada, estados e política de retenção não implementados/decididos. |
 | RNF-08 | R-TDD-33/R-TDD-34: responsividade e mensagens | **SEM TESTE para responsividade; parcial para mensagem**; UI ausente e critérios objetivos pendentes. |
 | RNF-09 | R-TDD-35: contratos/documentação em sincronia | **PARCIAL**; OpenAPI/Swagger existe, mas faltam verificação de sincronismo e documentação completa de autenticação, exemplos e erros. |
@@ -386,9 +426,13 @@ atual. Ele não comprova os comportamentos da aplicação presente.
 ### Verificação atual
 
 - Comando executado: `mvn -B verify` (o repositório não contém `./mvnw`).
-- Resultado: **BUILD SUCCESS — 29 testes, 0 falhas, 0 erros, 0 ignorados**.
-- Distribuição: `ReservaApiIntegrationTest` (24), `ReservaServiceTest` (4) e
-  `RecursosPersistenceTest` (1).
+- Resultado: **BUILD SUCCESS — 39 testes, 0 falhas, 0 erros, 0 ignorados**.
+- Distribuição: `ReservaApiIntegrationTest` (26), `ReservaServiceTest` (6),
+   `ReservaRequestDTOTest` (6) e `RecursosPersistenceTest` (1).
+- JaCoCo: bundle com 101/105 linhas e 22/26 branches; `ReservaService` com
+   51/51 linhas e 16/16 branches. Relatórios em `target/site/jacoco/index.html`
+   e `target/site/jacoco/jacoco.xml`.
+- Prova de falha do gate: `mvn -B clean -Dtest=ReservaServiceTest#rejeitaDataFimAnteriorAoInicio verify` falhou com 4% de linhas e 11% de branches; `mvn -B clean verify` restaurou o build verde e a cobertura acima das metas.
 - A suíte inclui os casos green explicitamente definidos registrados na
   matriz. As regras marcadas **PARCIAL** ou **BLOQUEADO** não são declaradas
   concluídas; dependem de cobertura adicional, funcionalidade ou decisões
