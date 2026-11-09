@@ -110,6 +110,31 @@ class ReservaApiIntegrationTest {
     }
 
     @Test
+    void rejeitaAutoAprovacaoEPreservaSolicitacao() throws Exception {
+        Usuario solicitante = criarUsuario("solicitante-autorizado");
+        UUID recursoId = criarRecursoRestrito(solicitante.getId());
+        LocalDateTime inicio = inicioFuturo();
+        ReservaRequestDTO request = new ReservaRequestDTO();
+        request.setRecursoId(recursoId);
+        request.setDataInicio(inicio);
+        request.setDataFim(inicio.plusHours(1));
+        request.setUsuarioId(solicitante.getId());
+        enviarReserva(request).andExpect(status().isCreated());
+        UUID reservaId = reservaRepository.findAll().get(0).getId();
+
+        mockMvc.perform(post("/reservas/{id}/aprovar", reservaId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"atorId":"%s"}
+                                """.formatted(solicitante.getId())))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(get("/reservas/{id}", reservaId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SOLICITADA"));
+    }
+
+    @Test
     void criaEListaRecursosPelosEndpointsRest() throws Exception {
         String request = """
                 {"nome":"Sala de Reunião A","tipo":"SALA"}
