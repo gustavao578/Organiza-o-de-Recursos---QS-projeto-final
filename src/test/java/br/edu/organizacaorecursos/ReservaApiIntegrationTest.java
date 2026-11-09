@@ -92,6 +92,34 @@ class ReservaApiIntegrationTest {
     }
 
     @Test
+    void aprovaSolicitacaoRestritaQuandoResponsavelExecuta() throws Exception {
+        Usuario responsavel = criarUsuario("responsavel-aprovador");
+        String recursoJson = """
+                {"nome":"Sala Restrita","tipo":"SALA","restrito":true,"responsavelId":"%s"}
+                """.formatted(responsavel.getId());
+        String recursoResponse = mockMvc.perform(post("/recursos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(recursoJson))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        UUID recursoId = UUID.fromString(objectMapper.readTree(recursoResponse).get("id").asText());
+
+        enviarReserva(reserva(recursoId, inicioFuturo(), "solicitante-aprovacao"))
+                .andExpect(status().isCreated());
+        UUID reservaId = reservaRepository.findAll().get(0).getId();
+
+        mockMvc.perform(post("/reservas/{id}/aprovar", reservaId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"atorId":"%s"}
+                                """.formatted(responsavel.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APROVADA"));
+    }
+
+    @Test
     void criaEListaRecursosPelosEndpointsRest() throws Exception {
         String request = """
                 {"nome":"Sala de Reunião A","tipo":"SALA"}
