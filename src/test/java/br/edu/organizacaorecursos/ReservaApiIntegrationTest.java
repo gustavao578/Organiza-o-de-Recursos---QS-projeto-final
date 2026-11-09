@@ -83,6 +83,25 @@ class ReservaApiIntegrationTest {
     }
 
     @Test
+    void mantemSolicitacaoRestritaPendenteAteAprovacao() throws Exception {
+        String recursoJson = """
+                {"nome":"Sala Restrita","tipo":"SALA","restrito":true}
+                """;
+        String recursoResponse = mockMvc.perform(post("/recursos")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(recursoJson))
+                .andExpect(status().isCreated())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        UUID recursoId = UUID.fromString(objectMapper.readTree(recursoResponse).get("id").asText());
+
+        enviarReserva(reserva(recursoId, inicioFuturo(), "solicitante-restrito"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.status").value("SOLICITADA"));
+    }
+
+    @Test
     void criaEListaRecursosPelosEndpointsRest() throws Exception {
         String request = """
                 {"nome":"Sala de Reunião A","tipo":"SALA"}
