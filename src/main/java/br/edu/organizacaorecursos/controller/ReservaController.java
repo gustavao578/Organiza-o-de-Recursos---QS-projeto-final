@@ -42,6 +42,11 @@ public class ReservaController {
         return ResponseEntity.ok(reservaService.iniciarReserva(id));
     }
 
+    @PostMapping("/{id}/concluir")
+    public ResponseEntity<ReservaResponseDTO> concluirReserva(@PathVariable UUID id) {
+        return ResponseEntity.ok(reservaService.concluirReserva(id));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ReservaResponseDTO> buscarPorId(@PathVariable UUID id) {
         return ResponseEntity.ok(reservaService.buscarReservaPorId(id));

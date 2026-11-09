@@ -121,6 +121,18 @@ public class ReservaService {
                 return persistirStatus(reserva, StatusReserva.EM_USO);
         }
 
+        @Transactional
+        public ReservaResponseDTO concluirReserva(UUID reservaId) {
+                Reserva reserva = reservaRepository.findById(reservaId)
+                                .orElseThrow(() -> new EntityNotFoundException(
+                                                "Reserva não encontrada para o ID informado."));
+                if (reserva.getStatus() != StatusReserva.EM_USO) {
+                        throw new RegraNegocioException("Somente reservas em uso podem ser concluídas.");
+                }
+
+                return persistirStatus(reserva, StatusReserva.CONCLUÍDA);
+        }
+
     @Transactional
     public void deletarReserva(UUID id) {
         if (!reservaRepository.existsById(id)) {
