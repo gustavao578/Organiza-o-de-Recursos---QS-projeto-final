@@ -18,6 +18,7 @@ import br.edu.organizacaorecursos.repository.UsuarioRepository;
 import br.edu.organizacaorecursos.repository.ManutencaoRepository;
 import br.edu.organizacaorecursos.service.ReservaService;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
@@ -42,6 +43,9 @@ class ReservaApiIntegrationTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+        @Autowired
+        private Clock clock;
 
     @Autowired
     private RecursoRepository recursoRepository;
@@ -147,24 +151,38 @@ class ReservaApiIntegrationTest {
 
     @ParameterizedTest(name = "{0}")
     @CsvSource({
-            "termina no início da manutenção, 2026-11-10T09:00:00, 2026-11-10T10:00:00, 201, true",
-            "começa no fim da manutenção, 2026-11-10T11:00:00, 2026-11-10T12:00:00, 201, true",
-            "cruza um segundo da manutenção, 2026-11-10T09:00:00, 2026-11-10T10:00:01, 400, false"
+                        "termina no início da manutenção, TERMINA_NO_INICIO, 201, true",
+                        "começa no fim da manutenção, COMECA_NO_FIM, 201, true",
+                        "cruza um segundo da manutenção, CRUZA_UM_SEGUNDO, 400, false"
     })
     void aplicaFronteirasDoIntervaloDeManutencao(
             String caso,
-            LocalDateTime inicioReserva,
-            LocalDateTime fimReserva,
+                        String fronteira,
             int statusEsperado,
             boolean devePersistir) throws Exception {
         Recurso recurso = criarRecurso();
-        LocalDateTime inicioManutencao = LocalDateTime.of(2026, 11, 10, 10, 0);
+                LocalDateTime inicioManutencao = LocalDateTime.now(clock).plusDays(2).withHour(10)
+                                .withMinute(0).withSecond(0).withNano(0);
+                LocalDateTime fimManutencao = inicioManutencao.plusHours(1);
         manutencaoRepository.save(new br.edu.organizacaorecursos.domain.Manutencao(
-                null, recurso, inicioManutencao, inicioManutencao.plusHours(1), "Reparo"));
+                                null, recurso, inicioManutencao, fimManutencao, "Reparo"));
         ReservaRequestDTO request = new ReservaRequestDTO();
         request.setRecursoId(recurso.getId());
-        request.setDataInicio(inicioReserva);
-        request.setDataFim(fimReserva);
+                switch (fronteira) {
+                        case "TERMINA_NO_INICIO" -> {
+                                request.setDataInicio(inicioManutencao.minusHours(1));
+                                request.setDataFim(inicioManutencao);
+                        }
+                        case "COMECA_NO_FIM" -> {
+                                request.setDataInicio(fimManutencao);
+                                request.setDataFim(fimManutencao.plusHours(1));
+                        }
+                        case "CRUZA_UM_SEGUNDO" -> {
+                                request.setDataInicio(inicioManutencao.minusHours(1));
+                                request.setDataFim(inicioManutencao.plusSeconds(1));
+                        }
+                        default -> throw new IllegalArgumentException("Fronteira não suportada.");
+                }
         request.setUsuarioId(criarUsuario("usuario-" + caso.replace(' ', '-')).getId());
 
         enviarReserva(request)
@@ -722,6 +740,6 @@ class ReservaApiIntegrationTest {
     }
 
     private LocalDateTime inicioFuturo() {
-        return LocalDateTime.now().plusDays(2).withSecond(0).withNano(0);
+                return LocalDateTime.now(clock).plusDays(2).withSecond(0).withNano(0);
     }
 }
