@@ -84,17 +84,7 @@ class ReservaApiIntegrationTest {
 
     @Test
     void mantemSolicitacaoRestritaPendenteAteAprovacao() throws Exception {
-        String recursoJson = """
-                {"nome":"Sala Restrita","tipo":"SALA","restrito":true}
-                """;
-        String recursoResponse = mockMvc.perform(post("/recursos")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(recursoJson))
-                .andExpect(status().isCreated())
-                .andReturn()
-                .getResponse()
-                .getContentAsString();
-        UUID recursoId = UUID.fromString(objectMapper.readTree(recursoResponse).get("id").asText());
+        UUID recursoId = criarRecursoRestrito();
 
         enviarReserva(reserva(recursoId, inicioFuturo(), "solicitante-restrito"))
                 .andExpect(status().isCreated())
@@ -488,6 +478,20 @@ class ReservaApiIntegrationTest {
     private Recurso criarRecurso() {
         return recursoRepository.save(new Recurso(null, "Sala 1", "SALA"));
     }
+
+        private UUID criarRecursoRestrito() throws Exception {
+                String recursoJson = """
+                                {"nome":"Sala Restrita","tipo":"SALA","restrito":true}
+                                """;
+                String recursoResponse = mockMvc.perform(post("/recursos")
+                                                .contentType(MediaType.APPLICATION_JSON)
+                                                .content(recursoJson))
+                                .andExpect(status().isCreated())
+                                .andReturn()
+                                .getResponse()
+                                .getContentAsString();
+                return UUID.fromString(objectMapper.readTree(recursoResponse).get("id").asText());
+        }
 
     private Usuario criarUsuario(String nome) {
         return usuarioRepository.save(new Usuario(
