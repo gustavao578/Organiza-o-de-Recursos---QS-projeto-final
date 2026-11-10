@@ -16,6 +16,8 @@ public interface ReservaRepository extends JpaRepository<Reserva, UUID> {
             WHERE r.recurso.id = :recursoId
               AND r.dataInicio < :dataFim
               AND r.dataFim > :dataInicio
+              AND r.status IN (br.edu.organizacaorecursos.domain.StatusReserva.APROVADA,
+                               br.edu.organizacaorecursos.domain.StatusReserva.EM_USO)
             """)
     boolean existeConflitoDeHorario(
             @Param("recursoId") UUID recursoId,
@@ -28,10 +30,28 @@ public interface ReservaRepository extends JpaRepository<Reserva, UUID> {
             WHERE r.recurso.id = :recursoId
               AND r.dataInicio < :dataFim
               AND r.dataFim > :dataInicio
+              AND r.status IN (br.edu.organizacaorecursos.domain.StatusReserva.APROVADA,
+                               br.edu.organizacaorecursos.domain.StatusReserva.EM_USO)
             ORDER BY r.dataInicio
             """)
     List<Reserva> buscarConflitosDeHorario(
             @Param("recursoId") UUID recursoId,
+            @Param("dataInicio") LocalDateTime dataInicio,
+            @Param("dataFim") LocalDateTime dataFim);
+
+    @Query("""
+            SELECT COUNT(r) > 0
+            FROM Reserva r
+            WHERE r.recurso.id = :recursoId
+              AND r.id <> :reservaId
+              AND r.dataInicio < :dataFim
+              AND r.dataFim > :dataInicio
+              AND r.status IN (br.edu.organizacaorecursos.domain.StatusReserva.APROVADA,
+                               br.edu.organizacaorecursos.domain.StatusReserva.EM_USO)
+            """)
+    boolean existeConflitoDeHorarioAprovado(
+            @Param("recursoId") UUID recursoId,
+            @Param("reservaId") UUID reservaId,
             @Param("dataInicio") LocalDateTime dataInicio,
             @Param("dataFim") LocalDateTime dataFim);
 }

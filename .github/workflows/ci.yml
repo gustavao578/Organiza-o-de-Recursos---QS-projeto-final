@@ -21,7 +21,7 @@ jobs:
           cache: maven
 
       - name: Verify with Maven
-        run: mvn --batch-mode verify
+        run: ./mvnw -B verify
 
       - name: SonarCloud analysis
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
@@ -38,7 +38,7 @@ jobs:
             echo "::error::Configure the SONAR_ORGANIZATION and SONAR_PROJECT_KEY Actions variables to enable SonarCloud analysis."
             exit 1
           fi
-          mvn --batch-mode org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
+          ./mvnw -B org.sonarsource.scanner.maven:sonar-maven-plugin:sonar \
             "-Dsonar.host.url=https://sonarcloud.io" \
             "-Dsonar.qualitygate.wait=true" \
             "-Dsonar.organization=$SONAR_ORGANIZATION" \
