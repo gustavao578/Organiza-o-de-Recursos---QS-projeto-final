@@ -677,6 +677,13 @@ class ReservaApiIntegrationTest {
                 .andExpect(status().isNoContent());
     }
 
+        @Test
+        void retornaNotFoundAoExcluirUsuarioInexistente() throws Exception {
+                mockMvc.perform(delete("/usuarios/{id}", UUID.randomUUID()))
+                                .andExpect(status().isNotFound())
+                                .andExpect(jsonPath("$.erro").value("Usuário não encontrado."));
+        }
+
     @Test
     void listaManutencoesPelaApi() throws Exception {
         Recurso recurso = criarRecurso();
