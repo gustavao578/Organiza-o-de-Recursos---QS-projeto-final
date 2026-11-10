@@ -134,7 +134,9 @@ public class ReservaApiSteps {
     @Dado("que o ator não é o responsável autorizado pelo recurso")
     public void atorNaoResponsavel() {
         Usuario administrador = criarUsuario("administrador");
-        usarToken("COMUM", administrador.getId());
+        administrador.setPerfil(Perfil.ADMIN);
+        usuarioRepository.save(administrador);
+        usarToken("ADMIN", administrador.getId());
     }
 
     @Quando("o ator aprova a reserva")

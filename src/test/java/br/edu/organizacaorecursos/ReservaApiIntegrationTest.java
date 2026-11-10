@@ -213,6 +213,8 @@ class ReservaApiIntegrationTest {
     void rejeitaAprovacaoPorUsuarioQueNaoEResponsavel() throws Exception {
         Usuario responsavel = criarUsuario("responsavel-registrado");
         Usuario outroUsuario = criarUsuario("outro-usuario");
+        outroUsuario.setPerfil(Perfil.ADMIN);
+        usuarioRepository.save(outroUsuario);
         UUID recursoId = criarRecursoRestrito(responsavel.getId());
         enviarReserva(reserva(recursoId, inicioFuturo(), "solicitante-outro"))
                 .andExpect(status().isCreated());

@@ -169,6 +169,10 @@ public class ReservaService {
                 if (!reserva.getRecurso().isRestrito()) {
                         throw new RegraNegocioException("Somente reservas de recursos restritos exigem decisão.");
                 }
+                UUID responsavelId = reserva.getRecurso().getResponsavelId();
+                if (responsavelId == null || !responsavelId.equals(atorId)) {
+                        throw new AccessDeniedException("Somente o responsável cadastrado pode decidir a reserva.");
+                }
                 if (reserva.getUsuario().getId().equals(atorId)) {
                         throw new RegraNegocioException("O solicitante não pode aprovar a própria reserva.");
                 }
