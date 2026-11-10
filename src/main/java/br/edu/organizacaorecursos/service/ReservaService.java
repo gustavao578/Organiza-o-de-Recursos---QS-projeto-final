@@ -1,6 +1,7 @@
 package br.edu.organizacaorecursos.service;
 
 import br.edu.organizacaorecursos.domain.Recurso;
+import br.edu.organizacaorecursos.domain.Perfil;
 import br.edu.organizacaorecursos.domain.Reserva;
 import br.edu.organizacaorecursos.domain.StatusReserva;
 import br.edu.organizacaorecursos.domain.Usuario;
@@ -14,11 +15,13 @@ import br.edu.organizacaorecursos.repository.RecursoRepository;
 import br.edu.organizacaorecursos.repository.ReservaRepository;
 import br.edu.organizacaorecursos.repository.UsuarioRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.springframework.security.access.AccessDeniedException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -54,8 +57,12 @@ public class ReservaService {
                     "O recurso não pode ser reservado pois estará em manutenção neste período.");
         }
 
-        boolean temConflito = reservaRepository.existeConflitoDeHorario(
-                recurso.getId(), dto.getDataInicio(), dto.getDataFim());
+        StatusReserva statusInicial = recurso.isRestrito()
+                ? StatusReserva.SOLICITADA
+                : StatusReserva.APROVADA;
+        boolean temConflito = statusInicial == StatusReserva.APROVADA
+                && reservaRepository.existeConflitoDeHorario(
+                        recurso.getId(), dto.getDataInicio(), dto.getDataFim());
         if (temConflito) {
             Reserva conflito = reservaRepository.buscarConflitosDeHorario(
                             recurso.getId(), dto.getDataInicio(), dto.getDataFim())
@@ -79,7 +86,7 @@ public class ReservaService {
         novaReserva.setDataInicio(dto.getDataInicio());
         novaReserva.setDataFim(dto.getDataFim());
         novaReserva.setUsuario(usuario);
-        novaReserva.setStatus(StatusReserva.SOLICITADA);
+        novaReserva.setStatus(statusInicial);
 
         Reserva reservaSalva = reservaRepository.save(novaReserva);
         return mapearParaResponseDTO(reservaSalva);
@@ -93,30 +100,114 @@ public class ReservaService {
         return mapearParaResponseDTO(reserva);
     }
 
+        @Transactional(readOnly = true)
+        public List<ReservaResponseDTO> listarReservas() {
+                return reservaRepository.findAll().stream().map(this::mapearParaResponseDTO).toList();
+        }
+
         @Transactional
-        public ReservaResponseDTO aprovarReserva(UUID reservaId, UUID atorId) {
-                Reserva reserva = reservaRepository.findById(reservaId)
-                                .orElseThrow(() -> new EntityNotFoundException(
-                                                "Reserva não encontrada para o ID informado."));
-                if (reserva.getUsuario().getId().equals(atorId)) {
-                    throw new RegraNegocioException("O solicitante não pode aprovar a própria reserva.");
+        public ReservaResponseDTO atualizarReserva(UUID reservaId, ReservaRequestDTO dto, UUID atorId) {
+                if (dto.getDataInicio() == null || dto.getDataFim() == null) {
+                        throw new RegraNegocioException("As datas de início e fim são obrigatórias.");
                 }
-                UUID responsavelId = reserva.getRecurso().getResponsavelId();
-                if (responsavelId == null || !responsavelId.equals(atorId)) {
-                        throw new RegraNegocioException("Somente o responsável pode aprovar esta reserva.");
+                if (!dto.getDataFim().isAfter(dto.getDataInicio())) {
+                        throw new RegraNegocioException("A data de término deve ser posterior à data de início.");
                 }
 
-                return transicionarReserva(
-                        reserva,
-                        StatusReserva.SOLICITADA,
-                        StatusReserva.APROVADA,
-                        "Somente solicitações pendentes podem ser aprovadas.");
+                Reserva reserva = buscarReserva(reservaId);
+                if (!reserva.getUsuario().getId().equals(atorId)) {
+                        throw new AccessDeniedException("Somente o solicitante pode atualizar a própria reserva.");
+                }
+                if (reserva.getStatus() != StatusReserva.PENDENTE
+                                && reserva.getStatus() != StatusReserva.SOLICITADA) {
+                        throw new RegraNegocioException("Somente reservas pendentes podem ser atualizadas.");
+                }
+
+                Recurso recurso = recursoRepository.buscarPorIdComBloqueio(dto.getRecursoId())
+                                .orElseThrow(() -> new RecursoNaoEncontradoException("Recurso não encontrado."));
+                if (manutencaoRepository.isRecursoEmManutencao(
+                                recurso.getId(), dto.getDataInicio(), dto.getDataFim())) {
+                        throw new RegraNegocioException(
+                                        "O recurso não pode ser reservado pois estará em manutenção neste período.");
+                }
+
+                StatusReserva novoStatus = recurso.isRestrito()
+                                ? StatusReserva.SOLICITADA
+                                : StatusReserva.APROVADA;
+                if (novoStatus == StatusReserva.APROVADA
+                                && reservaRepository.existeConflitoDeHorarioAprovado(
+                                                recurso.getId(), reserva.getId(), dto.getDataInicio(), dto.getDataFim())) {
+                        throw new ConflitoReservaException(
+                                        "O recurso já está reservado neste período.",
+                                        recurso.getNome() + ": período conflitante de "
+                                                        + dto.getDataInicio() + " a " + dto.getDataFim() + ".");
+                }
+
+                reserva.setRecurso(recurso);
+                reserva.setDataInicio(dto.getDataInicio());
+                reserva.setDataFim(dto.getDataFim());
+                reserva.setStatus(novoStatus);
+                return mapearParaResponseDTO(reservaRepository.save(reserva));
+        }
+
+        @Transactional
+        public ReservaResponseDTO atualizarStatus(UUID reservaId, StatusReserva novoStatus, UUID atorId) {
+                Usuario ator = usuarioRepository.findById(atorId)
+                        .orElseThrow(() -> new RegraNegocioException("Usuário autenticado não encontrado."));
+                if (ator.getPerfil() != Perfil.ADMIN) {
+                        throw new AccessDeniedException("Somente usuários ADMIN podem decidir reservas.");
+                }
+                if (novoStatus != StatusReserva.APROVADA && novoStatus != StatusReserva.REJEITADA) {
+                        throw new RegraNegocioException("O status deve ser APROVADA ou REJEITADA.");
+                }
+
+                Reserva reserva = buscarReserva(reservaId);
+                if (reserva.getStatus() != StatusReserva.PENDENTE
+                        && reserva.getStatus() != StatusReserva.SOLICITADA) {
+                        throw new RegraNegocioException("Somente reservas pendentes podem ser decididas.");
+                }
+                if (!reserva.getRecurso().isRestrito()) {
+                        throw new RegraNegocioException("Somente reservas de recursos restritos exigem decisão.");
+                }
+                if (reserva.getUsuario().getId().equals(atorId)) {
+                        throw new RegraNegocioException("O solicitante não pode aprovar a própria reserva.");
+                }
+
+                if (novoStatus == StatusReserva.APROVADA) {
+                        recursoRepository.buscarPorIdComBloqueio(reserva.getRecurso().getId())
+                                .orElseThrow(() -> new RecursoNaoEncontradoException("Recurso não encontrado."));
+                        boolean temConflito = reservaRepository.existeConflitoDeHorarioAprovado(
+                                reserva.getRecurso().getId(), reserva.getId(),
+                                reserva.getDataInicio(), reserva.getDataFim());
+                        if (temConflito) {
+                                throw new ConflitoReservaException(
+                                        "O recurso já está reservado neste período.",
+                                        reserva.getRecurso().getNome() + ": período conflitante de "
+                                                + reserva.getDataInicio() + " a " + reserva.getDataFim() + ".");
+                        }
+                }
+                return persistirStatus(reserva, novoStatus);
+        }
+
+        @Transactional
+        public ReservaResponseDTO aprovarReserva(UUID reservaId, UUID atorId) {
+                return atualizarStatus(reservaId, StatusReserva.APROVADA, atorId);
         }
 
         @Transactional
         public ReservaResponseDTO iniciarReserva(UUID reservaId) {
                 return transicionarReserva(
                                 reservaId,
+                                StatusReserva.APROVADA,
+                                StatusReserva.EM_USO,
+                                "Somente reservas aprovadas podem ser iniciadas.");
+        }
+
+        @Transactional
+        public ReservaResponseDTO iniciarReserva(UUID reservaId, UUID atorId) {
+                return transicionarComoResponsavel(
+                                reservaId,
+                                atorId,
                                 StatusReserva.APROVADA,
                                 StatusReserva.EM_USO,
                                 "Somente reservas aprovadas podem ser iniciadas.");
@@ -132,13 +223,23 @@ public class ReservaService {
         }
 
         @Transactional
-        public ReservaResponseDTO rejeitarReserva(UUID reservaId, UUID atorId) {
+        public ReservaResponseDTO concluirReserva(UUID reservaId, UUID atorId) {
                 return transicionarComoResponsavel(
-                        reservaId,
-                        atorId,
-                                StatusReserva.SOLICITADA,
-                                StatusReserva.REJEITADA,
-                                "Somente solicitações pendentes podem ser rejeitadas.");
+                                reservaId,
+                                atorId,
+                                StatusReserva.EM_USO,
+                                StatusReserva.CONCLUÍDA,
+                                "Somente reservas em uso podem ser concluídas.");
+        }
+
+        @Transactional
+        public ReservaResponseDTO rejeitarReserva(UUID reservaId, UUID atorId) {
+                Reserva reserva = buscarReserva(reservaId);
+                if (atorId != null) {
+                        validarResponsavel(reserva, atorId);
+                }
+                validarStatusPendente(reserva);
+                return persistirStatus(reserva, StatusReserva.REJEITADA);
         }
 
         @Transactional
@@ -147,11 +248,8 @@ public class ReservaService {
                 if (!reserva.getUsuario().getId().equals(atorId)) {
                         throw new RegraNegocioException("Somente o solicitante pode cancelar a reserva.");
                 }
-                return transicionarReserva(
-                                reserva,
-                                StatusReserva.SOLICITADA,
-                                StatusReserva.CANCELADA,
-                                "Somente solicitações pendentes podem ser canceladas.");
+                validarStatusPendente(reserva);
+                return persistirStatus(reserva, StatusReserva.CANCELADA);
         }
 
         @Transactional
@@ -171,7 +269,9 @@ public class ReservaService {
                     StatusReserva destino,
                     String mensagemInvalida) {
                 Reserva reserva = buscarReserva(reservaId);
-                validarResponsavel(reserva, atorId);
+                if (atorId != null) {
+                        validarResponsavel(reserva, atorId);
+                }
                 return transicionarReserva(reserva, origem, destino, mensagemInvalida);
             }
 
@@ -195,6 +295,13 @@ public class ReservaService {
                                                 "Reserva não encontrada para o ID informado."));
         }
 
+        private void validarStatusPendente(Reserva reserva) {
+                if (reserva.getStatus() != StatusReserva.PENDENTE
+                                && reserva.getStatus() != StatusReserva.SOLICITADA) {
+                        throw new RegraNegocioException("Somente solicitações pendentes podem ser alteradas.");
+                }
+        }
+
         private void validarResponsavel(Reserva reserva, UUID atorId) {
                 UUID responsavelId = reserva.getRecurso().getResponsavelId();
                 if (responsavelId == null || !responsavelId.equals(atorId)) {
@@ -203,11 +310,15 @@ public class ReservaService {
         }
 
     @Transactional
-    public void deletarReserva(UUID id) {
-        if (!reservaRepository.existsById(id)) {
-            throw new EntityNotFoundException("Reserva não encontrada para exclusão.");
-        }
-        reservaRepository.deleteById(id);
+        public void deletarReserva(UUID id, UUID atorId) {
+                Reserva reserva = reservaRepository.findById(id)
+                                .orElseThrow(() -> new EntityNotFoundException("Reserva não encontrada para exclusão."));
+                Usuario ator = usuarioRepository.findById(atorId)
+                                .orElseThrow(() -> new AccessDeniedException("Usuário autenticado não encontrado."));
+                if (ator.getPerfil() != Perfil.ADMIN && !reserva.getUsuario().getId().equals(atorId)) {
+                        throw new AccessDeniedException("Somente o solicitante ou um ADMIN pode excluir a reserva.");
+                }
+                reservaRepository.delete(reserva);
     }
 
     private ReservaResponseDTO mapearParaResponseDTO(Reserva reserva) {
@@ -215,6 +326,7 @@ public class ReservaService {
         response.setId(reserva.getId());
         response.setRecursoId(reserva.getRecurso().getId());
         response.setNomeRecurso(reserva.getRecurso().getNome());
+        response.setRecursoRestrito(reserva.getRecurso().isRestrito());
         response.setUsuarioId(reserva.getUsuario().getId());
         response.setNomeUsuario(reserva.getUsuario().getNome());
         response.setDataInicio(reserva.getDataInicio());

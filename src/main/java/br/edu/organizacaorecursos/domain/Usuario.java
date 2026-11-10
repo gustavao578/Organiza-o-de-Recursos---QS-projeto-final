@@ -2,6 +2,8 @@ package br.edu.organizacaorecursos.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -30,4 +32,12 @@ public class Usuario {
 
     @Column(nullable = false, unique = true)
     private String matricula;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Perfil perfil = Perfil.COMUM;
+
+    public Usuario(UUID id, String nome, String email, String matricula) {
+        this(id, nome, email, matricula, Perfil.COMUM);
+    }
 }

@@ -1,6 +1,7 @@
 package br.edu.organizacaorecursos.domain;
 
 public enum StatusReserva {
+    PENDENTE,
     SOLICITADA,
     APROVADA,
     EM_USO,

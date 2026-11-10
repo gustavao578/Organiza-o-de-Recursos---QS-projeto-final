@@ -3,12 +3,14 @@ package br.edu.organizacaorecursos;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.containsString;
 
 import br.edu.organizacaorecursos.domain.Recurso;
+import br.edu.organizacaorecursos.domain.Perfil;
 import br.edu.organizacaorecursos.domain.Usuario;
 import br.edu.organizacaorecursos.dto.ReservaRequestDTO;
 import br.edu.organizacaorecursos.exception.RegraNegocioException;
@@ -32,10 +34,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
-@AutoConfigureMockMvc
+@AutoConfigureMockMvc(addFilters = false)
 class ReservaApiIntegrationTest {
 
     @Autowired
@@ -98,6 +104,75 @@ class ReservaApiIntegrationTest {
     }
 
     @Test
+    void patchStatusExigeAdminPersistidoEImpedeAprovacoesSobrepostas() throws Exception {
+        Usuario admin = criarUsuario("responsavel-patch");
+        UUID recursoId = criarRecursoRestrito(admin.getId());
+        LocalDateTime inicio = inicioFuturo();
+        enviarReserva(reserva(recursoId, inicio, "solicitante-patch-1"))
+                .andExpect(status().isCreated());
+        enviarReserva(reserva(recursoId, inicio, "solicitante-patch-2"))
+                .andExpect(status().isCreated());
+        UUID primeiraReservaId = reservaRepository.findAll().get(0).getId();
+        UUID segundaReservaId = reservaRepository.findAll().get(1).getId();
+
+        atualizarStatusReserva(primeiraReservaId, admin.getId(), "APROVADA")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APROVADA"));
+        atualizarStatusReserva(segundaReservaId, admin.getId(), "APROVADA")
+                .andExpect(status().isBadRequest());
+
+        Usuario usuarioComum = criarUsuario("usuario-patch-comum");
+        UUID terceiraReservaId = reservaRepository.save(new br.edu.organizacaorecursos.domain.Reserva(
+                null, recursoRepository.findById(recursoId).orElseThrow(), inicio.plusHours(2),
+                inicio.plusHours(3), usuarioComum)).getId();
+        atualizarStatusReserva(terceiraReservaId, usuarioComum.getId(), "APROVADA")
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(patch("/reservas/{id}/status", terceiraReservaId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"status":"APROVADA"}
+                                """))
+                .andExpect(status().isForbidden());
+
+        enviarReserva(reserva(recursoId, inicio.plusHours(4), "solicitante-status-invalido"))
+                .andExpect(status().isCreated());
+        UUID quartaReservaId = reservaRepository.findAll().stream()
+                .filter(reservaSalva -> reservaSalva.getDataInicio().equals(inicio.plusHours(4)))
+                .findFirst().orElseThrow().getId();
+        atualizarStatusReserva(quartaReservaId, admin.getId(), "SOLICITADA")
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void atualizaReservaPendenteSomentePeloSolicitante() throws Exception {
+        Usuario solicitante = criarUsuario("solicitante-put");
+        Recurso recurso = recursoRepository.save(new Recurso(null, "Sala PUT", "SALA", true, null));
+        LocalDateTime inicio = inicioFuturo();
+        ReservaRequestDTO criacao = new ReservaRequestDTO();
+        criacao.setRecursoId(recurso.getId());
+        criacao.setUsuarioId(solicitante.getId());
+        criacao.setDataInicio(inicio);
+        criacao.setDataFim(inicio.plusHours(1));
+        enviarReserva(criacao).andExpect(status().isCreated());
+        UUID reservaId = reservaRepository.findAll().get(0).getId();
+
+        ReservaRequestDTO atualizacao = new ReservaRequestDTO();
+        atualizacao.setRecursoId(recurso.getId());
+        atualizacao.setUsuarioId(solicitante.getId());
+        atualizacao.setDataInicio(inicio.plusHours(2));
+        atualizacao.setDataFim(inicio.plusHours(3));
+        putReserva(reservaId, solicitante.getId(), "COMUM", atualizacao)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SOLICITADA"))
+                .andExpect(jsonPath("$.dataInicio").value(inicio.plusHours(2) + ":00"));
+
+        Usuario outroUsuario = criarUsuario("outro-put");
+        putReserva(reservaId, outroUsuario.getId(), "COMUM", atualizacao)
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void aprovaSolicitacaoRestritaQuandoResponsavelExecuta() throws Exception {
         Usuario responsavel = criarUsuario("responsavel-aprovador");
         UUID recursoId = criarRecursoRestrito(responsavel.getId());
@@ -114,6 +189,8 @@ class ReservaApiIntegrationTest {
     @Test
     void rejeitaAutoAprovacaoEPreservaSolicitacao() throws Exception {
         Usuario solicitante = criarUsuario("solicitante-autorizado");
+                solicitante.setPerfil(Perfil.ADMIN);
+                usuarioRepository.save(solicitante);
         UUID recursoId = criarRecursoRestrito(solicitante.getId());
         LocalDateTime inicio = inicioFuturo();
         ReservaRequestDTO request = new ReservaRequestDTO();
@@ -142,7 +219,7 @@ class ReservaApiIntegrationTest {
         UUID reservaId = reservaRepository.findAll().get(0).getId();
 
         aprovarReserva(reservaId, outroUsuario.getId())
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isForbidden());
 
         mockMvc.perform(get("/reservas/{id}", reservaId))
                 .andExpect(status().isOk())
@@ -267,11 +344,13 @@ class ReservaApiIntegrationTest {
                         case "NÃO_COMPARECEU" -> "nao-compareceu";
                         default -> throw new IllegalArgumentException("Estado alternativo não suportado.");
                 };
-                mockMvc.perform(post("/reservas/{id}/{acao}", reservaId, acao)
-                                                .contentType(MediaType.APPLICATION_JSON)
-                                                .content("""
-                                                                {"atorId":"%s"}
-                                                                """.formatted(atorId)))
+                String perfil = switch (destino) {
+                        case "REJEITADA" -> "ADMIN";
+                        case "CANCELADA" -> "SOLICITANTE";
+                        case "NÃO_COMPARECEU" -> "RESPONSAVEL";
+                        default -> throw new IllegalArgumentException("Estado alternativo não suportado.");
+                };
+                postComo(reservaId, acao, atorId, perfil)
                                 .andExpect(status().isOk())
                                 .andExpect(jsonPath("$.status").value(destino));
         }
@@ -283,11 +362,7 @@ class ReservaApiIntegrationTest {
                         enviarReserva(reserva(recursoId, inicioFuturo(), "solicitante-reaprovacao"))
                                 .andExpect(status().isCreated());
                         UUID reservaId = reservaRepository.findAll().get(0).getId();
-                        mockMvc.perform(post("/reservas/{id}/rejeitar", reservaId)
-                                        .contentType(MediaType.APPLICATION_JSON)
-                                        .content("""
-                                                {"atorId":"%s"}
-                                                """.formatted(responsavel.getId())))
+                        postComo(reservaId, "rejeitar", responsavel.getId(), "ADMIN")
                                 .andExpect(status().isOk());
 
                         aprovarReserva(reservaId, responsavel.getId())
@@ -317,6 +392,32 @@ class ReservaApiIntegrationTest {
                 .andExpect(jsonPath("$[0].nome").value("Sala de Reunião A"));
 
         org.assertj.core.api.Assertions.assertThat(recursoRepository.count()).isEqualTo(1);
+    }
+
+    @Test
+    void atualizaConsultaERemoveRecursoPelosEndpointsRest() throws Exception {
+        Recurso recurso = criarRecurso();
+        String atualizacao = """
+                {"nome":"Sala Atualizada","tipo":"SALA","restrito":true}
+                """;
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/recursos/{id}", recurso.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(atualizacao))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nome").value("Sala Atualizada"))
+                .andExpect(jsonPath("$.restrito").value(true));
+
+        mockMvc.perform(get("/recursos/{id}", recurso.getId()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.restrito").value(true));
+
+        mockMvc.perform(delete("/recursos/{id}", recurso.getId()))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(delete("/recursos/{id}", UUID.randomUUID()))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -364,20 +465,30 @@ class ReservaApiIntegrationTest {
 
     @Test
     void excluiReservaPorId() throws Exception {
-        criarReserva();
+                ReservaRequestDTO request = criarReserva();
         UUID reservaId = reservaRepository.findAll().get(0).getId();
 
-        mockMvc.perform(delete("/reservas/{id}", reservaId))
-                .andExpect(status().isNoContent());
+                try {
+                        mockMvc.perform(delete("/reservas/{id}", reservaId)
+                                                        .with(jwtContexto(request.getUsuarioId(), "COMUM")))
+                                        .andExpect(status().isNoContent());
+                } finally {
+                        SecurityContextHolder.clearContext();
+                }
 
         org.assertj.core.api.Assertions.assertThat(reservaRepository.existsById(reservaId)).isFalse();
     }
 
     @Test
     void retornaNotFoundAoExcluirReservaInexistente() throws Exception {
-        mockMvc.perform(delete("/reservas/{id}", UUID.randomUUID()))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.erro").value("Reserva não encontrada para exclusão."));
+                try {
+                        mockMvc.perform(delete("/reservas/{id}", UUID.randomUUID())
+                                                        .with(jwtContexto(UUID.randomUUID(), "COMUM")))
+                                        .andExpect(status().isNotFound())
+                                        .andExpect(jsonPath("$.erro").value("Reserva não encontrada para exclusão."));
+                } finally {
+                        SecurityContextHolder.clearContext();
+                }
     }
 
     @Test
@@ -545,7 +656,7 @@ class ReservaApiIntegrationTest {
     @Test
     void criaEListaUsuariosPelaApi() throws Exception {
         String request = """
-                {"nome":"Usuário API","email":"usuario.api@example.com","matricula":"api-001"}
+                                {"nome":"Usuário API","email":"usuario.api@example.com","matricula":"api-001","perfil":"ADMIN"}
                 """;
 
         mockMvc.perform(post("/usuarios")
@@ -553,11 +664,15 @@ class ReservaApiIntegrationTest {
                         .content(request))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNotEmpty())
-                .andExpect(jsonPath("$.nome").value("Usuário API"));
+                .andExpect(jsonPath("$.nome").value("Usuário API"))
+                .andExpect(jsonPath("$.perfil").value("COMUM"));
 
         mockMvc.perform(get("/usuarios"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].email").value("usuario.api@example.com"));
+
+        mockMvc.perform(delete("/usuarios/{id}", usuarioRepository.findAll().get(0).getId()))
+                .andExpect(status().isNoContent());
     }
 
     @Test
@@ -608,6 +723,22 @@ class ReservaApiIntegrationTest {
                         .content(request))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.erro").value("O ID do recurso é obrigatório."));
+
+        org.assertj.core.api.Assertions.assertThat(manutencaoRepository.count()).isZero();
+    }
+
+    @Test
+    void rejeitaManutencaoSemRecursoNoCorpo() throws Exception {
+        LocalDateTime inicio = inicioFuturo();
+        String request = """
+                {"dataInicio":"%s","dataFim":"%s","descricao":"Reparo"}
+                """.formatted(inicio, inicio.plusHours(1));
+
+        mockMvc.perform(post("/manutencoes")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.recurso").value("O recurso é obrigatório."));
 
         org.assertj.core.api.Assertions.assertThat(manutencaoRepository.count()).isZero();
     }
@@ -684,16 +815,76 @@ class ReservaApiIntegrationTest {
 
     private org.springframework.test.web.servlet.ResultActions aprovarReserva(UUID reservaId, UUID atorId)
             throws Exception {
-        return mockMvc.perform(post("/reservas/{id}/aprovar", reservaId)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content("""
-                        {"atorId":"%s"}
-                        """.formatted(atorId)));
+        try {
+            return mockMvc.perform(post("/reservas/{id}/aprovar", reservaId)
+                    .with(jwtContexto(atorId, "ADMIN"))
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content("""
+                            {"atorId":"%s"}
+                            """.formatted(atorId)));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
+
+    private org.springframework.test.web.servlet.ResultActions atualizarStatusReserva(
+            UUID reservaId, UUID atorId, String novoStatus) throws Exception {
+                try {
+                        return mockMvc.perform(patch("/reservas/{id}/status", reservaId)
+                                        .with(jwtContexto(atorId, "ADMIN"))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content("""
+                                                        {"status":"%s"}
+                                                        """.formatted(novoStatus)));
+                } finally {
+                        SecurityContextHolder.clearContext();
+                }
+    }
+
+        private org.springframework.test.web.servlet.ResultActions putReserva(
+                        UUID reservaId, UUID atorId, String perfil, ReservaRequestDTO request) throws Exception {
+                try {
+                        return mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                                        .put("/reservas/{id}", reservaId)
+                                        .with(jwtContexto(atorId, perfil))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content(objectMapper.writeValueAsString(request)));
+                } finally {
+                        SecurityContextHolder.clearContext();
+                }
+        }
+
+        private RequestPostProcessor jwtContexto(UUID subject, String perfil) {
+                return request -> {
+                        Jwt jwt = Jwt.withTokenValue("token-de-teste")
+                                        .header("alg", "none")
+                                        .subject(subject.toString())
+                                        .claim("profile", perfil)
+                                        .build();
+                        var contexto = SecurityContextHolder.createEmptyContext();
+                        contexto.setAuthentication(new JwtAuthenticationToken(jwt));
+                        SecurityContextHolder.setContext(contexto);
+                        return request;
+                };
+        }
 
     private Recurso criarRecurso() {
         return recursoRepository.save(new Recurso(null, "Sala 1", "SALA"));
     }
+
+        private org.springframework.test.web.servlet.ResultActions postComo(
+                        UUID reservaId, String acao, UUID atorId, String perfil) throws Exception {
+                try {
+                        return mockMvc.perform(post("/reservas/{id}/{acao}", reservaId, acao)
+                                        .with(jwtContexto(atorId, perfil))
+                                        .contentType(MediaType.APPLICATION_JSON)
+                                        .content("""
+                                                        {"atorId":"%s"}
+                                                        """.formatted(atorId)));
+                } finally {
+                        SecurityContextHolder.clearContext();
+                }
+        }
 
     private UUID criarRecursoRestrito(UUID responsavelId) throws Exception {
         String responsavelJson = responsavelId == null
@@ -713,11 +904,15 @@ class ReservaApiIntegrationTest {
     }
 
     private Usuario criarUsuario(String nome) {
-        return usuarioRepository.save(new Usuario(
+                Usuario usuario = new Usuario(
                 null,
                 nome,
                 nome + "@example.com",
-                "matricula-" + nome));
+                                "matricula-" + nome);
+                if (nome.startsWith("responsavel")) {
+                        usuario.setPerfil(Perfil.ADMIN);
+                }
+                return usuarioRepository.save(usuario);
     }
 
     private ReservaRequestDTO criarReserva() throws Exception {

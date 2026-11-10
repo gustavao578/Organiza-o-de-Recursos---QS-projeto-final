@@ -11,6 +11,7 @@ public class ReservaResponseDTO {
     private UUID id;
     private UUID recursoId;
     private String nomeRecurso;
+    private boolean recursoRestrito;
     private UUID usuarioId;
     private String nomeUsuario;
     private LocalDateTime dataInicio;

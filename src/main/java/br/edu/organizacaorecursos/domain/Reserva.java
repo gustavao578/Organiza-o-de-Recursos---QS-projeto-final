@@ -42,7 +42,7 @@ public class Reserva {
     private StatusReserva status;
 
     public Reserva(UUID id, Recurso recurso, LocalDateTime dataInicio, LocalDateTime dataFim, Usuario usuario) {
-        this(id, recurso, dataInicio, dataFim, StatusReserva.SOLICITADA, usuario);
+        this(id, recurso, dataInicio, dataFim, StatusReserva.PENDENTE, usuario);
     }
 
     @ManyToOne
