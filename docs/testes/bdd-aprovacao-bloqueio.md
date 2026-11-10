@@ -2,31 +2,31 @@
 
 ## Base e escopo
 
-Os caminhos `docs/prd.md` e `docs/rtm.md` citados na solicitação não existem neste workspace. Foram consultados `prd/requisitos-funcionais.md`, `prd/rtm.md`, `prd/visão-geral.md` e o código de reservas.
+Foram consultados `prd/requisitos-funcionais.md`, `prd/rtm.md`, `prd/visão-geral.md` e o código de reservas.
 
-O PRD define aprovação para recursos restritos (RF-07) e indisponibilidade durante a manutenção (RF-08). A RTM classifica RF-07/RC-06 e RC-05 (transições de estado) como bloqueados; RC-04 (manutenção) é parcial. Os cenários abaixo são especificações para testes futuros, não afirmações de que esses fluxos já estejam implementados.
+O PRD define aprovação para recursos restritos (RF-07) e indisponibilidade durante manutenção (RF-08). Os cenários de aprovação, transições e manutenção estão implementados na feature `src/test/resources/features/aprovacao-bloqueio.feature` e são executados com MockMvc/JWT pelo runner Cucumber. Esta documentação descreve o baseline de 2026-11-10; não é apenas uma proposta para trabalho futuro.
 
-Cada cenário contém exatamente um `Quando` e um `Então`. Respostas HTTP indicadas servem como resultados observáveis no endpoint de criação existente; para endpoints de aprovação e transição, que ainda não existem, o código HTTP permanece pendente de contrato.
+Cada cenário contém exatamente um `Quando` e um `Então`. Os exemplos de manutenção, aprovação e transição são executáveis; transições candidatas ainda dependem de validação de produto. O endpoint atual de decisão é `PATCH /reservas/{id}/status`; aceita `APROVADA` ou `REJEITADA`, com autorização para `ADMINISTRADOR` ou o `RESPONSAVEL` associado ao recurso. A rota legada `/reservas/{id}/aprovar` é restrita a administrador.
 
 ## Regra 1 — Recurso restrito exige aprovação
 
 ### BDD-APR-01 — Solicitação restrita fica pendente
 
-**Tipo:** cenário proposto a partir do RF-07.
+**Tipo:** cenário executado a partir do RF-07.
 
 ```gherkin
 Cenário: Solicitação de recurso restrito aguarda aprovação
   Dado que o recurso está classificado como restrito
   E que o solicitante tem permissão para solicitar uma reserva
   Quando o solicitante envia uma solicitação válida para esse recurso
-  Então a reserva é registrada como SOLICITADA e não como confirmação final
+  Então a reserva é registrada como PENDENTE e não como confirmação final
 ```
 
 ### BDD-APR-02 — Responsável aprova a solicitação
 
 ```gherkin
 Cenário: Responsável aprova uma solicitação restrita
-  Dado que existe uma reserva restrita no estado SOLICITADA
+  Dado que existe uma reserva restrita no estado PENDENTE
   E que o ator é o responsável autorizado pelo recurso
   Quando o ator aprova a reserva
   Então a reserva passa para o estado APROVADA
@@ -38,20 +38,20 @@ Cenário: Responsável aprova uma solicitação restrita
 
 ```gherkin
 Cenário: Solicitante não pode aprovar a própria reserva
-  Dado que existe uma reserva restrita no estado SOLICITADA
+  Dado que existe uma reserva restrita no estado PENDENTE
   E que o ator é o solicitante dessa reserva
   Quando o ator tenta aprovar a reserva
-  Então a operação é rejeitada e a reserva permanece SOLICITADA
+  Então a operação é rejeitada e a reserva permanece PENDENTE
 ```
 
 ### BDD-APR-04 — Usuário que não é responsável tenta aprovar
 
 ```gherkin
 Cenário: Usuário sem papel de responsável não aprova uma reserva restrita
-  Dado que existe uma reserva restrita no estado SOLICITADA
+  Dado que existe uma reserva restrita no estado PENDENTE
   E que o ator não é o responsável autorizado pelo recurso
   Quando o ator tenta aprovar a reserva
-  Então a operação é rejeitada e a reserva permanece SOLICITADA
+  Então a operação é rejeitada e a reserva permanece PENDENTE
 ```
 
 ## Regra 3 — Recurso em manutenção não pode ser reservado
@@ -85,14 +85,14 @@ Esquema do Cenário: Executar uma transição do fluxo principal
 
 Exemplos:
   | estado_origem | estado_destino |
-  | SOLICITADA    | APROVADA       |
+  | PENDENTE      | APROVADA       |
   | APROVADA      | EM_USO         |
   | EM_USO        | CONCLUÍDA      |
 ```
 
 ### BDD-EST-02 — Estados alternativos
 
-**Proposta sujeita à confirmação:** o PRD e a visão geral nomeiam `REJEITADA`, `CANCELADA` e `NÃO_COMPARECEU`, mas não especificam de quais estados cada um pode ser alcançado nem quem pode executar a transição.
+Os exemplos são exercitados pela feature atual. A autorização e o momento operacional de `NÃO_COMPARECEU` devem permanecer alinhados ao contrato completo de estados, que ainda precisa de validação de produto.
 
 ```gherkin
 Esquema do Cenário: Registrar um estado alternativo permitido
@@ -100,10 +100,10 @@ Esquema do Cenário: Registrar um estado alternativo permitido
   Quando um ator autorizado solicita a transição para <estado_destino>
   Então a operação é aceita e o estado persistido passa a <estado_destino>
 
-Exemplos candidatos, pendentes de validação:
+Exemplos atualmente exercitados:
   | estado_origem | estado_destino |
-  | SOLICITADA    | REJEITADA      |
-  | SOLICITADA    | CANCELADA      |
+  | PENDENTE      | REJEITADA      |
+  | PENDENTE      | CANCELADA      |
   | APROVADA      | NÃO_COMPARECEU |
 ```
 
@@ -117,38 +117,24 @@ Esquema do Cenário: Rejeitar transição inválida
 
 Exemplos:
   | estado_origem | estado_destino |
-  | SOLICITADA    | EM_USO         |
+  | PENDENTE      | EM_USO         |
   | APROVADA      | CONCLUÍDA      |
-  | CONCLUÍDA     | SOLICITADA     |
+  | CONCLUÍDA     | PENDENTE       |
 ```
 
 ## Perguntas em aberto
 
-1. Quais tipos de recurso ou combinações tornam uma reserva restrita e como essa classificação é configurada?
-2. Como identificar o responsável autorizado por um recurso e qual mecanismo comprova o papel do ator? O RF-07 exige aprovação pelo responsável, mas perfis/permissões ainda precisam de validação.
+1. Quais papéis podem cadastrar/alterar o indicador `restrito` e quais critérios de produto determinam sua configuração?
+2. Como o responsável pelo recurso é designado e como serão provisionados/emissos os JWTs? O backend compara o perfil persistido e o responsável associado, mas o fluxo de identidade/provisionamento permanece pendente.
 3. Qual é a convenção dos extremos do intervalo de manutenção: `[início, fim)`, `[início, fim]` ou outra? Os resultados BDD-MAN-01 são candidatos compatíveis com o código atual, não uma decisão expressa no PRD.
-4. Quais estados de origem permitem `REJEITADA`, `CANCELADA` e `NÃO_COMPARECEU`, quem pode realizar cada transição e em que momento `NÃO_COMPARECEU` deve ser registrado?
-5. Quais códigos HTTP e formato de erro devem ser usados para aprovação negada e transição inválida? O contrato público ainda está pendente segundo a RTM.
+4. Quais perfis podem executar cada transição de ciclo de vida e em que momento `NÃO_COMPARECEU` deve ser registrado?
+5. O contrato OpenAPI deve documentar os status/códigos de erro e a diferença entre PATCH de status e a rota legada de aprovação; a documentação completa ainda está pendente.
 
 ## Destino dos testes
 
-### Testes de unidade
+### Evidências de teste
 
-- BDD-APR-01: estado inicial de solicitação restrita e ausência de confirmação final.
-- BDD-APR-02: aprovação válida pelo responsável.
-- BDD-APR-03: bloqueio de autoaprovação.
-- BDD-APR-04: bloqueio de aprovação por ator sem papel autorizado.
-- BDD-EST-01: cada uma das três transições principais.
-- BDD-EST-02: transições alternativas, após confirmação das origens e atores permitidos.
-- BDD-EST-03: rejeição de transições inválidas e preservação do estado.
-
-### Testes de API
-
-- BDD-APR-01: criação da solicitação restrita e estado retornado.
-- BDD-APR-02: aprovação pelo responsável e estado retornado.
-- BDD-APR-03: tentativa de autoaprovação rejeitada, sem alterar o estado.
-- BDD-APR-04: tentativa por usuário não responsável rejeitada, sem alterar o estado.
-- BDD-MAN-01: os três exemplos de fronteira, verificando resposta HTTP e persistência.
-- BDD-EST-01: as três transições principais pelo endpoint público de estado.
-- BDD-EST-02: transições alternativas pelo endpoint público, após definição do contrato.
-- BDD-EST-03: transições inválidas rejeitadas e estado preservado.
+- BDD-APR-01–04: criação em `PENDENTE`, aprovação/rejeição e bloqueio de autoaprovação/ator não autorizado via API com JWT.
+- BDD-MAN-01: três exemplos de fronteira, verificando resposta HTTP e persistência.
+- BDD-EST-01–03: fluxo principal, estados alternativos e transições inválidas, verificando estado persistido.
+- `./mvnw -B verify` executa os cenários pelo runner Cucumber; o resultado mais recente no CI é o run `42859680966`.

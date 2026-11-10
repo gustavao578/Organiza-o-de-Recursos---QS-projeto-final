@@ -361,3 +361,43 @@ não uma afirmação sobre qualquer branch ou ambiente não acessível.
 - Relatório JaCoCo XML: `target/site/jacoco/jacoco.xml` (consumido pelo passo Sonar Maven).
 - Relatório SonarCloud/Quality Gate: **não gerado nesta execução**; requer secret `SONAR_TOKEN` e variáveis `SONAR_ORGANIZATION`/`SONAR_PROJECT_KEY`, além de run do workflow no PR.
 - [ci.yml](../../.github/workflows/ci.yml)
+
+## 12. Adendo de acompanhamento — 2026-11-10
+
+Este adendo atualiza evidências posteriores sem reescrever a fotografia ATAM
+de 2026-11-08. A análise original é histórica; declarações sobre ausência de
+autenticação, estados de reserva, Maven Wrapper ou SonarCloud devem ser lidas
+na data daquele ciclo.
+
+### Mudanças observadas
+
+- Implementados JWT Bearer stateless e autorização para decisões de reservas:
+  `ADMINISTRADOR` ou `RESPONSAVEL` associado ao recurso pode aprovar/rejeitar;
+  autoaprovação é recusada. A autorização de outros endpoints e o escopo de
+  leitura por proprietário seguem incompletos.
+- Implementados `Perfil`, `restrito`, estado inicial condicional (`PENDENTE`
+  para restrito; `APROVADA` para não restrito), endpoint PATCH de status e
+  transições de ciclo de vida cobertas por testes. `SOLICITADA` ainda existe
+  como estado legado. Auditoria durável e bloqueio de exclusão de reservas
+  iniciadas não foram implementados.
+- O Maven Wrapper e o runner Cucumber estão configurados. `./mvnw -B verify`
+  passou com 92 testes; JaCoCo reportou 87% de linhas e 71% de branches.
+  GitHub Actions/SonarCloud passaram no run `42859680966`, commit `eb2bced`.
+
+### Reavaliação dos riscos
+
+| Risco do ciclo de 8/11 | Situação em 10/11 |
+|---|---|
+| Sem autenticação/autorização observada | **Mitigado parcialmente:** JWT e autorização do fluxo de decisão estão implementados; matriz global e escopo de acesso ainda incompletos. |
+| Sem estados de reserva | **Mitigado parcialmente:** perfis, restrição, estado inicial e transições implementados; exclusão segura e auditoria persistida ausentes. |
+| Sonar/CI sem Quality Gate remoto | **Resolvido para o baseline:** run `42859680966` passou; manter a execução nos próximos PRs. |
+| Cobertura/concorrência apenas em H2 | **Parcial:** metas de cobertura global passam; Testcontainers e validação no engine de destino permanecem pendentes. |
+| Modelo/contrato cobrindo parte do domínio | **Aberto:** busca de disponibilidade, professores/materiais, notificações, relatórios e contrato OpenAPI completo ainda faltam. |
+| Desempenho sem limites e relatório JMeter | **Aberto:** perfil de carga e metas quantitativas continuam sem aprovação. |
+
+**Conclusão atualizada:** a implementação de reservas está mais madura, mas a
+API não está pronta como backend final para iniciar um frontend funcional
+integrado. Definir o contrato de identidade/permissões, completar consulta de
+disponibilidade e fechar o modelo de recursos são pré-requisitos recomendados.
+Os detalhes de evidência e lacunas estão na [RTM](../rtm.md) e na
+[visão geral](../visão-geral.md).

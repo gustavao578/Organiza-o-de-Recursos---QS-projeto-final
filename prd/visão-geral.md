@@ -48,12 +48,15 @@ Os perfis e suas necessidades estão detalhados em [personas.md](personas.md).
 
 ## Contexto técnico e entrega
 
-- Linguagem prevista: Java 21.
-- Framework previsto: Spring Boot 3.x.
+- Linguagem/build: Java 21 no `pom.xml` e no CI; Spring Boot 3.2.4 e Maven Wrapper 3.10.
+- API e persistência: Spring Web/MVC, Spring Data JPA, H2 em memória no perfil atual, UUID para IDs, Hibernate `ddl-auto=update`.
+- Segurança implementada: Spring Security OAuth2 Resource Server com JWT HS256, segredo externo `JWT_SECRET`, API stateless e CSRF ignorado somente para requisições Bearer nas rotas da API.
+- Validação e contrato: Jakarta Bean Validation e Springdoc OpenAPI/Swagger UI.
+- Testes e qualidade: JUnit 5, Mockito via Spring Boot Test, Cucumber-JVM 7.18.1, JaCoCo 0.8.15, GitHub Actions e SonarCloud.
 - Entrega prevista: semana 46.
 - O projeto será desenvolvido por equipes.
 
-A arquitetura, o banco de dados, os mecanismos de autenticação e as integrações ainda precisam de definição técnica. A estratégia e as ferramentas de qualidade estão definidas abaixo.
+Esta é a stack observada no código e no CI, não uma decisão de banco de produção ou implantação. H2 é volátil; banco de produção, migrações, emissor/validação completa de JWT, provisionamento de identidade e implantação continuam sem decisão. O serviço não fornece endpoint de login/ emissão de tokens. Testcontainers, WireMock e JMeter estão nos requisitos, mas ainda não estão configurados/validados no projeto.
 
 ## Regras críticas
 
@@ -66,11 +69,13 @@ A arquitetura, o banco de dados, os mecanismos de autenticação e as integraç�
 
 #### Estados e auditoria
 
-- Fluxo principal: `SOLICITADA → APROVADA → EM_USO → CONCLUÍDA`.
-- Estados alternativos: `REJEITADA`, `CANCELADA` e `NÃO_COMPARECEU`.
-- Somente responsáveis podem aprovar reservas de recursos restritos.
+- Fluxo atual: reserva restrita nasce `PENDENTE`; reserva não restrita nasce `APROVADA`; a reserva aprovada pode ir para `EM_USO` e `CONCLUÍDA`.
+- Estados de decisão/alternativos: `REJEITADA`, `CANCELADA` e `NÃO_COMPARECEU`. `SOLICITADA` permanece como estado legado no enum e em compatibilidade com fluxos anteriores.
+- `ADMINISTRADOR` ou o `RESPONSAVEL` associado ao recurso pode decidir uma reserva restrita pendente pelo endpoint de status; autoaprovação é recusada.
 - Reservas iniciadas não podem ser apagadas.
 - Toda mudança de estado deve gerar registro de auditoria.
+
+**Lacuna atual:** a regra que impede excluir reservas iniciadas ainda não está implementada, e não há persistência de auditoria. Reservas restritas pendentes que se sobrepõem podem ser cadastradas; a colisão é verificada ao aprovar. A política para esses pedidos pendentes precisa ser confirmada antes de declarar integridade completa.
 
 ## Estratégia obrigatória de qualidade
 
@@ -104,11 +109,24 @@ Cobertura alta, isoladamente, não garante qualidade: testes triviais criados ap
 
 ## Estado atual do projeto
 
-**Fase:** requisitos funcionais e personas revisados e validados; requisitos não funcionais registrados; baseline arquitetural, proposta complementar e parecer ATAM/painel elaborados. O plano TDD cobre os RFs, as regras críticas e os RNFs, com ambiguidades identificadas. A base inicial de persistência foi implementada em Maven com Java 21 e Spring Boot 3.2.4. A API permite cadastrar/listar recursos, cadastrar/listar usuários e manutenções, criar reservas e buscar/excluir reservas. A criação valida datas, existência do recurso e do usuário, manutenção no período e conflitos de reserva; há bloqueio pessimista por recurso para concorrência. A documentação Swagger/OpenAPI está habilitada. Permanecem pendentes autenticação/autorização, alteração e cancelamento conforme os fluxos funcionais completos, fluxos de aprovação e estado, demais operações de materiais e professores, auditoria, notificações, relatórios e UI de negócio.
+**Fase:** backend parcial, não pronto para ser considerado concluído. A aplicação implementa CRUD básico de recursos, usuários e manutenções; criação, leitura, listagem, atualização pendente, cancelamento e transições de reservas; classificação de recursos restritos; e aprovação/rejeição. A API usa UUID, DTOs e OpenAPI. Reservas não restritas são aprovadas na criação; restritas ficam pendentes. Há validação de períodos, manutenção e conflitos de reservas aprovadas, além de locking pessimista por recurso.
 
-**Baseline:** a especificação define o propósito, os perfis, os requisitos funcionais validados, a stack prevista e as evidências de qualidade exigidas. O contrato placeholder `OrganizationResourceService` e sua suíte red foram removidos de `src`; o inventário de casos permanece em `prd/testes/plano-tdd.md`. Os testes unitários de `ReservaService` usam JUnit 5/Mockito sem iniciar Spring e cobrem fim anterior ao início, manutenção, conflito de reserva e criação válida. Os testes de persistência e da API cobrem cadastro/listagem de recursos, usuários e manutenções, associações Recurso–Manutenção e Usuário–Reserva, criação, busca e exclusão de reservas, documentação OpenAPI, campos obrigatórios, datas inválidas, recurso/usuário inexistente, manutenção no período, conflito de horário, reservas adjacentes e duas solicitações concorrentes para o mesmo recurso. O request de reserva recebe `usuarioId`; a resposta contém `usuarioId` e `nomeUsuario`. O serviço rejeita usuário inexistente e período em manutenção como regra de negócio, consultando manutenção antes de verificar conflitos com reservas. A regra de sobreposição usa `inicioSolicitado < fimExistente && fimSolicitado > inicioSolicitado`; portanto, intervalos adjacentes são permitidos. A serialização por bloqueio pessimista do recurso e a validação/gravação ocorrem na mesma transação. O tratamento global retorna HTTP 400 para regras de negócio, validação e identificadores malformados, e HTTP 404 para reservas e recursos inexistentes; os erros usam a chave `erro`. `mvn clean verify` passou com 26 testes, sem falhas ou erros. A compilação usa release 21, mas o ambiente executa Java 25; a execução com runtime Java 21 ainda não foi verificada. A evidência de concorrência é local com H2; persistência via Testcontainers, outros bancos e as demais regras de negócio seguem pendentes.
+**Segurança atual e limites:** rotas exigem JWT Bearer válido e a aplicação é stateless. O serviço verifica o perfil persistido e o responsável do recurso ao decidir reservas. A autorização de perfil para os demais endpoints CRUD, leitura/filtragem de reservas por proprietário e matriz completa de permissões não está implementada. O usuário é provisionado por operações de cadastro; não existe fluxo de login/emissão de token no backend. Isso impede ligar uma UI a um contrato de produção sem antes definir autenticação/provisionamento e acesso por endpoint.
 
-**Próximas definições técnicas:** resolver as perguntas e lacunas de [arquitetura.md](arquitetura.md); confirmar se o job de ML integra o escopo e, se sim, definir fonte e semântica de “dados novos”, watermark/checkpoint, avaliação, gates e governança; decidir a persistência de integração/produção; completar regras de negócio e fluxos de reservas conforme RF-01 a RF-14 e os casos restantes do plano TDD; documentar o contrato público da API; e configurar CI e ferramentas de qualidade. A proteção contra concorrência foi exercitada com H2, mas precisa de evidência com banco containerizado conforme RNF-04. Os casos de responsividade permanecem sem teste até existir UI. Os ADRs estão propostos e aguardam decisão. Essas definições devem implementar os requisitos validados, sem alterá-los.
+**Verificação reproduzida em 2026-11-10:** `./mvnw -B verify` passou com 92 testes (JUnit, integração MockMvc e 16 invocações Cucumber), sem falhas ou erros. JaCoCo reportou 87% de linhas e 71% de branches, acima dos gates locais de 80%/70%. O GitHub Actions run `42859680966` no commit `eb2bced` passou por Java 21, Maven verify, SonarCloud e publicação do relatório JaCoCo. O shell local executou Java 25.0.4; runtime Java 21 é verificado pelo CI, não pelo ambiente local. A evidência de concorrência/persistência local usa H2, não Testcontainers.
+
+**Backend ainda necessário antes do frontend funcional:**
+
+1. Definir e aplicar a matriz de autorização por perfil em cada endpoint; restringir operações administrativas e escopo de leitura; resolver emissão/provisionamento e validação de identidade/JWT.
+2. Formalizar e documentar o contrato da API, incluindo transições canônicas, autorização, campos/status, erros e consultas. Resolver a sobreposição de pedidos pendentes e estados extras/legados.
+3. Implementar pesquisa de disponibilidade/filtros e completar os modelos/regras de professores, materiais, estoque e agendas previstos em RF-02/RF-03/RF-05.
+4. Implementar auditoria durável, impedir exclusão de reservas iniciadas e fechar os requisitos de movimentação de materiais, notificações e relatórios (RF-09–RF-12).
+5. Decidir banco de integração/produção e estratégia de migração; validar concorrência com Testcontainers. Executar JMeter após aprovar perfil de carga e limites; completar E2E/WireMock quando aplicável.
+6. Atualizar a RTM até os requisitos críticos possuírem evidência executável adequada. A cobertura de código aprovada não significa que esses requisitos estejam implementados.
+
+**Prontidão para frontend:** não iniciar a implementação funcional do frontend ainda. O CI e a base de reserva já permitem prototipar fluxos em paralelo, mas falta um contrato estável para autenticação, permissões, disponibilidade, materiais/professores, auditoria e erros. Recomenda-se começar o frontend após os itens 1–3 e a publicação do contrato correspondente; itens de qualidade operacional restantes podem continuar em paralelo conforme o plano acordado.
+
+**Arquitetura/escopo:** banco de produção, implantação, integrações e ADRs continuam pendentes. O cron/treinamento incremental descrito em [arquitetura.md](arquitetura.md) não está nos RF/RNF validados e não deve ser assumido como backend necessário sem confirmação de escopo.
 
 ## Registro de evolução
 
@@ -131,15 +149,18 @@ A visão geral deve ser atualizada sempre que uma implementação for iniciada o
 | 2026-11-08 | Evolução do domínio com `Usuario` e `Manutencao`, repositórios JPA e consulta de sobreposição do período de manutenção. `Reserva` agora referencia `Usuario`; o request de criação passou a receber `usuarioId` e o serviço resolve o usuário antes de persistir. | `src/main/java/br/edu/organizacaorecursos/domain/Usuario.java`, `domain/Manutencao.java`, `domain/Reserva.java`, `repository/UsuarioRepository.java`, `repository/ManutencaoRepository.java`, `dto/ReservaRequestDTO.java`, `service/ReservaService.java`, testes de persistência/API | Story aprovada “Evolução do Domínio (Usuários e Manutenções)”; `mvn clean verify`: 19 testes, 0 falhas/erros. A query de manutenção foi verificada; a validação que bloqueia a reserva durante manutenção permanece fora desta implementação, conforme a sequência indicada na solicitação. |
 | 2026-11-08 | Integração do usuário e validação efetiva de manutenção na criação da reserva; resposta padronizada com `usuarioId`/`nomeUsuario`; criação de endpoints POST/GET para usuários e manutenções. | `src/main/java/br/edu/organizacaorecursos/controller/UsuarioController.java`, `controller/ManutencaoController.java`, `dto/ReservaResponseDTO.java`, `service/ReservaService.java`, `src/test/java/br/edu/organizacaorecursos/ReservaApiIntegrationTest.java` | Story aprovada “Integração de Usuários e Validação de Manutenções”; `mvn clean verify`: 22 testes, 0 falhas/erros, cobrindo usuário inexistente, bloqueio durante manutenção e endpoints auxiliares. |
 | 2026-11-08 | Inclusão de testes unitários isolados do `ReservaService` com JUnit 5 e Mockito: datas inválidas, manutenção ativa, choque de horário e criação válida com mapeamento do DTO. | `src/test/java/br/edu/organizacaorecursos/service/ReservaServiceTest.java` | Story aprovada “Testes Automatizados da Regra de Negócio”; execução direcionada: 4 testes, 0 falhas/erros; `mvn clean verify`: 26 testes, 0 falhas/erros. |
+| 2026-11-09 | Ciclo BDD/TDD para aprovação de recursos restritos, autoaprovação e ator não autorizado; implementação das transições de reserva, rejeição de reaprovação, regras de manutenção nas fronteiras temporais e injeção de `Clock`. | `src/main/java/br/edu/organizacaorecursos/service/ReservaService.java`, `ReservaController.java`, `StatusReserva.java`, `ClockConfig.java`; `src/test/java/`, `src/test/resources/features/aprovacao-bloqueio.feature`, `docs/testes/evidencia-tdd.md` | Commits `5980602`, `8594f9d`, `a2dd4f7`, `30338c0`, `16ac2fb`, `8c2dbb1`, `2898c0d`; ciclos e resultados históricos estão registrados em `docs/testes/evidencia-tdd.md`. |
+| 2026-11-10 | Integração do Maven Wrapper/Cucumber/CI; autenticação JWT stateless e política CSRF limitada a requests Bearer; incremento de testes e correções da análise SonarCloud. | `.github/workflows/ci.yml`, `pom.xml`, `.mvn/`, `SecurityConfig.java`, `SecurityConfigTest.java`, `ApiExceptionHandlerTest.java`, `prd/rtm.md`, `README.md` | Commits `76559b1`, `dc61774`, `884c38d`, `92abc6e`, `102e283`; workflow passou em `42859680966`, incluindo SonarCloud. |
+| 2026-11-10 | Implementação US-05: perfis, indicador `restrito`, criação restrita `PENDENTE`, aprovação/rejeição por administrador/responsável, endpoint PATCH de status, validação de conflito na aprovação e testes de serviço/API/BDD. | `Perfil.java`, `Usuario.java`, DTOs, `ReservaService.java`, `ReservaController.java`, `ReservaServiceTest.java`, `ReservaApiIntegrationTest.java`, `ReservaApiSteps.java`, feature de aprovação | Commit `eb2bced`; `./mvnw -B verify`: 92 testes verdes; JaCoCo 87% linhas/71% branches; CI/SonarCloud verdes. As lacunas de RF não cobertas permanecem no RTM. |
 
 ## Próximos passos
 
-1. **Concluir arquitetura e dados:** resolver as perguntas abertas de [arquitetura.md](arquitetura.md) e decidir arquitetura, persistência e contratos necessários para implementar os requisitos validados, sem presumir decisões ainda não aprovadas.
-2. **Implementar as regras de negócio:** definir/confirmar contratos e implementar os comportamentos funcionais a partir dos requisitos validados e dos casos do plano TDD, iterando no ciclo red-green-refactor.
-3. **Completar a estratégia de teste:** adicionar integração com persistência/Testcontainers, testes de API e E2E; quando houver UI e contrato público, cobrir responsividade (R-TDD-33) e consistência da documentação/API (R-TDD-35).
-4. **Planejar a implementação da qualidade:** configurar CI, cobertura, análise estática, ambientes de teste e medição de desempenho conforme a estratégia obrigatória.
-5. **Construir a RTM:** vincular todos os requisitos críticos a implementação e evidências de teste, atingindo 100% de cobertura na matriz.
-6. **Verificar as metas de qualidade:** medir cobertura de linhas e branches, executar os testes de concorrência e desempenho e confirmar ausência de bugs ou vulnerabilidades críticas.
+1. **Fechar identidade e contrato:** definir emissor/provisionamento de JWT, publicar matriz de permissões de todos os endpoints e filtrar consultas por proprietário/perfil.
+2. **Completar o domínio principal:** implementar pesquisa/disponibilidade e fechar os modelos e regras de professores, materiais, estoque e agendas conforme os RFs.
+3. **Completar integridade operacional:** implementar auditoria persistida e proteção contra exclusão de reservas iniciadas; decidir regra para pedidos pendentes sobrepostos.
+4. **Decidir persistência de produção:** registrar banco/migrações e validar concorrência com Testcontainers no engine escolhido.
+5. **Finalizar evidências operacionais:** fechar lacunas da RTM crítica, definir limites de carga aprovados e executar JMeter; manter CI/SonarCloud verde.
+6. **Iniciar o frontend funcional** somente após os itens 1–2 e a publicação do contrato correspondente. A cobertura de código/CI atual não substitui esses pré-requisitos.
 
 ## Histórico de atualização
 

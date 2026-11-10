@@ -2,9 +2,15 @@
 
 > Esta é a seção inicial de análise arquitetural, não uma decisão de arquitetura detalhada. Requisitos e decisões são citados pelas fontes existentes; lacunas permanecem abertas. Este documento não altera os requisitos funcionais ou não funcionais.
 
+## Implementação observada — 2026-11-10
+
+Este adendo registra o baseline existente no repositório, sem converter uma configuração local em decisão de arquitetura de produção. O código usa Java 21, Spring Boot 3.2.4, Maven Wrapper 3.10, Spring MVC, Spring Data JPA, H2 em memória, UUID, Bean Validation, OAuth2 Resource Server/JWT HS256 e Springdoc/OpenAPI. A API é stateless e a reserva restrita inicia `PENDENTE`; o endpoint PATCH de status autoriza Administrador ou Responsável associado ao recurso. O CI executa `./mvnw -B verify`, SonarCloud e JaCoCo; o run `42859680966` no commit `eb2bced` passou. A suíte reportou 92 testes e JaCoCo de 87% linhas/71% branches.
+
+Persistência de produção, migrações, emissor/provisionamento de identidade, matriz de autorização completa, implantação, integrações e estratégia de auditoria permanecem sem decisão/implementação. Os diagramas, ADRs e propostas posteriores neste documento representam alternativas/arquitetura alvo, não necessariamente o sistema atualmente executado. As matrizes de cobertura abaixo pertencem às fotografias das respectivas análises; o status atual de implementação está na [RTM](rtm.md) e na [visão geral](visão-geral.md). Declarações mais antigas de que a stack ou a aplicação ainda eram apenas previstas refletem a fotografia histórica da análise e são substituídas por este adendo quanto ao baseline atual.
+
 ## 1. Contexto e objetivo
 
-O Sistema de Organização de Recursos deve apoiar a consulta, alocação e gestão de salas, professores e materiais, com reservas e prevenção de conflitos de horário. O projeto é semestral e sua avaliação inclui evidências de qualidade, segurança, rastreabilidade e desempenho. A visão geral registra Java 21 e Spring Boot 3.x como tecnologias previstas, mas informa que arquitetura, persistência, autenticação e integrações ainda dependem de definição ([visão-geral.md](visão-geral.md), “Visão do produto” e “Contexto técnico e entrega”; [requisitos-não-funcionais.md](requisitos-não-funcionais.md), §§ 2 e 4).
+O Sistema de Organização de Recursos deve apoiar a consulta, alocação e gestão de salas, professores e materiais, com reservas e prevenção de conflitos de horário. O projeto é semestral e sua avaliação inclui evidências de qualidade, segurança, rastreabilidade e desempenho. O stack atual é registrado no adendo acima; as decisões de produção e os requisitos não funcionais ainda condicionam a arquitetura ([visão-geral.md](visão-geral.md), “Contexto técnico e entrega”; [requisitos-não-funcionais.md](requisitos-não-funcionais.md), §§ 2 e 4).
 
 Esta análise organiza os fatores que condicionam a arquitetura e explicita o que ainda precisa de decisão, sem escolher tecnologias ou estratégias não aprovadas.
 
@@ -90,13 +96,13 @@ Prioridade abaixo é uma organização inicial para orientar decisões; não é 
 
 - O sistema organiza salas, professores e materiais e deve evitar conflitos de horário (visão geral; RF-05 e RF-06).
 - Os perfis documentados são Solicitante, Responsável e Administrador ([personas.md](personas.md), §§ 1–3).
-- Java 21 e Spring Boot 3.x são a stack **prevista**, não uma decisão detalhada de componentes ([visão-geral.md](visão-geral.md), “Contexto técnico e entrega”; RNF, § 4).
+- O baseline atual usa Java 21 e Spring Boot 3.2.4; escolhas de implantação, persistência de produção e arquitetura detalhada continuam pendentes (adendo de implementação acima).
 - Testes, ferramentas e metas de qualidade estão especificados nos RNF e na visão geral; metas de desempenho quantitativo não estão fixadas (RNF-03 a RNF-06).
 - A rotina diária de treinamento usando somente dados novos é uma restrição expressa pelo usuário nesta solicitação, não um requisito existente nos arquivos de requisitos.
 
 ### Lacunas
 
-- Banco de dados, persistência, autenticação concreta, arquitetura de implantação e contratos de integração não foram decididos (visão geral; RNF, § 4).
+- Banco de produção, migrações, provisionamento/emissão de identidade, arquitetura de implantação e contratos de integração não foram decididos (visão geral; RNF, § 4).
 - Os limites de desempenho e as políticas de disponibilidade, recuperação, retenção e compatibilidade de navegadores permanecem pendentes (RNF, § 5).
 - Os critérios de negócio e as permissões ainda não estão completos (RF, § 6; [personas.md](personas.md), “Pendências transversais para validação”).
 - Para a rotina agendada, não estão especificados dados, modelo, critério de novidade, fuso/horário exato ou comportamento em falhas (solicitação atual).
@@ -104,14 +110,14 @@ Prioridade abaixo é uma organização inicial para orientar decisões; não é 
 ### Conflitos e ambiguidades identificados
 
 - **Não foi encontrado conflito textual inequívoco** entre os RF e RNF consultados. Há, porém, pontos que exigem conciliação antes de decisões arquiteturais:
-  - A visão geral apresenta `SOLICITADA → APROVADA → EM_USO → CONCLUÍDA`, enquanto RF-07 condiciona aprovação a recursos restritos. Não está explícito como reservas sem restrição percorrem os estados.
+  - O baseline atual cria reservas restritas como `PENDENTE` e não restritas como `APROVADA`; `SOLICITADA` permanece no enum para compatibilidade. A política para pedidos pendentes sobrepostos ainda não foi formalizada.
   - RF-05 deixa a rejeição ou revisão de conflitos conforme regra a definir; RF-06 exige que, em concorrência conflitante, apenas uma operação seja aceita. A política para encaminhamento à revisão não está especificada.
   - O treinamento/retreinamento diário foi solicitado agora, mas o escopo documental existente é a organização de recursos. A relação da rotina com o produto precisa ser confirmada; a restrição é registrada sem presumir integração ou funcionalidade adicional.
 
 ### Suposições
 
-- Nenhuma suposição de tecnologia, volume, disponibilidade, SLA, fonte de dados ou comportamento de negócio foi adotada.
-- Java 21 e Spring Boot 3.x são tratados somente como tecnologias previstas nos documentos, não como decisões adicionais desta análise.
+- Nenhuma suposição de volume, disponibilidade, SLA, fonte de dados ou comportamento de negócio foi adotada.
+- Java 21 e Spring Boot 3.2.4 são tecnologias observadas no baseline; não são apresentados como decisões adicionais de produção nesta análise.
 - A restrição do cron job é tratada como obrigatória porque foi explicitamente imposta pelo usuário; detalhes não fornecidos permanecem em aberto.
 
 ## 9. Perguntas abertas
@@ -1613,8 +1619,8 @@ Nenhuma suposição deve ser promovida a fato sem validação:
    futuro.
 4. Não se assume uso online do modelo, fallback, recomendação ou automação de
    decisões de reserva.
-5. Java 21 e Spring Boot 3.x são previstos pela visão geral/RNF, mas arquitetura
-   de deployment e bibliotecas permanecem não escolhidas.
+5. Java 21 e Spring Boot 3.2.4 são usados no baseline; arquitetura de deployment,
+   persistência de produção e bibliotecas adicionais permanecem não escolhidas.
 6. As prioridades ATAM são avaliação deste painel, sem workshop/aceite dos
    stakeholders.
 7. Uma garantia de auditoria deve ser durável, mas a tecnologia e o mecanismo

@@ -2,11 +2,11 @@
 
 > **Status:** fase green parcial. A suíte RED histórica de 40 casos foi removida
 > durante a substituição do placeholder pela aplicação Spring Boot; não está
-> disponível como fonte executável. A suíte presente contém 39 casos de teste
-> (incluindo invocações parametrizadas) e passa com `mvn -B verify`; JaCoCo gera
-> relatórios HTML/XML e aplica os gates no bundle da aplicação. A matriz abaixo
-> registra o que está coberto agora e separa cobertura parcial das regras
-> bloqueadas por decisões pendentes.
+> disponível como fonte executável. Em 2026-11-10, `./mvnw -B verify` passou com
+> 92 testes; JaCoCo reportou 87% de linhas e 71% de branches, acima dos gates
+> globais de 80%/70%. O CI/SonarCloud também passou no run `42859680966`.
+> A matriz abaixo registra o que está coberto agora e separa cobertura parcial
+> das regras bloqueadas por decisões pendentes.
 > **Fonte de verdade:** requisitos funcionais, requisitos não funcionais,
 > personas, visão geral e arquitetura existentes em `prd/`. Os casos abaixo
 > verificam o comportamento declarado; pontos sem resultado especificado ficam
@@ -38,7 +38,7 @@ implementação, não uma autorização para a aplicação escolher um comportam
 | ID / regra (rótulo editorial) | Origem | Feliz | Limite | Inválida | Conflito | Proibido / resultado esperado |
 |---|---|---|---|---|---|---|
 | R-TDD-01 — Identidade autenticada e permissões limitam ações e dados | RF-01; RNF-01 | Usuário autenticado com permissão efetua a operação permitida. | Usuário com um perfil ou conjunto de perfis autorizados é reconhecido conforme configuração documentada. | Sem autenticação: negar acesso a recurso protegido. | Chamada direta à operação protegida fora da interface mantém a mesma autorização. | Ação fora do escopo do perfil é negada com mensagem clara; tentativa não autorizada é registrada. |
-| R-TDD-02 — Perfil atribuído é único ou conjunto autorizado | RF-01 | Usar cada forma de perfil permitida pelo cadastro/configuração. | Pendente: não há limite ou modelo escolhido para quantidade/composição dos perfis. | Perfil não autorizado ou configuração incompatível: comportamento a definir; não inferir se rejeita cadastro ou autenticação. | Usuário com múltiplos perfis e permissões sobrepostas: Pendente; validar matriz de autorização. | Solicitante não pode aprovar solicitação restrita. |
+| R-TDD-02 — Perfil atribuído é válido e persistido | RF-01; CA01 da US-05 | Cadastrar e retornar um perfil dentre SOLICITANTE, RESPONSAVEL e ADMINISTRADOR. | O modelo atual aceita um perfil por usuário; composição múltipla não implementada nem aprovada. | Perfil ausente/inválido deve ser validado pelo DTO/modelo. | Permissões sobrepostas não se aplicam ao modelo atual de perfil único. | Solicitante não pode aprovar solicitação restrita. |
 | R-TDD-03 — Operações de gerenciamento exigem autorização específica | RF-01; personas §§ 2–3 | Administrador ou responsável autorizado executa a operação correspondente. | Pendente: a matriz detalhada de operações/perfis ainda não foi aprovada. | Perfil sem permissão para operação de gerenciamento é negado. | Permissões concorrentes ou conflitantes: Pendente, conforme definição da matriz de acesso. | Administrador não pode alterar o perfil de outro usuário sem ação autorizada; tentativa não autorizada deve ser negada e registrada. |
 
 ### RF-02 — Cadastro e consulta de salas, professores e materiais
@@ -86,8 +86,8 @@ implementação, não uma autorização para a aplicação escolher um comportam
 
 | ID / regra (rótulo editorial) | Origem | Feliz | Limite | Inválida | Conflito | Proibido / resultado esperado |
 |---|---|---|---|---|---|---|
-| R-TDD-20 — Recurso/combinação restrita exige aprovação do responsável | RF-07; RF-01 | Responsável autorizado aprova e a reserva passa ao estado aprovado/confirmado conforme fluxo definido. | Tipos de restrição e quem é responsável por cada recurso: Pendente; os exemplos do RF não fecham a lista. | Recurso restrito sem aprovação não pode ser confirmado; motivo da exigência deve ser informado. | Aprovação concorrente com cancelamento/rejeição ou nova reserva: prioridade/ordem de transição Pendente. | Solicitante não aprova; recurso restrito não é comprometido antes da aprovação final. |
-| R-TDD-21 — Estado reflete pendente, aprovado, recusado ou cancelado | RF-07; visão geral “Estados e auditoria” | Cada ação autorizada reflete o estado correspondente e gera histórico conforme RF-10/RNF-07. | Transições completas e estado inicial exato: Pendente; RF-07 lista os estados, visão geral também lista estados alternativos. | Ação sem dados/motivo necessários: requisitos de motivo para recusa/cancelamento Pendente. | Ações simultâneas sobre a mesma solicitação não podem produzir estado contraditório; regra de concorrência de estados Pendente. | Transição não autorizada ou confirmação sem aprovação é proibida. |
+| R-TDD-20 — Recurso restrito exige aprovação do responsável/admin autorizado | RF-07; RF-01 | Reserva restrita nasce `PENDENTE`; perfil autorizado aprova e o estado passa a `APROVADA`. | Indicador `restrito` existe; critérios de negócio e quem pode configurá-lo permanecem pendentes. | Recurso restrito sem aprovação não pode nascer aprovada; motivo da decisão não está definido. | Conflito com outra reserva é verificado ao aprovar; pedidos pendentes sobrepostos podem coexistir. | Solicitante não aprova; autoaprovação é recusada. |
+| R-TDD-21 — Estado reflete pendente, aprovado, rejeitado ou cancelado | RF-07; visão geral “Estados e auditoria” | API altera status via endpoint dedicado; unidade e integração testam aprovação/rejeição. | Fluxos de estado executáveis; matriz geral de perfis e motivo da decisão pendentes. | Transição inválida/não autorizada é rejeitada e preserva estado. | Política de concorrência para alterações simultâneas de estado ainda não foi formalizada. | Transição não autorizada ou aprovação sem validação de conflito é proibida. |
 
 ### RF-08 — Manutenção e bloqueios
 
@@ -149,8 +149,8 @@ casos já vinculados acima devem ser rastreados também a estas fontes.
 | R-TDD-37 | Reservas do mesmo recurso não se sobrepõem, incluindo sala, material e professor — visão geral, “Tempo e concorrência”; RF-05. | Caminho feliz: intervalo sem conflito. Conflito: sobreposição é bloqueada. Limite de intervalos apenas adjacentes precisa de decisão. |
 | R-TDD-38 | Duas solicitações simultâneas conflitantes produzem uma única reserva aceita — visão geral, “Tempo e concorrência”; RF-06/RNF-02. | Executar concorrência sincronizada: exatamente uma aceita, a outra rejeitada explicitamente; estado final sem gravação parcial. |
 | R-TDD-39 | Recursos em manutenção não podem ser reservados — visão geral, “Tempo e concorrência”; RF-08. | Reserva parcialmente ou totalmente coincidente deve ser sinalizada/rejeitada e recurso não aparece disponível; bordas do período de manutenção pendentes. |
-| R-TDD-40 | Fluxo principal `SOLICITADA → APROVADA → EM_USO → CONCLUÍDA`; estados alternativos `REJEITADA`, `CANCELADA`, `NÃO_COMPARECEU` — visão geral, “Estados e auditoria”. | Testar transições previstas quando ações e pré-condições forem especificadas. Caminho e nomes de estados são registrados; quais perfis/condições permitem iniciar, concluir ou marcar falta, e transições entre estados alternativos, são pendentes. Não presumir transições adicionais. |
-| R-TDD-41 | Apenas responsáveis podem aprovar reservas restritas; reservas iniciadas não podem ser apagadas; mudança de estado gera auditoria — visão geral, “Estados e auditoria”; RF-07/RF-10; RNF-07. | Perfil não responsável tenta aprovar: negar. Tentativa de apagar reserva iniciada: negar. Cada mudança de estado: criar registro que identifique operação, usuário e momento. |
+| R-TDD-40 | Fluxo `PENDENTE → APROVADA → EM_USO → CONCLUÍDA`; estados alternativos `REJEITADA`, `CANCELADA`, `NÃO_COMPARECEU` — visão geral, “Estados e auditoria”. `SOLICITADA` permanece como estado legado. | Fluxos principais, alternativos e transições inválidas estão executados em BDD/API; matriz completa de perfis e o momento de marcar falta ainda precisam de decisão. |
+| R-TDD-41 | Administrador ou responsável autorizado decide reservas restritas; reservas iniciadas não podem ser apagadas; mudança de estado gera auditoria — RF-07/RF-10; RNF-07. | Aprovação/rejeição, autoaprovação e ator não autorizado têm testes. Exclusão de reserva iniciada e persistência de auditoria continuam sem implementação. |
 | R-TDD-42 | Notificações e erros devem ser claros e compreensíveis — visão geral, regras prioritárias; RF-11/RF-13; RNF-08. | Para sucesso, conflito, bloqueio, rejeição e pendência, confirmar feedback correspondente e compreensível; conteúdo literal e critérios de leitura permanecem pendentes. |
 
 ## 4. Casos de verificação dos requisitos não funcionais
@@ -164,7 +164,7 @@ na estratégia e na rastreabilidade.
 | RNF-02 — Integridade/concorrência | Reutilizar R-TDD-18/19/38; comprovar atomicidade com falha/conflito, no máximo uma reserva conflitante aceita e nenhuma gravação parcial. |
 | RNF-03 — Desempenho mensurável | Executar JMeter em consulta de disponibilidade e criação de reserva, incluindo concorrência relevante; relatório contém duração, volume, falhas, cenários e carga. Não emitir veredito de conformidade quantitativa enquanto limites de carga, latência e taxa de erro não forem aprovados. |
 | RNF-04 — Estratégia/evidência de testes | Planejar JUnit 5 e testes unitários parametrizados; integração; API caixa-preta; end-to-end; persistência via Testcontainers; integração externa via WireMock; mocks somente em testes unitários isolados. Incluir evidência de ao menos uma funcionalidade desenvolvida com TDD/BDD. Cobrir caminhos válidos, inválidos e conflitos aplicáveis. |
-| RNF-05 — Cobertura e rastreabilidade | JaCoCo gera HTML/XML e aplica no bundle global gates mínimos de 80% linhas e 70% branches durante `verify`; resultado local: 96,2% linhas e 84,6% branches. O workflow configura SonarCloud pelo plugin Maven, mas `SONAR_TOKEN`, `SONAR_ORGANIZATION` e `SONAR_PROJECT_KEY` não foram confirmados; relatório/Quality Gate remotos pendentes. Manter RTM ligando 100% dos requisitos críticos a evidências e avaliar qualidade comportamental, não só percentuais. |
+| RNF-05 — Cobertura e rastreabilidade | JaCoCo gera HTML/XML e aplica gates globais de 80% de linhas e 70% de branches em `verify`; estado de 2026-11-10: 87% linhas/71% branches. O SonarCloud passou no run `42859680966`. Manter RTM ligando 100% dos requisitos críticos a evidências; essa meta funcional ainda não está atendida. |
 | RNF-06 — CI | Em pull request, GitHub Actions executa testes e verificações de qualidade configuradas; resultados disponíveis para consulta. |
 | RNF-07 — Auditoria | Reusar R-TDD-27/28; toda mudança de estado gera auditoria identificável; reserva iniciada não é apagada; consulta de histórico restrita a usuários autorizados. Retenção e acesso detalhados estão pendentes. |
 | RNF-08 — Responsividade | Executar fluxos cobertos em desktop, tablet e mobile; confirmar usabilidade, erros/conflitos/bloqueios/rejeições/confirmações compreensíveis e feedback explícito. Viewports/navegadores de aceite pendentes. |
@@ -178,7 +178,8 @@ na estratégia e na rastreabilidade.
 2. **Autorização:** RF-01; RNF-01; regras R-TDD-01–03. Fechar matriz de acesso
    antes de fixar os casos por perfil.
 3. **Aprovação, estados e manutenção:** RF-07/RF-08; regras R-TDD-20–24 e
-   R-TDD-40–41. Formalizar transições e limites temporais.
+   R-TDD-40–41. Fechar matriz de autorização, decisões pendentes e limites
+   temporais.
 4. **Auditoria e movimentação:** RF-09/RF-10; RNF-07; regras R-TDD-25–28.
    Incluir cenários de falha entre operação e persistência de auditoria após
    decisão de consistência.
@@ -216,8 +217,9 @@ negócio exercitada por entradas atuais. Após os testes, `ReservaService` tem
 fronteira temporal dos dois campos com `@ParameterizedTest` em `-1`, `0` e `+1`
 segundos usando `Clock.fixed`, sem depender de espera ou relógio de parede.
 
-No bundle, o resultado final é 101/105 linhas (96,2%) e 22/26 branches (84,6%),
-acima das metas de 80% e 70%.
+No bundle histórico anterior à ampliação da suíte, o relatório era 101/105
+linhas (96,2%) e 22/26 branches (84,6%). Esse valor não é o snapshot atual:
+em 2026-11-10, o JaCoCo reportou 87% de linhas e 71% de branches.
 
 | Regra / caso | Evidência automatizada atual | Resultado |
 |---|---|---|
@@ -318,10 +320,11 @@ Busca por implementação e testes do produto:
 - **Estado atual:** a API placeholder e a suíte RED original foram removidas.
    A aplicação Java/Spring Boot está em `src/main/java/br/edu/organizacaorecursos/`;
    os testes executáveis são `ReservaApiIntegrationTest`,
-   `ReservaRequestDTOTest`, `ReservaServiceTest` e `RecursosPersistenceTest`.
-   O repositório não contém `./mvnw`; a CI em `.github/workflows/ci.yml` executa
-   Maven e publica o relatório JaCoCo como artifact. Não há ADRs aprovados em
-   arquivos separados.
+   `ReservaRequestDTOTest`, `ReservaServiceTest`, `SecurityConfigTest`,
+   `ApiExceptionHandlerTest`, `RecursosPersistenceTest` e a suíte Cucumber.
+   O repositório contém Maven Wrapper; a CI em `.github/workflows/ci.yml`
+   executa `./mvnw -B verify`, SonarCloud e publica o relatório JaCoCo como
+   artifact. Não há ADRs aprovados em arquivos separados.
    Os ADRs propostos em `prd/arquitetura.md` permanecem pendentes e não foram
    tratados como decisões.
 - **Encontrados, mas fora do escopo funcional do produto:** testes internos do
@@ -351,18 +354,18 @@ foram transformadas em comportamento presumido.
 
 | Regra | Caso determinado exercitado | Teste JUnit atual | Status / cobertura restante |
 |---|---|---|---|
-| R-TDD-01 | Autenticação, autorização e chamadas diretas protegidas | — | **BLOQUEADO**; autenticação/autorização e trilha de tentativas não implementadas. |
-| R-TDD-02 | Perfil único ou conjunto de perfis | — | **BLOQUEADO**; modelo e composição de perfis pendentes. |
-| R-TDD-03 | Autorização administrativa/responsável por operação | — | **BLOQUEADO**; matriz de acesso pendente. |
+| R-TDD-01 | Autenticação, autorização e chamadas diretas protegidas | `SecurityConfigTest.apiRequerBearerJwtSemCriarSessaoHttp`; testes de autorização de status em `ReservaApiIntegrationTest` | **PARCIAL**; JWT e decisões de reserva protegidas; matriz dos demais endpoints, escopo de leitura e auditoria de negativas pendentes. |
+| R-TDD-02 | Perfil do usuário atribuído e persistido | Testes de cadastro/DTO de usuário e autorização da API | **PARCIAL**; enum e campo Perfil implementados; gerenciamento completo de identidade/perfis e matriz de acesso pendentes. |
+| R-TDD-03 | Autorização administrativa/responsável por operação | `patchStatusAceitaResponsavelEPreservaConflitos`, `patchStatusPermiteAdministradorMesmoSemSerResponsavelDoRecurso`, `rejeitaAprovacaoPorUsuarioQueNaoEResponsavel` | **PARCIAL**; papéis cobertos no fluxo de decisão, não nos demais endpoints. |
 | R-TDD-04 | Cadastro/listagem dos modelos simples de recurso e usuário; campos obrigatórios de Recurso | `criaEListaRecursosPelosEndpointsRest`, `criaEListaUsuariosPelaApi`, `rejeitaRecursoSemNomeOuTipoObrigatorios` | **PARCIAL**; sem atualização completa, duplicidade com erro de domínio e categorias sala/professor/material do RF-02. |
 | R-TDD-05 | Nome/tipo de Recurso obrigatórios | `rejeitaRecursoSemNomeOuTipoObrigatorios` | **PARCIAL**; capacidade, localização e status de sala não fazem parte do modelo atual. |
 | R-TDD-06 | Cadastro/consulta de professor com competência e agenda | — | **BLOQUEADO**; entidade e dados de professor não modelados. |
 | R-TDD-07 | Cadastro/consulta de material, quantidade e empréstimo | — | **BLOQUEADO**; entidade, estoque e regra por unidade não modelados. |
 | R-TDD-08 | Lista básica de recursos cadastrados | `criaEListaRecursosPelosEndpointsRest` | **PARCIAL**; filtros/status atualizados não implementados. |
 | R-TDD-09 | Busca por tipo, capacidade, local, competência e disponibilidade | — | **BLOQUEADO**; atributos e critérios de filtro ausentes. |
-| R-TDD-10 | Reserva válida exige datas, recurso e usuário existentes | `rejeitaReservaQuandoDataObrigatoriaEstaAusente`, `criaReservaEDevolveDtoSemExporEntidades`, `criaReservaQuandoDadosSaoValidosERecursoEstaDisponivel`, `retornaBadRequestQuandoRecursoNaoExiste`, `rejeitaUsuarioInexistente` | **PASS** para obrigatoriedade, lookup e fluxo básico; regras de aprovação/recurso adicionais permanecem fora deste caso. |
-| R-TDD-11 | Alterar reserva e revalidar autorização/disponibilidade | — | **BLOQUEADO**; endpoint e política de autorização/estados não implementados. |
-| R-TDD-12 | Cancelar com justificativa e refletir estado | — | **BLOQUEADO**; cancelamento e regra de justificativa não implementados/definidos. |
+| R-TDD-10 | Reserva válida exige datas, recurso e usuário existentes; regra condicional do status | `criaReservaRestritaComStatusPendente`, `criaReservaEDevolveDtoSemExporEntidades`, `criaReservaQuandoDadosSaoValidosERecursoEstaDisponivel`, `rejeitaReservaQuandoDataObrigatoriaEstaAusente`, `retornaBadRequestQuandoRecursoNaoExiste`, `rejeitaUsuarioInexistente` | **PASS** para criação, lookup e status inicial restrito/não restrito; categorias de recursos adicionais permanecem fora do modelo. |
+| R-TDD-11 | Alterar reserva e revalidar autorização/disponibilidade | `atualizaReservaPendenteSomentePeloSolicitante` | **PARCIAL**; atualização de pendente é coberta; contrato completo, matriz de acesso e revalidação após mudança ainda pendentes. |
+| R-TDD-12 | Cancelar com justificativa e refletir estado | Testes de integração de cancelamento e transição de estado | **PARCIAL**; cancelamento implementado; justificativa e regra de cancelamento para todos os estados não definidas. |
 | R-TDD-13 | Rejeitar sobreposição no mesmo recurso e permitir período adjacente | `rejeitaPeriodosSobrepostosParaMesmoRecurso`, `permiteReservasAdjacentes` | **PASS** para o modelo atual de recurso e fórmula de intervalo adotada; agenda de professor/material ainda ausente. |
 | R-TDD-14 | Conflito na agenda do professor | — | **BLOQUEADO**; modelo de agenda de professor ausente. |
 | R-TDD-15 | Conflito de material/equipamento e quantidade | — | **BLOQUEADO**; regra de unidade/estoque ainda depende de decisão. |
@@ -370,15 +373,15 @@ foram transformadas em comportamento presumido.
 | R-TDD-17 | Resposta de conflito identifica Recurso e intervalo reservado conflitante | `informaRecursoEIntervaloQuandoExisteConflitoDeReserva` | **PASS**; os detalhes do conflito acompanham a mensagem mantendo o campo `erro` existente. |
 | R-TDD-18 | Reserva conflitante rejeitada sem gravação parcial | `rejeitaPeriodosSobrepostosParaMesmoRecurso` | **PASS** em integração H2; evidência com banco containerizado pendente. |
 | R-TDD-19 | Duas criações simultâneas conflitantes aceitam exatamente uma | `aceitaApenasUmaReservaEmSolicitacoesConflitantesSimultaneas` | **PARCIAL**; testado localmente com H2, falta repetição/robustez com Testcontainers conforme RNF-04. |
-| R-TDD-20 | Recurso restrito exige aprovação do Responsável | — | **BLOQUEADO**; catálogo, aprovador e transições pendentes. |
-| R-TDD-21 | Aprovar/rejeitar muda o estado da reserva | — | **BLOQUEADO**; estados e pré-condições não implementados/decididos. |
+| R-TDD-20 | Recurso restrito exige aprovação por perfil autorizado | `criaReservaRestritaComStatusPendente`, `patchStatusAceitaResponsavelEPreservaConflitos`, `patchStatusPermiteAdministradorMesmoSemSerResponsavelDoRecurso` | **PASS** para a regra restrita e perfis Admin/Responsável; conflitos entre pedidos pendentes ainda não têm política. |
+| R-TDD-21 | Aprovar/rejeitar muda o estado da reserva | `ReservaServiceTest` e `ReservaApiIntegrationTest`; BDD-APR-02–04 | **PASS** para aprovação/rejeição e negativas de autorização; auditoria dos eventos segue pendente. |
 | R-TDD-22 | Cadastro/listagem de manutenção, referência válida e campos requeridos | `listaManutencoesPelaApi`, `rejeitaManutencaoSemDatasOuDescricaoObrigatorias`, `rejeitaManutencaoSemIdentificadorDeRecurso`, `retornaNotFoundAoCriarManutencaoParaRecursoInexistente` | **PARCIAL**; caminhos de referência inválida cobertos; autorização administrativa e regras de estado/validade temporal seguem pendentes. |
 | R-TDD-23 | Não confirmar reserva em período de manutenção | `impedeReservaDuranteManutencao` | **PASS** para criação de reserva; disponibilidade pesquisável ainda não implementada. |
 | R-TDD-24 | Manutenção passada concluída e consultável no histórico | — | **BLOQUEADO**; estados, atualização e retenção pendentes. |
 | R-TDD-25 | Retirada/devolução autorizada e pendente | — | **BLOQUEADO**; fluxo de empréstimo e estoque não modelados. |
 | R-TDD-26 | Devolução registra dano e observações | — | **BLOQUEADO**; modelo e campos de devolução ausentes. |
-| R-TDD-27 | Auditoria identifica ator, momento, operação e antes/depois | — | **BLOQUEADO**; auditoria e identidade autenticada não implementadas; retenção pendente. |
-| R-TDD-28 | Impedir exclusão de reserva iniciada | `excluiReservaPorId` cobre apenas exclusão de uma reserva existente | **PARCIAL/INCOMPLETO**; não existe estado de reserva nem regra para determinar início; não declarar esta proteção atendida. |
+| R-TDD-27 | Auditoria identifica ator, momento, operação e antes/depois | — | **BLOQUEADO**; JWT identifica/autentica requests, mas auditoria de negócio, retenção e consulta autorizada não estão implementadas. |
+| R-TDD-28 | Impedir exclusão de reserva iniciada | `excluiReservaPorId` cobre apenas exclusão de uma reserva existente | **PARCIAL/INCOMPLETO**; estados existem, mas exclusão não verifica se a reserva já começou; não declarar esta proteção atendida. |
 | R-TDD-29 | Notificações de reserva, conflito e aprovação | — | **BLOQUEADO**; eventos, canal e destinatários pendentes. |
 | R-TDD-30 | Canais simulado e externo | — | **BLOQUEADO**; opção de integração não decidida. |
 | R-TDD-31 | Relatório e métricas por período | — | **BLOQUEADO**; fórmulas e categorias não especificadas. |
@@ -390,21 +393,21 @@ foram transformadas em comportamento presumido.
 | R-TDD-37 | Impedir sobreposição no mesmo recurso | `rejeitaPeriodosSobrepostosParaMesmoRecurso`, `permiteReservasAdjacentes` | **PASS** para as reservas do recurso modelado; professor/material seguem sem implementação. |
 | R-TDD-38 | Concorrência resulta em uma única reserva aceita | `aceitaApenasUmaReservaEmSolicitacoesConflitantesSimultaneas` | **PARCIAL**; H2 local passa; falta Testcontainers e medição de concorrência em ambiente realista. |
 | R-TDD-39 | Recurso em manutenção não é reservado | `impedeReservaDuranteManutencao` | **PASS** no fluxo de criação; o catálogo de disponibilidade/busca não existe. |
-| R-TDD-40 | Fluxo `SOLICITADA → APROVADA → EM_USO → CONCLUÍDA` | — | **BLOQUEADO**; modelo de estados e pré-condições de transição pendentes. |
-| R-TDD-41 | Apenas Responsável aprova; auditoria; reserva iniciada não pode ser apagada | — | **BLOQUEADO**; autorização, estados e auditoria não implementados. |
+| R-TDD-40 | Fluxo `PENDENTE → APROVADA → EM_USO → CONCLUÍDA` e estados alternativos | BDD-EST-01–03; testes de integração de transição | **PARCIAL**; transições atuais testadas; `SOLICITADA` permanece como legado e matriz completa de perfis por transição pendente. |
+| R-TDD-41 | Admin/Responsável decide; auditoria; reserva iniciada não pode ser apagada | Testes de API cobrem papéis e decisão; exclusão/auditoria sem evidência | **PARCIAL**; decisão está coberta; auditoria persistida e proteção contra exclusão de reserva iniciada não implementadas. |
 | R-TDD-42 | Mensagens de sucesso, conflito e rejeição compreensíveis | `criaReservaEDevolveDtoSemExporEntidades`, `informaRecursoEIntervaloQuandoExisteConflitoDeReserva`, `validaCamposObrigatoriosDoRequest` | **PARCIAL**; resposta explícita e contexto de conflito verificados; conteúdo/UX de outros fluxos pendentes. |
 
 ### 9.1 Matriz dos requisitos não funcionais
 
 | Origem | Caso / teste associado | Status |
 |---|---|---|
-| RNF-01 | R-TDD-01/R-TDD-03: autorização, acesso direto e negativa | **PARCIAL**; validações de DTO/input estão presentes; autenticação, autorização, auditoria de negativas e scan não implementados. |
+| RNF-01 | R-TDD-01/R-TDD-03: autorização, acesso direto e negativa | **PARCIAL**; JWT e autorização de reserva restrita cobertos; matriz completa, auditoria de negativas e escopo de leitura pendentes. |
 | RNF-02 | R-TDD-18/R-TDD-19/R-TDD-38: conflito, concorrência e rejeição | **PARCIAL**; atomicidade/conflito e concorrência verificadas com H2; Testcontainers pendente. |
 | RNF-03 | JMeter: consulta/reserva, métricas e relatório | **SEM TESTE — bloqueado**; aplicação, JMeter e limites aprovados ausentes. |
 | RNF-04 | JUnit, integração/API, E2E, Testcontainers, WireMock e evidência TDD/BDD | **PARCIAL**; 12 invocações unitárias (Mockito/validação), 26 de API e 1 de persistência; E2E, Testcontainers, WireMock e evidência formal de TDD/BDD não completos. |
-| RNF-05 | JaCoCo, cobertura mínima, RTM crítica e SonarCloud | **PARCIAL**; HTML/XML e gates globais de 80% linhas/70% branches em `verify`; resultado 96,2% linhas e 84,6% branches. Lista aprovada de requisitos críticos e SonarCloud continuam pendentes. |
-| RNF-06 | GitHub Actions em pull requests | **PARCIAL**; workflow executa `mvn --batch-mode verify` em push/PR e publica artifact JaCoCo; execução remota ainda não observada. |
-| RNF-07 | R-TDD-27/R-TDD-28/R-TDD-41: auditoria e reserva iniciada | **BLOQUEADO**; auditoria, identidade autenticada, estados e política de retenção não implementados/decididos. |
+| RNF-05 | JaCoCo, cobertura mínima, RTM crítica e SonarCloud | **PARCIAL**; JaCoCo 87% linhas/71% branches e SonarCloud verde no run `42859680966`; requisitos críticos não estão todos implementados/evidenciados. |
+| RNF-06 | GitHub Actions em pull requests | **COBERTO** quanto à execução CI verificada no run `42859680966`; esta evidência não substitui os requisitos funcionais faltantes. |
+| RNF-07 | R-TDD-27/R-TDD-28/R-TDD-41: auditoria e reserva iniciada | **BLOQUEADO**; auditoria persistida, política de retenção e proibição de excluir reserva iniciada não implementadas; autenticação JWT existe. |
 | RNF-08 | R-TDD-33/R-TDD-34: responsividade e mensagens | **SEM TESTE para responsividade; parcial para mensagem**; UI ausente e critérios objetivos pendentes. |
 | RNF-09 | R-TDD-35: contratos/documentação em sincronia | **PARCIAL**; OpenAPI/Swagger existe, mas faltam verificação de sincronismo e documentação completa de autenticação, exemplos e erros. |
 
@@ -425,15 +428,14 @@ atual. Ele não comprova os comportamentos da aplicação presente.
 
 ### Verificação atual
 
-- Comando executado: `mvn -B verify` (o repositório não contém `./mvnw`).
-- Resultado: **BUILD SUCCESS — 39 testes, 0 falhas, 0 erros, 0 ignorados**.
-- Distribuição: `ReservaApiIntegrationTest` (26), `ReservaServiceTest` (6),
-   `ReservaRequestDTOTest` (6) e `RecursosPersistenceTest` (1).
-- JaCoCo: bundle com 101/105 linhas e 22/26 branches; `ReservaService` com
-   51/51 linhas e 16/16 branches. Relatórios em `target/site/jacoco/index.html`
-   e `target/site/jacoco/jacoco.xml`.
+- Comando executado: `./mvnw -B verify`.
+- Resultado: **BUILD SUCCESS — 92 testes, 0 falhas, 0 erros, 0 ignorados**.
+- Distribuição reportada na suíte atual: integração 49, serviço 10, DTO 6,
+   segurança 7, exceção 3, persistência 1 e Cucumber 16.
+- JaCoCo: 87% de linhas e 71% de branches; os gates configurados são 80%/70%.
+   Relatórios em `target/site/jacoco/index.html` e `target/site/jacoco/jacoco.xml`.
 - Prova de falha do gate: `mvn -B clean -Dtest=ReservaServiceTest#rejeitaDataFimAnteriorAoInicio verify` falhou com 4% de linhas e 11% de branches; `mvn -B clean verify` restaurou o build verde e a cobertura acima das metas.
-- A suíte inclui os casos green explicitamente definidos registrados na
-  matriz. As regras marcadas **PARCIAL** ou **BLOQUEADO** não são declaradas
-  concluídas; dependem de cobertura adicional, funcionalidade ou decisões
-  ainda pendentes nos documentos de requisitos/arquitetura.
+- O run CI `42859680966` no commit `eb2bced` passou por Maven verify,
+  SonarCloud e publicação do relatório JaCoCo. As regras marcadas **PARCIAL**
+  ou **BLOQUEADO** não são declaradas concluídas; dependem de cobertura
+  adicional, funcionalidade ou decisões ainda pendentes nos requisitos.

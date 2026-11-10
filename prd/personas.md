@@ -4,6 +4,14 @@
 
 Registrar os perfis que interagem com o sistema de Organização de Recursos, suas responsabilidades, objetivos, necessidades de informação e perguntas que precisam responder ao usar a aplicação. As personas orientam a elicitação de requisitos, os fluxos, as permissões e os testes; não substituem regras de negócio ainda não definidas.
 
+**Implementação observada (2026-11-10):** o backend persiste um `Perfil` por
+usuário (`SOLICITANTE`, `RESPONSAVEL`, `ADMINISTRADOR`) e autentica requests da
+API com JWT Bearer. Para reservas restritas, `ADMINISTRADOR` ou o responsável
+associado ao recurso pode decidir aprovação/rejeição; autoaprovação é recusada.
+O emissor/provisionamento de identidade e a matriz de autorização dos demais
+endpoints ainda não estão definidos. O registro de implementação não substitui
+a validação das responsabilidades com as pessoas usuárias.
+
 ## 1. Solicitante
 
 ### Perfil
@@ -45,6 +53,7 @@ Pessoa responsável por aprovar solicitações especiais, validar a alocação d
 ### Objetivos
 
 - Avaliar e aprovar ou encaminhar solicitações especiais conforme regras a definir.
+- Aprovar ou rejeitar reservas pendentes de recursos restritos sob sua responsabilidade.
 - Validar a alocação de docentes.
 - Acompanhar a retirada e a devolução de materiais.
 - Identificar pendências relacionadas às atividades sob sua responsabilidade.
@@ -66,7 +75,9 @@ A lista de dados, alertas, prazos e histórico disponível para este perfil aind
 - Quais materiais foram retirados e quais precisam ser devolvidos?
 - Qual é o estado atual e o histórico das ações que acompanho?
 
-Os critérios de aprovação, validação e acompanhamento ainda precisam ser definidos.
+O fluxo básico de aprovação/rejeição de recurso restrito está implementado. Os
+critérios de outras solicitações, validação e acompanhamento ainda precisam ser
+definidos.
 
 ## 3. Administrador
 
@@ -78,6 +89,7 @@ Pessoa que mantém os cadastros e configurações operacionais descritos na espe
 
 - Gerenciar salas, professores e materiais disponíveis no sistema.
 - Gerenciar usuários.
+- Aprovar ou rejeitar reservas restritas por meio do endpoint autorizado.
 - Registrar bloqueios e períodos de manutenção que afetem a disponibilidade.
 - Manter os dados necessários para que os demais perfis consultem e solicitem recursos.
 
@@ -97,12 +109,15 @@ Os campos, operações, validações e visibilidade do histórico precisam ser d
 - Uma alteração administrativa afeta reservas ou disponibilidades existentes?
 - A alteração realizada foi registrada e pode ser rastreada?
 
-As regras para alterações que afetem reservas existentes e o nível de auditoria ainda não foram especificados.
+O perfil de administrador pode decidir reservas restritas no backend. As regras
+para alterações que afetem reservas existentes e o nível de auditoria ainda não
+foram especificados.
 
 ## Pendências transversais para validação
 
 - Quais ações cada perfil pode executar e sobre quais reservas ou recursos?
-- Como o sistema autentica e identifica cada perfil?
+- Qual emissor/provisionamento de identidade será usado e como serão emitidos os JWTs? O backend já exige Bearer JWT e valida o perfil persistido, mas não emite tokens.
+- Qual matriz de acesso deve valer para operações além da decisão de reservas?
 - Quais dados são obrigatórios para consultar disponibilidade e solicitar uma reserva?
 - Quais são os estados possíveis de uma reserva e suas transições?
 - Quais critérios definem conflito, disponibilidade e solicitação especial?
@@ -122,3 +137,4 @@ Esses itens são perguntas para detalhamento; não representam funcionalidades o
 ## Histórico de atualização
 
 - **2026-10-19:** criação das personas iniciais com base exclusivamente nos três perfis da especificação fornecida; detalhes não especificados foram mantidos como pendências de validação.
+- **2026-11-10:** alinhamento ao backend: enum de perfis, JWT Bearer e autorização de aprovação/rejeição para administrador/responsável implementados; identidade, matriz global, auditoria e responsabilidades de produto permanecem pendentes.
