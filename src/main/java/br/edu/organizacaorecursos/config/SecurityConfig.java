@@ -41,6 +41,8 @@ public class SecurityConfig {
                         && authorization.regionMatches(true, 0, "Bearer ", 0, 7);
             });
 
+    // API clients supply Bearer tokens explicitly; they do not authenticate through ambient cookies or sessions.
+    @SuppressWarnings("java:S4502")
     @Bean
     public SecurityFilterChain securityFilterChain(
             HttpSecurity http, JwtAuthenticationConverter jwtAuthenticationConverter) throws Exception {
