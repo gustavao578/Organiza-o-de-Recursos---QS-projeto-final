@@ -35,9 +35,9 @@ public class Usuario {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private Perfil perfil = Perfil.COMUM;
+    private Perfil perfil = Perfil.SOLICITANTE;
 
     public Usuario(UUID id, String nome, String email, String matricula) {
-        this(id, nome, email, matricula, Perfil.COMUM);
+        this(id, nome, email, matricula, Perfil.SOLICITANTE);
     }
 }

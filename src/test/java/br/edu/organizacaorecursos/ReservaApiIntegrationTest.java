@@ -100,11 +100,11 @@ class ReservaApiIntegrationTest {
 
         enviarReserva(reserva(recursoId, inicioFuturo(), "solicitante-restrito"))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.status").value("SOLICITADA"));
+                .andExpect(jsonPath("$.status").value("PENDENTE"));
     }
 
     @Test
-    void patchStatusExigeAdminPersistidoEImpedeAprovacoesSobrepostas() throws Exception {
+    void patchStatusAceitaResponsavelEPreservaConflitos() throws Exception {
         Usuario admin = criarUsuario("responsavel-patch");
         UUID recursoId = criarRecursoRestrito(admin.getId());
         LocalDateTime inicio = inicioFuturo();
@@ -115,17 +115,17 @@ class ReservaApiIntegrationTest {
         UUID primeiraReservaId = reservaRepository.findAll().get(0).getId();
         UUID segundaReservaId = reservaRepository.findAll().get(1).getId();
 
-        atualizarStatusReserva(primeiraReservaId, admin.getId(), "APROVADA")
+        atualizarStatusReserva(primeiraReservaId, admin.getId(), "RESPONSAVEL", "APROVADA")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("APROVADA"));
-        atualizarStatusReserva(segundaReservaId, admin.getId(), "APROVADA")
+        atualizarStatusReserva(segundaReservaId, admin.getId(), "RESPONSAVEL", "APROVADA")
                 .andExpect(status().isBadRequest());
 
         Usuario usuarioComum = criarUsuario("usuario-patch-comum");
         UUID terceiraReservaId = reservaRepository.save(new br.edu.organizacaorecursos.domain.Reserva(
                 null, recursoRepository.findById(recursoId).orElseThrow(), inicio.plusHours(2),
                 inicio.plusHours(3), usuarioComum)).getId();
-        atualizarStatusReserva(terceiraReservaId, usuarioComum.getId(), "APROVADA")
+        atualizarStatusReserva(terceiraReservaId, usuarioComum.getId(), "SOLICITANTE", "APROVADA")
                 .andExpect(status().isForbidden());
 
         mockMvc.perform(patch("/reservas/{id}/status", terceiraReservaId)
@@ -140,8 +140,23 @@ class ReservaApiIntegrationTest {
         UUID quartaReservaId = reservaRepository.findAll().stream()
                 .filter(reservaSalva -> reservaSalva.getDataInicio().equals(inicio.plusHours(4)))
                 .findFirst().orElseThrow().getId();
-        atualizarStatusReserva(quartaReservaId, admin.getId(), "SOLICITADA")
+        atualizarStatusReserva(quartaReservaId, admin.getId(), "RESPONSAVEL", "SOLICITADA")
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void patchStatusPermiteAdministradorMesmoSemSerResponsavelDoRecurso() throws Exception {
+        Usuario admin = criarUsuario("administrador-patch");
+        admin.setPerfil(Perfil.ADMINISTRADOR);
+        usuarioRepository.save(admin);
+        UUID recursoId = criarRecursoRestrito(null);
+        ReservaRequestDTO request = reserva(recursoId, inicioFuturo(), "solicitante-admin-patch");
+        enviarReserva(request).andExpect(status().isCreated());
+        UUID reservaId = reservaRepository.findAll().get(0).getId();
+
+        atualizarStatusReserva(reservaId, admin.getId(), "ADMINISTRADOR", "APROVADA")
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APROVADA"));
     }
 
     @Test
@@ -164,7 +179,7 @@ class ReservaApiIntegrationTest {
         atualizacao.setDataFim(inicio.plusHours(3));
         putReserva(reservaId, solicitante.getId(), "COMUM", atualizacao)
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("SOLICITADA"))
+                .andExpect(jsonPath("$.status").value("PENDENTE"))
                 .andExpect(jsonPath("$.dataInicio").value(inicio.plusHours(2) + ":00"));
 
         Usuario outroUsuario = criarUsuario("outro-put");
@@ -189,7 +204,7 @@ class ReservaApiIntegrationTest {
     @Test
     void rejeitaAutoAprovacaoEPreservaSolicitacao() throws Exception {
         Usuario solicitante = criarUsuario("solicitante-autorizado");
-                solicitante.setPerfil(Perfil.ADMIN);
+                solicitante.setPerfil(Perfil.ADMINISTRADOR);
                 usuarioRepository.save(solicitante);
         UUID recursoId = criarRecursoRestrito(solicitante.getId());
         LocalDateTime inicio = inicioFuturo();
@@ -206,15 +221,13 @@ class ReservaApiIntegrationTest {
 
         mockMvc.perform(get("/reservas/{id}", reservaId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("SOLICITADA"));
+                .andExpect(jsonPath("$.status").value("PENDENTE"));
     }
 
     @Test
     void rejeitaAprovacaoPorUsuarioQueNaoEResponsavel() throws Exception {
         Usuario responsavel = criarUsuario("responsavel-registrado");
         Usuario outroUsuario = criarUsuario("outro-usuario");
-        outroUsuario.setPerfil(Perfil.ADMIN);
-        usuarioRepository.save(outroUsuario);
         UUID recursoId = criarRecursoRestrito(responsavel.getId());
         enviarReserva(reserva(recursoId, inicioFuturo(), "solicitante-outro"))
                 .andExpect(status().isCreated());
@@ -225,7 +238,7 @@ class ReservaApiIntegrationTest {
 
         mockMvc.perform(get("/reservas/{id}", reservaId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("SOLICITADA"));
+                .andExpect(jsonPath("$.status").value("PENDENTE"));
     }
 
     @ParameterizedTest(name = "{0}")
@@ -314,13 +327,13 @@ class ReservaApiIntegrationTest {
 
         mockMvc.perform(get("/reservas/{id}", reservaId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value("SOLICITADA"));
+                .andExpect(jsonPath("$.status").value("PENDENTE"));
     }
 
         @ParameterizedTest(name = "{0} por {1} a partir de {2}")
         @CsvSource({
-                        "REJEITADA, responsavel, SOLICITADA",
-                        "CANCELADA, solicitante, SOLICITADA",
+                        "REJEITADA, responsavel, PENDENTE",
+                        "CANCELADA, solicitante, PENDENTE",
                         "NÃO_COMPARECEU, responsavel, APROVADA"
         })
         void aplicaTransicoesAlternativasPermitidas(
@@ -658,7 +671,7 @@ class ReservaApiIntegrationTest {
     @Test
     void criaEListaUsuariosPelaApi() throws Exception {
         String request = """
-                                {"nome":"Usuário API","email":"usuario.api@example.com","matricula":"api-001","perfil":"ADMIN"}
+                                {"nome":"Usuário API","email":"usuario.api@example.com","matricula":"api-001","perfil":"ADMINISTRADOR"}
                 """;
 
         mockMvc.perform(post("/usuarios")
@@ -667,7 +680,7 @@ class ReservaApiIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNotEmpty())
                 .andExpect(jsonPath("$.nome").value("Usuário API"))
-                .andExpect(jsonPath("$.perfil").value("COMUM"));
+                .andExpect(jsonPath("$.perfil").value("SOLICITANTE"));
 
         mockMvc.perform(get("/usuarios"))
                 .andExpect(status().isOk())
@@ -675,6 +688,56 @@ class ReservaApiIntegrationTest {
 
         mockMvc.perform(delete("/usuarios/{id}", usuarioRepository.findAll().get(0).getId()))
                 .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void administradorPodeAtribuirPerfilAoCriarUsuario() throws Exception {
+        try {
+            mockMvc.perform(post("/usuarios")
+                            .with(jwtContexto(UUID.randomUUID(), "ADMINISTRADOR"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"nome":"Responsável API","email":"responsavel.api@example.com",
+                                     "matricula":"resp-001","perfil":"RESPONSAVEL"}
+                                    """))
+                    .andExpect(status().isCreated())
+                    .andExpect(jsonPath("$.perfil").value("RESPONSAVEL"));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void administradorPodeAtualizarPerfilDoUsuario() throws Exception {
+        Usuario usuario = criarUsuario("perfil-editavel");
+        try {
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .put("/usuarios/{id}", usuario.getId())
+                            .with(jwtContexto(UUID.randomUUID(), "ADMINISTRADOR"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {"nome":"Perfil editado","email":"perfil.editado@example.com",
+                                     "matricula":"perfil-editado","perfil":"RESPONSAVEL"}
+                                    """))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.perfil").value("RESPONSAVEL"));
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void solicitanteNaoPodeAlterarPerfilAoAtualizarUsuario() throws Exception {
+        Usuario usuario = criarUsuario("perfil-protegido");
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                        .put("/usuarios/{id}", usuario.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"nome":"Perfil protegido","email":"perfil.protegido@example.com",
+                                 "matricula":"perfil-protegido","perfil":"ADMINISTRADOR"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.perfil").value("SOLICITANTE"));
     }
 
         @Test
@@ -837,10 +900,10 @@ class ReservaApiIntegrationTest {
     }
 
     private org.springframework.test.web.servlet.ResultActions atualizarStatusReserva(
-            UUID reservaId, UUID atorId, String novoStatus) throws Exception {
+            UUID reservaId, UUID atorId, String perfil, String novoStatus) throws Exception {
                 try {
                         return mockMvc.perform(patch("/reservas/{id}/status", reservaId)
-                                        .with(jwtContexto(atorId, "ADMIN"))
+                                        .with(jwtContexto(atorId, perfil))
                                         .contentType(MediaType.APPLICATION_JSON)
                                         .content("""
                                                         {"status":"%s"}
@@ -919,7 +982,7 @@ class ReservaApiIntegrationTest {
                 nome + "@example.com",
                                 "matricula-" + nome);
                 if (nome.startsWith("responsavel")) {
-                        usuario.setPerfil(Perfil.ADMIN);
+                        usuario.setPerfil(Perfil.RESPONSAVEL);
                 }
                 return usuarioRepository.save(usuario);
     }

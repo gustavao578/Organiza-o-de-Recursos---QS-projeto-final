@@ -8,25 +8,25 @@ Funcionalidade: Aprovação e bloqueio de reservas
     Dado que o recurso está classificado como restrito
     E que o solicitante tem permissão para solicitar uma reserva
     Quando o solicitante envia uma solicitação válida para esse recurso
-    Então a reserva é registrada como SOLICITADA e não como confirmação final
+    Então a reserva é registrada como PENDENTE e não como confirmação final
 
   Cenário: Responsável aprova uma solicitação restrita
-    Dado que existe uma reserva restrita no estado SOLICITADA
+    Dado que existe uma reserva restrita no estado PENDENTE
     E que o ator é o responsável autorizado pelo recurso
     Quando o ator aprova a reserva
     Então a reserva passa para o estado APROVADA
 
   Cenário: Solicitante não pode aprovar a própria reserva
-    Dado que existe uma reserva restrita no estado SOLICITADA
+    Dado que existe uma reserva restrita no estado PENDENTE
     E que o ator é o solicitante dessa reserva
     Quando o ator tenta aprovar a reserva
-    Então a operação é rejeitada e a reserva permanece SOLICITADA
+    Então a operação é rejeitada e a reserva permanece PENDENTE
 
   Cenário: Usuário sem papel de responsável não aprova uma reserva restrita
-    Dado que existe uma reserva restrita no estado SOLICITADA
+    Dado que existe uma reserva restrita no estado PENDENTE
     E que o ator não é o responsável autorizado pelo recurso
     Quando o ator tenta aprovar a reserva
-    Então a operação é rejeitada e a reserva permanece SOLICITADA
+    Então a operação é rejeitada e a reserva permanece PENDENTE
 
   Esquema do Cenário: Criar reserva na fronteira do período de manutenção
     Dado que o recurso tem manutenção de 2026-11-10T10:00:00 até 2026-11-10T11:00:00
@@ -46,7 +46,7 @@ Funcionalidade: Aprovação e bloqueio de reservas
 
     Exemplos:
       | estado_origem | estado_destino |
-      | SOLICITADA    | APROVADA       |
+      | PENDENTE      | APROVADA       |
       | APROVADA      | EM_USO         |
       | EM_USO        | CONCLUÍDA      |
 
@@ -58,8 +58,8 @@ Funcionalidade: Aprovação e bloqueio de reservas
     # Exemplos candidatos, pendentes de validação
     Exemplos:
       | estado_origem | estado_destino |
-      | SOLICITADA    | REJEITADA      |
-      | SOLICITADA    | CANCELADA      |
+      | PENDENTE      | REJEITADA      |
+      | PENDENTE      | CANCELADA      |
       | APROVADA      | NÃO_COMPARECEU |
 
   Esquema do Cenário: Rejeitar transição inválida
@@ -69,6 +69,6 @@ Funcionalidade: Aprovação e bloqueio de reservas
 
     Exemplos:
       | estado_origem | estado_destino |
-      | SOLICITADA    | EM_USO         |
+      | PENDENTE      | EM_USO         |
       | APROVADA      | CONCLUÍDA      |
-      | CONCLUÍDA     | SOLICITADA     |
+      | CONCLUÍDA     | PENDENTE       |

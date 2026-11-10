@@ -1,7 +1,7 @@
 package br.edu.organizacaorecursos.controller;
 
-import br.edu.organizacaorecursos.domain.Usuario;
 import br.edu.organizacaorecursos.domain.Perfil;
+import br.edu.organizacaorecursos.domain.Usuario;
 import br.edu.organizacaorecursos.dto.UsuarioRequestDTO;
 import br.edu.organizacaorecursos.dto.UsuarioResponseDTO;
 import br.edu.organizacaorecursos.repository.UsuarioRepository;
@@ -12,6 +12,8 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,9 +31,14 @@ public class UsuarioController {
     private final UsuarioRepository usuarioRepository;
 
     @PostMapping
-    public ResponseEntity<UsuarioResponseDTO> criarUsuario(@Valid @RequestBody UsuarioRequestDTO request) {
+    public ResponseEntity<UsuarioResponseDTO> criarUsuario(
+            @Valid @RequestBody UsuarioRequestDTO request,
+            @AuthenticationPrincipal Jwt jwt) {
+        Perfil perfil = request.getPerfil() != null && isAdministrador(jwt)
+                ? request.getPerfil()
+                : Perfil.SOLICITANTE;
         Usuario usuario = new Usuario(null, request.getNome(), request.getEmail(),
-                request.getMatricula(), Perfil.COMUM);
+                request.getMatricula(), perfil);
         return ResponseEntity.status(HttpStatus.CREATED).body(mapear(usuarioRepository.save(usuario)));
     }
 
@@ -48,12 +55,17 @@ public class UsuarioController {
 
     @PutMapping("/{id}")
     public ResponseEntity<UsuarioResponseDTO> atualizarUsuario(
-            @PathVariable UUID id, @Valid @RequestBody UsuarioRequestDTO request) {
+            @PathVariable UUID id,
+            @Valid @RequestBody UsuarioRequestDTO request,
+            @AuthenticationPrincipal Jwt jwt) {
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado."));
         usuario.setNome(request.getNome());
         usuario.setEmail(request.getEmail());
         usuario.setMatricula(request.getMatricula());
+        if (request.getPerfil() != null && isAdministrador(jwt)) {
+            usuario.setPerfil(request.getPerfil());
+        }
         return ResponseEntity.ok(mapear(usuarioRepository.save(usuario)));
     }
 
@@ -74,5 +86,13 @@ public class UsuarioController {
         response.setMatricula(usuario.getMatricula());
         response.setPerfil(usuario.getPerfil());
         return response;
+    }
+
+    private boolean isAdministrador(Jwt jwt) {
+        if (jwt == null) {
+            return false;
+        }
+        String perfil = jwt.getClaimAsString("profile");
+        return "ADMINISTRADOR".equals(perfil) || "ADMIN".equals(perfil);
     }
 }

@@ -58,7 +58,7 @@ public class ReservaService {
         }
 
         StatusReserva statusInicial = recurso.isRestrito()
-                ? StatusReserva.SOLICITADA
+                ? StatusReserva.PENDENTE
                 : StatusReserva.APROVADA;
         boolean temConflito = statusInicial == StatusReserva.APROVADA
                 && reservaRepository.existeConflitoDeHorario(
@@ -132,7 +132,7 @@ public class ReservaService {
                 }
 
                 StatusReserva novoStatus = recurso.isRestrito()
-                                ? StatusReserva.SOLICITADA
+                                ? StatusReserva.PENDENTE
                                 : StatusReserva.APROVADA;
                 if (novoStatus == StatusReserva.APROVADA
                                 && reservaRepository.existeConflitoDeHorarioAprovado(
@@ -154,9 +154,6 @@ public class ReservaService {
         public ReservaResponseDTO atualizarStatus(UUID reservaId, StatusReserva novoStatus, UUID atorId) {
                 Usuario ator = usuarioRepository.findById(atorId)
                         .orElseThrow(() -> new RegraNegocioException("Usuário autenticado não encontrado."));
-                if (ator.getPerfil() != Perfil.ADMIN) {
-                        throw new AccessDeniedException("Somente usuários ADMIN podem decidir reservas.");
-                }
                 if (novoStatus != StatusReserva.APROVADA && novoStatus != StatusReserva.REJEITADA) {
                         throw new RegraNegocioException("O status deve ser APROVADA ou REJEITADA.");
                 }
@@ -170,8 +167,12 @@ public class ReservaService {
                         throw new RegraNegocioException("Somente reservas de recursos restritos exigem decisão.");
                 }
                 UUID responsavelId = reserva.getRecurso().getResponsavelId();
-                if (responsavelId == null || !responsavelId.equals(atorId)) {
-                        throw new AccessDeniedException("Somente o responsável cadastrado pode decidir a reserva.");
+                boolean administrador = ator.getPerfil() == Perfil.ADMINISTRADOR;
+                boolean responsavelDoRecurso = ator.getPerfil() == Perfil.RESPONSAVEL
+                                && responsavelId != null && responsavelId.equals(atorId);
+                if (!administrador && !responsavelDoRecurso) {
+                        throw new AccessDeniedException(
+                                        "Somente administradores ou o responsável cadastrado podem decidir a reserva.");
                 }
                 if (reserva.getUsuario().getId().equals(atorId)) {
                         throw new RegraNegocioException("O solicitante não pode aprovar a própria reserva.");
@@ -319,8 +320,10 @@ public class ReservaService {
                                 .orElseThrow(() -> new EntityNotFoundException("Reserva não encontrada para exclusão."));
                 Usuario ator = usuarioRepository.findById(atorId)
                                 .orElseThrow(() -> new AccessDeniedException("Usuário autenticado não encontrado."));
-                if (ator.getPerfil() != Perfil.ADMIN && !reserva.getUsuario().getId().equals(atorId)) {
-                        throw new AccessDeniedException("Somente o solicitante ou um ADMIN pode excluir a reserva.");
+                if (ator.getPerfil() != Perfil.ADMINISTRADOR
+                                && !reserva.getUsuario().getId().equals(atorId)) {
+                        throw new AccessDeniedException(
+                                        "Somente o solicitante ou um ADMINISTRADOR pode excluir a reserva.");
                 }
                 reservaRepository.delete(reserva);
     }

@@ -1,5 +1,6 @@
 package br.edu.organizacaorecursos.dto;
 
+import br.edu.organizacaorecursos.domain.StatusReserva;
 import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDateTime;
@@ -22,4 +23,6 @@ public class ReservaRequestDTO {
 
     @NotNull(message = "O ID do usuário é obrigatório.")
     private UUID usuarioId;
+
+    private StatusReserva status;
 }

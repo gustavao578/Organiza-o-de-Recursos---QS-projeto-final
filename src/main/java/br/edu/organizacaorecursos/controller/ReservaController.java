@@ -80,7 +80,10 @@ public class ReservaController {
             @PathVariable UUID id,
             @Valid @RequestBody StatusReservaRequestDTO request,
             @AuthenticationPrincipal Jwt jwt) {
-        exigirAdmin(jwt);
+        if (jwt == null) {
+            throw new AccessDeniedException("A autenticação é obrigatória para decidir reservas.");
+        }
+        exigirUmDosPerfis(jwt, "ADMINISTRADOR", "RESPONSAVEL");
         return ResponseEntity.ok(reservaService.atualizarStatus(id, request.getStatus(), atorId(jwt)));
     }
 
@@ -151,21 +154,29 @@ public class ReservaController {
     }
 
     private void exigirPerfil(Jwt jwt, String perfilEsperado) {
-        if (jwt != null && !perfilEsperado.equals(jwt.getClaimAsString("profile"))) {
+        if (jwt != null && !perfilEsperado.equals(perfilNormalizado(jwt.getClaimAsString("profile")))) {
             throw new AccessDeniedException("Perfil não autorizado para esta operação.");
         }
     }
 
     private void exigirAdmin(Jwt jwt) {
-        if (jwt == null || !"ADMIN".equals(jwt.getClaimAsString("profile"))) {
-            throw new AccessDeniedException("Somente usuários ADMIN podem decidir reservas.");
+        if (jwt == null || !"ADMINISTRADOR".equals(perfilNormalizado(jwt.getClaimAsString("profile")))) {
+            throw new AccessDeniedException("Somente usuários ADMINISTRADOR podem decidir reservas.");
         }
     }
 
     private void exigirUmDosPerfis(Jwt jwt, String... perfisAceitos) {
         if (jwt != null && java.util.Arrays.stream(perfisAceitos)
-                .noneMatch(perfil -> perfil.equals(jwt.getClaimAsString("profile")))) {
+                .noneMatch(perfil -> perfil.equals(perfilNormalizado(jwt.getClaimAsString("profile"))))) {
             throw new AccessDeniedException("Perfil não autorizado para esta operação.");
         }
+    }
+
+    private String perfilNormalizado(String perfil) {
+        return switch (perfil == null ? "" : perfil) {
+            case "ADMIN" -> "ADMINISTRADOR";
+            case "COMUM" -> "SOLICITANTE";
+            default -> perfil;
+        };
     }
 }

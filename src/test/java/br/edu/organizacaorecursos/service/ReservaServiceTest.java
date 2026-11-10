@@ -10,7 +10,9 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import br.edu.organizacaorecursos.domain.Recurso;
+import br.edu.organizacaorecursos.domain.Perfil;
 import br.edu.organizacaorecursos.domain.Reserva;
+import br.edu.organizacaorecursos.domain.StatusReserva;
 import br.edu.organizacaorecursos.domain.Usuario;
 import br.edu.organizacaorecursos.dto.ReservaRequestDTO;
 import br.edu.organizacaorecursos.dto.ReservaResponseDTO;
@@ -141,6 +143,7 @@ class ReservaServiceTest {
     @Test
     void criaReservaQuandoDadosSaoValidosERecursoEstaDisponivel() {
         prepararRecursoEUsuario();
+        request.setStatus(StatusReserva.PENDENTE);
         when(manutencaoRepository.isRecursoEmManutencao(
                 recurso.getId(), request.getDataInicio(), request.getDataFim()))
                 .thenReturn(false);
@@ -162,7 +165,104 @@ class ReservaServiceTest {
         assertEquals(usuario.getNome(), response.getNomeUsuario());
         assertEquals(request.getDataInicio(), response.getDataInicio());
         assertEquals(request.getDataFim(), response.getDataFim());
+        assertEquals(StatusReserva.APROVADA, response.getStatus());
         verify(reservaRepository).save(any(Reserva.class));
+    }
+
+    @Test
+    void criaReservaRestritaComStatusPendente() {
+        recurso.setRestrito(true);
+        prepararRecursoEUsuario();
+        when(manutencaoRepository.isRecursoEmManutencao(
+                recurso.getId(), request.getDataInicio(), request.getDataFim()))
+                .thenReturn(false);
+        when(reservaRepository.save(any(Reserva.class))).thenAnswer(invocacao -> {
+            Reserva reservaSalva = invocacao.getArgument(0);
+            reservaSalva.setId(UUID.randomUUID());
+            return reservaSalva;
+        });
+
+        ReservaResponseDTO response = reservaService.criarReserva(request);
+
+        assertEquals(StatusReserva.PENDENTE, response.getStatus());
+        verify(reservaRepository, never()).existeConflitoDeHorario(any(), any(), any());
+    }
+
+    @Test
+    void aprovaReservaPendenteQuandoAtorEhResponsavelDoRecurso() {
+        Reserva reserva = criarReservaPendente();
+        Usuario responsavel = criarResponsavelDoRecurso();
+        prepararAtualizacaoStatus(reserva, responsavel);
+        when(recursoRepository.buscarPorIdComBloqueio(recurso.getId()))
+                .thenReturn(Optional.of(recurso));
+        when(reservaRepository.existeConflitoDeHorarioAprovado(
+                recurso.getId(), reserva.getId(), reserva.getDataInicio(), reserva.getDataFim()))
+                .thenReturn(false);
+        when(reservaRepository.save(any(Reserva.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
+
+        ReservaResponseDTO response = reservaService.atualizarStatus(
+                reserva.getId(), StatusReserva.APROVADA, responsavel.getId());
+
+        assertEquals(StatusReserva.APROVADA, response.getStatus());
+        verify(reservaRepository).save(reserva);
+    }
+
+    @Test
+    void rejeitaReservaPendenteQuandoAtorEhResponsavelDoRecurso() {
+        Reserva reserva = criarReservaPendente();
+        Usuario responsavel = criarResponsavelDoRecurso();
+        prepararAtualizacaoStatus(reserva, responsavel);
+        when(reservaRepository.save(any(Reserva.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
+
+        ReservaResponseDTO response = reservaService.atualizarStatus(
+                reserva.getId(), StatusReserva.REJEITADA, responsavel.getId());
+
+        assertEquals(StatusReserva.REJEITADA, response.getStatus());
+        verify(reservaRepository).save(reserva);
+    }
+
+    @Test
+    void naoAprovaReservaPendenteComConflitoDeHorario() {
+        Reserva reserva = criarReservaPendente();
+        Usuario responsavel = criarResponsavelDoRecurso();
+        prepararAtualizacaoStatus(reserva, responsavel);
+        when(recursoRepository.buscarPorIdComBloqueio(recurso.getId()))
+                .thenReturn(Optional.of(recurso));
+        when(reservaRepository.existeConflitoDeHorarioAprovado(
+                recurso.getId(), reserva.getId(), reserva.getDataInicio(), reserva.getDataFim()))
+                .thenReturn(true);
+
+        assertThrows(
+                br.edu.organizacaorecursos.exception.ConflitoReservaException.class,
+                () -> reservaService.atualizarStatus(
+                        reserva.getId(), StatusReserva.APROVADA, responsavel.getId()));
+
+        verify(reservaRepository, never()).save(any(Reserva.class));
+    }
+
+    private Reserva criarReservaPendente() {
+        return new Reserva(
+                UUID.randomUUID(),
+                recurso,
+                request.getDataInicio(),
+                request.getDataFim(),
+                StatusReserva.PENDENTE,
+                usuario);
+    }
+
+    private Usuario criarResponsavelDoRecurso() {
+        UUID responsavelId = UUID.randomUUID();
+        recurso.setRestrito(true);
+        recurso.setResponsavelId(responsavelId);
+        Usuario responsavel = new Usuario(
+                responsavelId, "Responsável", "responsavel@example.com", "MAT999");
+        responsavel.setPerfil(Perfil.RESPONSAVEL);
+        return responsavel;
+    }
+
+    private void prepararAtualizacaoStatus(Reserva reserva, Usuario responsavel) {
+        when(usuarioRepository.findById(responsavel.getId())).thenReturn(Optional.of(responsavel));
+        when(reservaRepository.findById(reserva.getId())).thenReturn(Optional.of(reserva));
     }
 
     private void prepararRecursoEUsuario() {

@@ -1,5 +1,6 @@
 package br.edu.organizacaorecursos.dto;
 
+import br.edu.organizacaorecursos.domain.Perfil;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
@@ -16,4 +17,6 @@ public class UsuarioRequestDTO {
 
     @NotBlank(message = "A matrícula é obrigatória.")
     private String matricula;
+
+    private Perfil perfil;
 }

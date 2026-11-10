@@ -100,14 +100,14 @@ public class ReservaApiSteps {
         criarSolicitacao(inicioFuturo(), inicioFuturo().plusHours(1));
     }
 
-    @Entao("a reserva é registrada como SOLICITADA e não como confirmação final")
+    @Entao("a reserva é registrada como PENDENTE e não como confirmação final")
     public void reservaPermaneceSolicitada() throws Exception {
         assertEquals(201, statusHttp);
-        assertEquals("SOLICITADA", resposta.path("status").asText());
-        assertEquals(StatusReserva.SOLICITADA, reservaRepository.findById(reservaId).orElseThrow().getStatus());
+        assertEquals("PENDENTE", resposta.path("status").asText());
+        assertEquals(StatusReserva.PENDENTE, reservaRepository.findById(reservaId).orElseThrow().getStatus());
     }
 
-    @Dado("que existe uma reserva restrita no estado SOLICITADA")
+    @Dado("que existe uma reserva restrita no estado PENDENTE")
     public void existeReservaRestritaSolicitada() throws Exception {
         prepararRecursoRestrito();
         criarSolicitacao(inicioFuturo(), inicioFuturo().plusHours(1));
@@ -123,7 +123,7 @@ public class ReservaApiSteps {
     public void atorSolicitante() {
         responsavelId = solicitanteId;
         Usuario solicitante = usuarioRepository.findById(solicitanteId).orElseThrow();
-        solicitante.setPerfil(Perfil.ADMIN);
+        solicitante.setPerfil(Perfil.ADMINISTRADOR);
         usuarioRepository.save(solicitante);
         Recurso recurso = recursoRepository.findById(recursoId).orElseThrow();
         recurso.setResponsavelId(solicitanteId);
@@ -134,7 +134,7 @@ public class ReservaApiSteps {
     @Dado("que o ator não é o responsável autorizado pelo recurso")
     public void atorNaoResponsavel() {
         Usuario administrador = criarUsuario("administrador");
-        administrador.setPerfil(Perfil.ADMIN);
+        administrador.setPerfil(Perfil.SOLICITANTE);
         usuarioRepository.save(administrador);
         usarToken("ADMIN", administrador.getId());
     }
@@ -155,10 +155,10 @@ public class ReservaApiSteps {
         assertEquals("APROVADA", resposta.path("status").asText());
     }
 
-    @Entao("a operação é rejeitada e a reserva permanece SOLICITADA")
+    @Entao("a operação é rejeitada e a reserva permanece PENDENTE")
     public void operacaoRejeitadaReservaSolicitada() throws Exception {
         assertTrue(statusHttp >= 400 && statusHttp < 500);
-        assertEquals(StatusReserva.SOLICITADA,
+        assertEquals(StatusReserva.PENDENTE,
                 reservaRepository.findById(reservaId).orElseThrow().getStatus());
     }
 
@@ -238,9 +238,9 @@ public class ReservaApiSteps {
                 usarToken("RESPONSAVEL", responsavelId);
                 enviarPostComAtor("/reservas/" + reservaId + "/nao-compareceu");
             }
-            case "SOLICITADA" -> {
+            case "PENDENTE" -> {
                 usarToken("ADMIN", responsavelId);
-                enviarPatchStatus("SOLICITADA");
+                enviarPatchStatus("PENDENTE");
             }
             default -> throw new IllegalArgumentException("Estado de destino não suportado: " + destino);
         }
@@ -262,7 +262,7 @@ public class ReservaApiSteps {
     private void prepararRecursoRestrito() {
         prepararSolicitante();
         Usuario responsavel = criarUsuario("responsavel");
-        responsavel.setPerfil(Perfil.ADMIN);
+        responsavel.setPerfil(Perfil.RESPONSAVEL);
         usuarioRepository.save(responsavel);
         responsavelId = responsavel.getId();
         Recurso recurso = recursoRepository.save(
