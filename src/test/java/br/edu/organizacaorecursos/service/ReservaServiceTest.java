@@ -18,10 +18,13 @@ import br.edu.organizacaorecursos.dto.ReservaRequestDTO;
 import br.edu.organizacaorecursos.dto.ReservaResponseDTO;
 import br.edu.organizacaorecursos.exception.RegraNegocioException;
 import br.edu.organizacaorecursos.repository.ManutencaoRepository;
+import br.edu.organizacaorecursos.repository.ReservaAuditoriaRepository;
 import br.edu.organizacaorecursos.repository.RecursoRepository;
 import br.edu.organizacaorecursos.repository.ReservaRepository;
 import br.edu.organizacaorecursos.repository.UsuarioRepository;
 import java.time.LocalDateTime;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.UUID;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,7 +33,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -49,7 +51,9 @@ class ReservaServiceTest {
     @Mock
     private ManutencaoRepository manutencaoRepository;
 
-    @InjectMocks
+    @Mock
+    private ReservaAuditoriaRepository reservaAuditoriaRepository;
+
     private ReservaService reservaService;
 
     private ReservaRequestDTO request;
@@ -58,6 +62,13 @@ class ReservaServiceTest {
 
     @BeforeEach
     void setUp() {
+        reservaService = new ReservaService(
+                reservaRepository,
+                recursoRepository,
+                usuarioRepository,
+                manutencaoRepository,
+                reservaAuditoriaRepository,
+                Clock.fixed(Instant.parse("2026-11-11T12:00:00Z"), java.time.ZoneOffset.UTC));
         UUID recursoId = UUID.randomUUID();
         UUID usuarioId = UUID.randomUUID();
         LocalDateTime inicio = LocalDateTime.now().plusDays(1).withHour(10).withMinute(0)

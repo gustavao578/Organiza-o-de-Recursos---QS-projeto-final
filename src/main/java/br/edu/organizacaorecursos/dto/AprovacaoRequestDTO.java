@@ -7,4 +7,6 @@ import lombok.Data;
 public class AprovacaoRequestDTO {
 
     private UUID atorId;
+
+    private String motivo;
 }

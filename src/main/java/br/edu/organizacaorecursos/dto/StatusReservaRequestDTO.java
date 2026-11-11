@@ -9,4 +9,6 @@ public class StatusReservaRequestDTO {
 
     @NotNull(message = "O novo status é obrigatório.")
     private StatusReserva status;
+
+    private String motivo;
 }

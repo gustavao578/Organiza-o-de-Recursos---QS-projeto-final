@@ -3,14 +3,17 @@ package br.edu.organizacaorecursos.service;
 import br.edu.organizacaorecursos.domain.Recurso;
 import br.edu.organizacaorecursos.domain.Perfil;
 import br.edu.organizacaorecursos.domain.Reserva;
+import br.edu.organizacaorecursos.domain.ReservaAuditoria;
 import br.edu.organizacaorecursos.domain.StatusReserva;
 import br.edu.organizacaorecursos.domain.Usuario;
+import br.edu.organizacaorecursos.dto.ReservaAuditoriaResponseDTO;
 import br.edu.organizacaorecursos.dto.ReservaRequestDTO;
 import br.edu.organizacaorecursos.dto.ReservaResponseDTO;
 import br.edu.organizacaorecursos.exception.ConflitoReservaException;
 import br.edu.organizacaorecursos.exception.RegraNegocioException;
 import br.edu.organizacaorecursos.exception.RecursoNaoEncontradoException;
 import br.edu.organizacaorecursos.repository.ManutencaoRepository;
+import br.edu.organizacaorecursos.repository.ReservaAuditoriaRepository;
 import br.edu.organizacaorecursos.repository.RecursoRepository;
 import br.edu.organizacaorecursos.repository.ReservaRepository;
 import br.edu.organizacaorecursos.repository.UsuarioRepository;
@@ -20,6 +23,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -32,6 +37,8 @@ public class ReservaService {
     private final RecursoRepository recursoRepository;
     private final UsuarioRepository usuarioRepository;
     private final ManutencaoRepository manutencaoRepository;
+    private final ReservaAuditoriaRepository reservaAuditoriaRepository;
+    private final Clock clock;
 
     @Transactional
     public ReservaResponseDTO criarReserva(ReservaRequestDTO dto) {
@@ -108,6 +115,16 @@ public class ReservaService {
                 return reservaRepository.findAll().stream().map(this::mapearParaResponseDTO).toList();
         }
 
+        @Transactional(readOnly = true)
+        public List<ReservaAuditoriaResponseDTO> historicoReserva(UUID reservaId) {
+                if (!reservaRepository.existsById(reservaId)) {
+                        throw new EntityNotFoundException("Reserva não encontrada para o ID informado.");
+                }
+                return reservaAuditoriaRepository.findByReservaIdOrderByInstanteAscIdAsc(reservaId).stream()
+                                .map(ReservaAuditoriaResponseDTO::de)
+                                .toList();
+        }
+
         @Transactional
         public ReservaResponseDTO atualizarReserva(UUID reservaId, ReservaRequestDTO dto, UUID atorId) {
                 if (dto.getDataInicio() == null || dto.getDataFim() == null) {
@@ -149,15 +166,29 @@ public class ReservaService {
                                                         + dto.getDataInicio() + " a " + dto.getDataFim() + ".");
                 }
 
+                StatusReserva estadoAnterior = reserva.getStatus();
                 reserva.setRecurso(recurso);
                 reserva.setDataInicio(dto.getDataInicio());
                 reserva.setDataFim(dto.getDataFim());
                 reserva.setStatus(novoStatus);
-                return mapearParaResponseDTO(reservaRepository.save(reserva));
+                Reserva reservaSalva = reservaRepository.save(reserva);
+                registrarMudancaDeEstado(
+                                reservaSalva,
+                                estadoAnterior,
+                                novoStatus,
+                                atorId,
+                                "Reserva atualizada e confirmada.");
+                return mapearParaResponseDTO(reservaSalva);
         }
 
         @Transactional
         public ReservaResponseDTO atualizarStatus(UUID reservaId, StatusReserva novoStatus, UUID atorId) {
+                return atualizarStatus(reservaId, novoStatus, atorId, null);
+        }
+
+        @Transactional
+        public ReservaResponseDTO atualizarStatus(
+                        UUID reservaId, StatusReserva novoStatus, UUID atorId, String motivo) {
                 Usuario ator = usuarioRepository.findById(atorId)
                         .orElseThrow(() -> new RegraNegocioException("Usuário autenticado não encontrado."));
                 if (novoStatus != StatusReserva.APROVADA && novoStatus != StatusReserva.REJEITADA) {
@@ -202,7 +233,11 @@ public class ReservaService {
                                                 + reserva.getDataInicio() + " a " + reserva.getDataFim() + ".");
                         }
                 }
-                return persistirStatus(reserva, novoStatus);
+                String motivoEfetivo = motivoOuPadrao(
+                                motivo, novoStatus == StatusReserva.APROVADA
+                                                ? "Reserva aprovada."
+                                                : "Reserva rejeitada.");
+                return persistirStatus(reserva, novoStatus, atorId, motivoEfetivo);
         }
 
         @Transactional
@@ -211,12 +246,8 @@ public class ReservaService {
         }
 
         @Transactional
-        public ReservaResponseDTO iniciarReserva(UUID reservaId) {
-                return transicionarReserva(
-                                reservaId,
-                                StatusReserva.APROVADA,
-                                StatusReserva.EM_USO,
-                                "Somente reservas aprovadas podem ser iniciadas.");
+        public ReservaResponseDTO aprovarReserva(UUID reservaId, UUID atorId, String motivo) {
+                return atualizarStatus(reservaId, StatusReserva.APROVADA, atorId, motivo);
         }
 
         @Transactional
@@ -226,16 +257,7 @@ public class ReservaService {
                                 atorId,
                                 StatusReserva.APROVADA,
                                 StatusReserva.EM_USO,
-                                "Somente reservas aprovadas podem ser iniciadas.");
-        }
-
-        @Transactional
-        public ReservaResponseDTO concluirReserva(UUID reservaId) {
-                return transicionarReserva(
-                                reservaId,
-                                StatusReserva.EM_USO,
-                                StatusReserva.CONCLUÍDA,
-                                "Somente reservas em uso podem ser concluídas.");
+                                "Reserva iniciada.");
         }
 
         @Transactional
@@ -245,37 +267,49 @@ public class ReservaService {
                                 atorId,
                                 StatusReserva.EM_USO,
                                 StatusReserva.CONCLUÍDA,
-                                "Somente reservas em uso podem ser concluídas.");
+                                "Reserva concluída.");
         }
 
         @Transactional
         public ReservaResponseDTO rejeitarReserva(UUID reservaId, UUID atorId) {
                 Reserva reserva = buscarReserva(reservaId);
-                if (atorId != null) {
-                        validarResponsavel(reserva, atorId);
-                }
+                validarResponsavel(reserva, atorId);
                 validarStatusPendente(reserva);
-                return persistirStatus(reserva, StatusReserva.REJEITADA);
+                return persistirStatus(reserva, StatusReserva.REJEITADA, atorId, "Reserva rejeitada.");
         }
 
         @Transactional
         public ReservaResponseDTO cancelarReserva(UUID reservaId, UUID atorId) {
+                return cancelarReserva(reservaId, atorId, null);
+        }
+
+        @Transactional
+        public ReservaResponseDTO cancelarReserva(UUID reservaId, UUID atorId, String motivo) {
                 Reserva reserva = buscarReserva(reservaId);
                 if (!reserva.getUsuario().getId().equals(atorId)) {
                         throw new RegraNegocioException("Somente o solicitante pode cancelar a reserva.");
                 }
                 validarStatusPendente(reserva);
-                return persistirStatus(reserva, StatusReserva.CANCELADA);
+                return persistirStatus(
+                                reserva,
+                                StatusReserva.CANCELADA,
+                                atorId,
+                                motivoOuPadrao(motivo, "Reserva cancelada pelo solicitante."));
         }
 
         @Transactional
         public ReservaResponseDTO marcarNaoComparecimento(UUID reservaId, UUID atorId) {
+                return marcarNaoComparecimento(reservaId, atorId, null);
+        }
+
+        @Transactional
+        public ReservaResponseDTO marcarNaoComparecimento(UUID reservaId, UUID atorId, String motivo) {
                 return transicionarComoResponsavel(
                         reservaId,
                         atorId,
                                 StatusReserva.APROVADA,
                                 StatusReserva.NÃO_COMPARECEU,
-                                "Somente reservas aprovadas podem ser marcadas como não comparecimento.");
+                                motivoOuPadrao(motivo, "Não comparecimento registrado."));
         }
 
             private ReservaResponseDTO transicionarComoResponsavel(
@@ -283,26 +317,26 @@ public class ReservaService {
                     UUID atorId,
                     StatusReserva origem,
                     StatusReserva destino,
-                    String mensagemInvalida) {
+                        String motivo) {
                 Reserva reserva = buscarReserva(reservaId);
-                if (atorId != null) {
-                        validarResponsavel(reserva, atorId);
+                    if (atorId == null) {
+                            throw new AccessDeniedException("A identidade do responsável é obrigatória.");
                 }
-                return transicionarReserva(reserva, origem, destino, mensagemInvalida);
+                    validarResponsavel(reserva, atorId);
+                    return transicionarReserva(reserva, origem, destino, atorId, motivo);
             }
 
-        private ReservaResponseDTO transicionarReserva(
-                        UUID reservaId, StatusReserva origem, StatusReserva destino, String mensagemInvalida) {
-                return transicionarReserva(buscarReserva(reservaId), origem, destino, mensagemInvalida);
-        }
-
-        private ReservaResponseDTO transicionarReserva(
-                        Reserva reserva, StatusReserva origem, StatusReserva destino, String mensagemInvalida) {
+            private ReservaResponseDTO transicionarReserva(
+                            Reserva reserva,
+                            StatusReserva origem,
+                            StatusReserva destino,
+                            UUID atorId,
+                            String motivo) {
                 if (reserva.getStatus() != origem) {
-                        throw new RegraNegocioException(mensagemInvalida);
+                            throw new RegraNegocioException("A reserva não está no estado necessário para esta ação.");
                 }
 
-                return persistirStatus(reserva, destino);
+                    return persistirStatus(reserva, destino, atorId, motivo);
         }
 
         private Reserva buscarReserva(UUID reservaId) {
@@ -336,6 +370,15 @@ public class ReservaService {
                         throw new AccessDeniedException(
                                         "Somente o solicitante ou um ADMINISTRADOR pode excluir a reserva.");
                 }
+                if (reserva.getStatus() == StatusReserva.EM_USO
+                                || reserva.getStatus() == StatusReserva.CONCLUÍDA
+                                || reserva.getStatus() == StatusReserva.NÃO_COMPARECEU) {
+                        throw new RegraNegocioException("Reservas que já foram iniciadas não podem ser excluídas.");
+                }
+                if (reservaAuditoriaRepository.existsByReservaId(id)) {
+                        throw new RegraNegocioException(
+                                        "Reservas com histórico de auditoria não podem ser excluídas.");
+                }
                 reservaRepository.delete(reserva);
     }
 
@@ -361,8 +404,37 @@ public class ReservaService {
         return response;
     }
 
-        private ReservaResponseDTO persistirStatus(Reserva reserva, StatusReserva status) {
+        private ReservaResponseDTO persistirStatus(
+                        Reserva reserva, StatusReserva status, UUID atorId, String motivo) {
+                StatusReserva estadoAnterior = reserva.getStatus();
                 reserva.setStatus(status);
-                return mapearParaResponseDTO(reservaRepository.save(reserva));
+                Reserva reservaSalva = reservaRepository.save(reserva);
+                registrarMudancaDeEstado(reservaSalva, estadoAnterior, status, atorId, motivo);
+                return mapearParaResponseDTO(reservaSalva);
+        }
+
+        private void registrarMudancaDeEstado(
+                        Reserva reserva,
+                        StatusReserva estadoAnterior,
+                        StatusReserva estadoNovo,
+                        UUID atorId,
+                        String motivo) {
+                if (estadoAnterior == estadoNovo) {
+                        return;
+                }
+                if (atorId == null) {
+                        throw new AccessDeniedException("A identidade do usuário é obrigatória para auditar a mudança.");
+                }
+                reservaAuditoriaRepository.save(new ReservaAuditoria(
+                                reserva,
+                                atorId,
+                                Instant.now(clock),
+                                estadoAnterior,
+                                estadoNovo,
+                                motivoOuPadrao(motivo, "Estado alterado para " + estadoNovo + ".")));
+        }
+
+        private String motivoOuPadrao(String motivo, String padrao) {
+                return motivo == null || motivo.isBlank() ? padrao : motivo.trim();
         }
 }

@@ -33,6 +33,7 @@ import java.util.Date;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -60,6 +61,9 @@ public class ReservaApiSteps {
     @Autowired
     private ManutencaoRepository manutencaoRepository;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @Value("${security.jwt.secret}")
     private String jwtSecret;
 
@@ -73,6 +77,7 @@ public class ReservaApiSteps {
 
     @Before
     public void limparDados() {
+        jdbcTemplate.execute("DELETE FROM tb_reserva_auditorias");
         reservaRepository.deleteAll();
         manutencaoRepository.deleteAll();
         usuarioRepository.deleteAll();

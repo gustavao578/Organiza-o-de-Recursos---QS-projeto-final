@@ -23,3 +23,23 @@ As linhas abaixo registram os resultados históricos dos ciclos RED/GREEN/REFACT
 - A transição REJEITADA→APROVADA revelou uma lacuna real: a API retornava `200`. O teste red correspondente foi adicionado e a regra passou a exigir origem SOLICITADA.
 - Os estados alternativos e os atores associados são os candidatos registrados no BDD. O PRD ainda não define formalmente essas origens/permissões; precisam de confirmação do produto.
 - A consulta de manutenção é uma comparação pura de intervalos e não precisa do horário atual. O `Clock` é fornecido por DI e usado pelos testes para construir períodos futuros; não há `Instant.now()` oculto nem `Thread.sleep` nesses cenários.
+
+## Ciclo TDD — auditoria de mudanças de estado das reservas
+
+Os testes foram registrados antes da implementação no commit `a34547c`
+(`test: add reservation audit red tests`).
+
+**RED:** `./mvnw -B -Dtest=ReservaServiceTest,ReservaApiIntegrationTest,ReservaAuditoriaPostgresIntegrationTest test`
+executou 67 testes: 6 falhas e 2 erros. `ReservaServiceTest.impedeExcluirReservaQueJaFoiIniciada`
+falhou nas três variantes (`EM_USO`, `CONCLUÍDA` e `NÃO_COMPARECEU`) porque a
+exclusão não era recusada. Os testes de API receberam 404 ao consultar o
+histórico (esperado 200 para Responsável e 403 para Solicitante) e ao tentar
+alterar/apagar o histórico (esperado 405). Os dois testes PostgreSQL falharam
+na preparação porque a tabela de auditoria ainda não existia.
+
+**GREEN:** depois da implementação, `./mvnw -B verify` passou com 105 testes,
+0 falhas, 0 erros e 0 ignorados. `ReservaAuditoriaPostgresIntegrationTest`
+verifica os campos do evento com `Clock` fixo, a gravação junto à mudança de
+estado e a ausência de evento órfão após rollback; usa PostgreSQL 16 via
+Testcontainers. A API permite leitura a Responsável/Administrador e retorna
+403 ao Solicitante; não expõe operações de alteração ou exclusão do histórico.

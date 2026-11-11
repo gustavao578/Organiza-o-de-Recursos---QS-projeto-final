@@ -35,6 +35,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
@@ -67,10 +68,14 @@ class ReservaApiIntegrationTest {
     private ManutencaoRepository manutencaoRepository;
 
     @Autowired
+    private JdbcTemplate jdbcTemplate;
+
+    @Autowired
     private ReservaService reservaService;
 
     @BeforeEach
     void limparDados() {
+        jdbcTemplate.execute("DELETE FROM tb_reserva_auditorias");
         reservaRepository.deleteAll();
         manutencaoRepository.deleteAll();
         usuarioRepository.deleteAll();
@@ -295,7 +300,7 @@ class ReservaApiIntegrationTest {
         aprovarReserva(reservaId, responsavel.getId())
                 .andExpect(status().isOk());
 
-        mockMvc.perform(post("/reservas/{id}/iniciar", reservaId))
+        postComo(reservaId, "iniciar", responsavel.getId(), "RESPONSAVEL")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("EM_USO"));
     }
@@ -308,10 +313,10 @@ class ReservaApiIntegrationTest {
                 .andExpect(status().isCreated());
         UUID reservaId = reservaRepository.findAll().get(0).getId();
         aprovarReserva(reservaId, responsavel.getId()).andExpect(status().isOk());
-        mockMvc.perform(post("/reservas/{id}/iniciar", reservaId))
+        postComo(reservaId, "iniciar", responsavel.getId(), "RESPONSAVEL")
                 .andExpect(status().isOk());
 
-        mockMvc.perform(post("/reservas/{id}/concluir", reservaId))
+        postComo(reservaId, "concluir", responsavel.getId(), "RESPONSAVEL")
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CONCLUÍDA"));
     }
@@ -323,7 +328,9 @@ class ReservaApiIntegrationTest {
                 .andExpect(status().isCreated());
         UUID reservaId = reservaRepository.findAll().get(0).getId();
 
-        mockMvc.perform(post("/reservas/{id}/iniciar", reservaId))
+        Usuario responsavel = usuarioRepository.findById(
+                recursoRepository.findById(recursoId).orElseThrow().getResponsavelId()).orElseThrow();
+        postComo(reservaId, "iniciar", responsavel.getId(), "RESPONSAVEL")
                 .andExpect(status().isBadRequest());
 
         mockMvc.perform(get("/reservas/{id}", reservaId))
@@ -507,6 +514,16 @@ class ReservaApiIntegrationTest {
                     .andExpect(jsonPath("$[0].estadoAnterior").value("APROVADA"))
                     .andExpect(jsonPath("$[0].estadoNovo").value("EM_USO"))
                     .andExpect(jsonPath("$[0].motivo").isNotEmpty());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+        Usuario administrador = criarUsuario("administrador-historico");
+        administrador.setPerfil(Perfil.ADMINISTRADOR);
+        usuarioRepository.save(administrador);
+        try {
+            mockMvc.perform(get("/reservas/{id}/historico", reserva.getId())
+                            .with(jwtContexto(administrador.getId(), "ADMINISTRADOR")))
+                    .andExpect(status().isOk());
         } finally {
             SecurityContextHolder.clearContext();
         }

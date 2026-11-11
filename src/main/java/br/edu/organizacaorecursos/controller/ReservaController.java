@@ -1,6 +1,7 @@
 package br.edu.organizacaorecursos.controller;
 
 import br.edu.organizacaorecursos.dto.AprovacaoRequestDTO;
+import br.edu.organizacaorecursos.dto.ReservaAuditoriaResponseDTO;
 import br.edu.organizacaorecursos.dto.ReservaRequestDTO;
 import br.edu.organizacaorecursos.dto.ReservaResponseDTO;
 import br.edu.organizacaorecursos.dto.StatusReservaRequestDTO;
@@ -23,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -49,7 +51,8 @@ public class ReservaController {
             @Valid @RequestBody(required = false) AprovacaoRequestDTO request,
             @AuthenticationPrincipal Jwt jwt) {
         exigirAdmin(jwt);
-        return ResponseEntity.ok(reservaService.aprovarReserva(id, atorId(jwt)));
+        return ResponseEntity.ok(reservaService.aprovarReserva(
+                id, atorId(jwt), request == null ? null : request.getMotivo()));
     }
 
     @PostMapping("/{id}/iniciar")
@@ -72,7 +75,8 @@ public class ReservaController {
             @Valid @RequestBody(required = false) AprovacaoRequestDTO request,
             @AuthenticationPrincipal Jwt jwt) {
         exigirAdmin(jwt);
-        return ResponseEntity.ok(reservaService.atualizarStatus(id, StatusReserva.REJEITADA, atorId(jwt)));
+        return ResponseEntity.ok(reservaService.atualizarStatus(
+                id, StatusReserva.REJEITADA, atorId(jwt), request == null ? null : request.getMotivo()));
     }
 
     @PatchMapping("/{id}/status")
@@ -84,7 +88,8 @@ public class ReservaController {
             throw new AccessDeniedException("A autenticação é obrigatória para decidir reservas.");
         }
         exigirUmDosPerfis(jwt, "ADMINISTRADOR", "RESPONSAVEL");
-        return ResponseEntity.ok(reservaService.atualizarStatus(id, request.getStatus(), atorId(jwt)));
+        return ResponseEntity.ok(reservaService.atualizarStatus(
+                id, request.getStatus(), atorId(jwt), request.getMotivo()));
     }
 
     @PutMapping("/{id}")
@@ -107,7 +112,8 @@ public class ReservaController {
             @Valid @RequestBody(required = false) AprovacaoRequestDTO request,
             @AuthenticationPrincipal Jwt jwt) {
         exigirUmDosPerfis(jwt, "COMUM", "SOLICITANTE");
-        return ResponseEntity.ok(reservaService.cancelarReserva(id, atorId(request, jwt)));
+        return ResponseEntity.ok(reservaService.cancelarReserva(
+                id, atorId(request, jwt), request == null ? null : request.getMotivo()));
     }
 
     @PostMapping("/{id}/nao-compareceu")
@@ -116,7 +122,8 @@ public class ReservaController {
             @Valid @RequestBody(required = false) AprovacaoRequestDTO request,
             @AuthenticationPrincipal Jwt jwt) {
         exigirPerfil(jwt, "RESPONSAVEL");
-        return ResponseEntity.ok(reservaService.marcarNaoComparecimento(id, atorId(request, jwt)));
+        return ResponseEntity.ok(reservaService.marcarNaoComparecimento(
+                id, atorId(request, jwt), request == null ? null : request.getMotivo()));
     }
 
     @GetMapping("/{id}")
@@ -127,6 +134,16 @@ public class ReservaController {
     @GetMapping
     public ResponseEntity<java.util.List<ReservaResponseDTO>> listarReservas() {
         return ResponseEntity.ok(reservaService.listarReservas());
+    }
+
+    @GetMapping("/{id}/historico")
+    public ResponseEntity<List<ReservaAuditoriaResponseDTO>> historico(
+            @PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        if (jwt == null) {
+            throw new AccessDeniedException("A autenticação é obrigatória para consultar o histórico.");
+        }
+        exigirUmDosPerfis(jwt, "RESPONSAVEL", "ADMINISTRADOR");
+        return ResponseEntity.ok(reservaService.historicoReserva(id));
     }
 
     @DeleteMapping("/{id}")
