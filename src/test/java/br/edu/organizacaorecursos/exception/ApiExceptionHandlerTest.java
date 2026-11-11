@@ -1,8 +1,12 @@
 package br.edu.organizacaorecursos.exception;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
 
+import br.edu.organizacaorecursos.repository.ConflitoReservaRepository;
+import br.edu.organizacaorecursos.service.ConflitoReservaService;
 import java.lang.reflect.Method;
+import java.time.Clock;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.MethodParameter;
@@ -15,7 +19,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 
 class ApiExceptionHandlerTest {
 
-    private final ApiExceptionHandler handler = new ApiExceptionHandler();
+    private final ApiExceptionHandler handler = new ApiExceptionHandler(
+            new ConflitoReservaService(mock(ConflitoReservaRepository.class), Clock.systemUTC()));
 
     @Test
     void converteViolacaoDeIntegridadeEmConflito() {

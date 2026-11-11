@@ -1,6 +1,8 @@
 package br.edu.organizacaorecursos.exception;
 
+import br.edu.organizacaorecursos.service.ConflitoReservaService;
 import jakarta.persistence.EntityNotFoundException;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import org.springframework.http.HttpStatus;
@@ -15,6 +17,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class ApiExceptionHandler {
+
+    private final ConflitoReservaService conflitoReservaService;
+
+    public ApiExceptionHandler(ConflitoReservaService conflitoReservaService) {
+        this.conflitoReservaService = conflitoReservaService;
+    }
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<Map<String, String>> handleAccessDenied(AccessDeniedException exception) {
@@ -45,6 +53,7 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ConflitoReservaException.class)
     public ResponseEntity<Map<String, String>> handleConflitoReserva(
             ConflitoReservaException exception) {
+        conflitoReservaService.registrarRecusaPorSobreposicao();
         return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
                 "erro", exception.getMessage(),
                 "detalhes", exception.getDetalhes()));
@@ -53,8 +62,11 @@ public class ApiExceptionHandler {
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     public ResponseEntity<Map<String, String>> handleArgumentTypeMismatch(
             MethodArgumentTypeMismatchException exception) {
+        String mensagem = exception.getRequiredType() == LocalDateTime.class
+                ? "As datas do período devem usar formato ISO-8601."
+                : "O identificador informado possui formato inválido.";
         return ResponseEntity.badRequest()
-                .body(Map.of("erro", "O identificador informado possui formato inválido."));
+                .body(Map.of("erro", mensagem));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
