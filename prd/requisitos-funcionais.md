@@ -114,6 +114,8 @@ O administrador terá acesso para:
 - salas podem ser filtradas por tipo e localidade;
 - a busca considera indisponibilidade por manutenção, conflito de horário e recurso bloqueado.
 
+**Evidência e estado (2026-11-11):** RF-03 continua sem evidência de busca filtrada por recurso e intervalo. A [rodada local de desempenho](../docs/performance/resultado-01.md) mediu `GET /reservas` apenas como proxy de leitura; ela não comprova os critérios de disponibilidade deste requisito. A consulta seletiva permanece pendente de implementação e validação.
+
 ---
 
 ### RF-04 — Criação, alteração e cancelamento de reservas
@@ -174,6 +176,8 @@ O administrador terá acesso para:
 - duas requisições simultâneas não podem concluir duas reservas conflitantes para o mesmo recurso;
 - leitura e escrita devem preservar integridade sem race condition;
 - no caso de conflito, uma das operações é rejeitada e a outra permanece válida.
+
+**Evidência e estado (2026-11-11):** a [rodada JMeter local](../docs/performance/resultado-01.md), executada com o [plano](../perf/reservas.jmx), produziu 1 resposta `201` e 4.143 respostas `409` para o mesmo recurso/intervalo. Uma consulta SQL ao H2 file-backed confirmou uma única linha aceita para esse intervalo. A evidência valida esse recorte local, não a atomicidade em PostgreSQL ou produção.
 
 ---
 

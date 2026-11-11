@@ -45,7 +45,7 @@ public class ApiExceptionHandler {
     @ExceptionHandler(ConflitoReservaException.class)
     public ResponseEntity<Map<String, String>> handleConflitoReserva(
             ConflitoReservaException exception) {
-        return ResponseEntity.badRequest().body(Map.of(
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of(
                 "erro", exception.getMessage(),
                 "detalhes", exception.getDetalhes()));
     }

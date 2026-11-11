@@ -1,0 +1,376 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
+  <hashTree>
+    <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Reservas - carga local" enabled="true">
+      <stringProp name="TestPlan.comments">Executar somente contra a aplicacao local em 127.0.0.1. O login e um emissor local de JWT de teste porque a API nao possui endpoint de login; GET /reservas e usado como proxy da consulta de agenda ate existir endpoint de disponibilidade.</stringProp>
+      <boolProp name="TestPlan.functional_mode">false</boolProp>
+      <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
+      <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="Variaveis" enabled="true">
+        <collectionProp name="Arguments.arguments"/>
+      </elementProp>
+      <stringProp name="TestPlan.user_define_classpath"></stringProp>
+    </TestPlan>
+    <hashTree>
+      <ConfigTestElement guiclass="HttpDefaultsGui" testclass="ConfigTestElement" testname="Destino estritamente local" enabled="true">
+        <elementProp name="HTTPsampler.Arguments" elementType="Arguments" guiclass="HTTPArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
+          <collectionProp name="Arguments.arguments"/>
+        </elementProp>
+        <stringProp name="HTTPSampler.domain">127.0.0.1</stringProp>
+        <stringProp name="HTTPSampler.port">8080</stringProp>
+        <stringProp name="HTTPSampler.protocol">http</stringProp>
+        <stringProp name="HTTPSampler.contentEncoding">UTF-8</stringProp>
+        <stringProp name="HTTPSampler.path"></stringProp>
+        <stringProp name="HTTPSampler.concurrentPool">6</stringProp>
+        <stringProp name="HTTPSampler.connect_timeout">5000</stringProp>
+        <stringProp name="HTTPSampler.response_timeout">5000</stringProp>
+      </ConfigTestElement>
+      <hashTree/>
+      <SetupThreadGroup guiclass="SetupThreadGroupGui" testclass="SetupThreadGroup" testname="SETUP - preparar recurso de disputa" enabled="true">
+        <stringProp name="ThreadGroup.on_sample_error">stoptest</stringProp>
+        <stringProp name="ThreadGroup.num_threads">1</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">1</stringProp>
+        <boolProp name="ThreadGroup.scheduler">false</boolProp>
+        <stringProp name="ThreadGroup.duration"></stringProp>
+        <stringProp name="ThreadGroup.delay"></stringProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Executar uma vez" enabled="true">
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+          <stringProp name="LoopController.loops">1</stringProp>
+        </elementProp>
+      </SetupThreadGroup>
+      <hashTree>
+        <JSR223Sampler guiclass="TestBeanGUI" testclass="JSR223Sampler" testname="SETUP - emitir JWT administrador local" enabled="true">
+          <stringProp name="cacheKey">true</stringProp>
+          <stringProp name="filename"></stringProp>
+          <stringProp name="parameters"></stringProp>
+          <stringProp name="scriptLanguage">groovy</stringProp>
+          <stringProp name="script"><![CDATA[import groovy.json.JsonOutput
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
+import java.nio.charset.StandardCharsets
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Base64
+import java.util.UUID
+
+String secret = props.getProperty('JWT_SECRET') ?: System.getenv('JWT_SECRET')
+if (secret == null || secret.trim().isEmpty()) {
+    throw new IllegalStateException('Defina JWT_SECRET igualmente ao iniciar a aplicacao local.')
+}
+String subject = UUID.randomUUID().toString()
+long now = System.currentTimeMillis() / 1000L
+def encode = { byte[] value -> Base64.getUrlEncoder().withoutPadding().encodeToString(value) }
+String header = encode(JsonOutput.toJson([alg: 'HS256', typ: 'JWT']).getBytes(StandardCharsets.UTF_8))
+String payload = encode(JsonOutput.toJson([sub: subject, profile: 'ADMINISTRADOR', iat: now, exp: now + 3600]).getBytes(StandardCharsets.UTF_8))
+String input = header + '.' + payload
+Mac mac = Mac.getInstance('HmacSHA256')
+mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), 'HmacSHA256'))
+String token = input + '.' + encode(mac.doFinal(input.getBytes(StandardCharsets.US_ASCII)))
+vars.put('token_subject', subject)
+props.put('perf.intervalStart', LocalDateTime.now().plusDays(2).withMinute(0).withSecond(0).withNano(0).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+props.put('perf.intervalEnd', LocalDateTime.parse(props.getProperty('perf.intervalStart')).plusHours(1).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+props.put('perf.runId', Long.toString(System.currentTimeMillis()))
+SampleResult.setResponseCode('200')
+SampleResult.setResponseMessage('OK')
+SampleResult.setSuccessful(true)
+SampleResult.setResponseData(JsonOutput.toJson([access_token: token]), 'UTF-8')]]></stringProp>
+        </JSR223Sampler>
+        <hashTree>
+          <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="Extrair JWT local" enabled="true">
+            <stringProp name="JSONPostProcessor.referenceNames">admin_token</stringProp>
+            <stringProp name="JSONPostProcessor.jsonPathExprs">$.access_token</stringProp>
+            <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+            <stringProp name="JSONPostProcessor.defaultValues">TOKEN_AUSENTE</stringProp>
+          </JSONPostProcessor>
+          <hashTree/>
+        </hashTree>
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="SETUP - criar recurso compartilhado" enabled="true">
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+            <collectionProp name="Arguments.arguments">
+              <elementProp name="" elementType="HTTPArgument">
+                <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                <stringProp name="Argument.value">{"nome":"Sala JMeter Local","tipo":"SALA","restrito":false}</stringProp>
+                <stringProp name="Argument.metadata">=</stringProp>
+              </elementProp>
+            </collectionProp>
+          </elementProp>
+          <stringProp name="HTTPSampler.path">/recursos</stringProp>
+          <stringProp name="HTTPSampler.method">POST</stringProp>
+          <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
+          <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+        </HTTPSamplerProxy>
+        <hashTree>
+          <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Autenticacao de setup" enabled="true">
+            <collectionProp name="HeaderManager.headers">
+              <elementProp name="Authorization" elementType="Header">
+                <stringProp name="Header.name">Authorization</stringProp>
+                <stringProp name="Header.value">Bearer ${admin_token}</stringProp>
+              </elementProp>
+              <elementProp name="Content-Type" elementType="Header">
+                <stringProp name="Header.name">Content-Type</stringProp>
+                <stringProp name="Header.value">application/json</stringProp>
+              </elementProp>
+            </collectionProp>
+          </HeaderManager>
+          <hashTree/>
+          <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="Extrair id do recurso" enabled="true">
+            <stringProp name="JSONPostProcessor.referenceNames">resourceId</stringProp>
+            <stringProp name="JSONPostProcessor.jsonPathExprs">$.id</stringProp>
+            <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+            <stringProp name="JSONPostProcessor.defaultValues">RECURSO_AUSENTE</stringProp>
+          </JSONPostProcessor>
+          <hashTree/>
+          <JSR223PostProcessor guiclass="TestBeanGUI" testclass="JSR223PostProcessor" testname="Compartilhar id e intervalo" enabled="true">
+            <stringProp name="cacheKey">true</stringProp>
+            <stringProp name="filename"></stringProp>
+            <stringProp name="parameters"></stringProp>
+            <stringProp name="scriptLanguage">groovy</stringProp>
+            <stringProp name="script"><![CDATA[if (vars.get('resourceId') == null || vars.get('resourceId') == 'RECURSO_AUSENTE') {
+    throw new IllegalStateException('O setup nao criou o recurso de disputa.')
+}
+props.put('perf.resourceId', vars.get('resourceId'))]]></stringProp>
+          </JSR223PostProcessor>
+          <hashTree/>
+        </hashTree>
+        <LoopController guiclass="LoopControlPanel" testclass="LoopController" testname="Cadastrar 50 usuarios ficticios" enabled="true">
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+          <stringProp name="LoopController.loops">50</stringProp>
+        </LoopController>
+        <hashTree>
+          <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="Usuarios para seed local" enabled="true">
+            <stringProp name="filename">usuarios.csv</stringProp>
+            <stringProp name="fileEncoding">UTF-8</stringProp>
+            <stringProp name="variableNames">username,password,nome,email,matricula</stringProp>
+            <stringProp name="delimiter">,</stringProp>
+            <boolProp name="quotedData">false</boolProp>
+            <boolProp name="ignoreFirstLine">true</boolProp>
+            <boolProp name="recycle">false</boolProp>
+            <boolProp name="stopThread">false</boolProp>
+            <stringProp name="shareMode">shareMode.thread</stringProp>
+          </CSVDataSet>
+          <hashTree/>
+          <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="SETUP - cadastrar usuario ficticio" enabled="true">
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+              <collectionProp name="Arguments.arguments">
+                <elementProp name="" elementType="HTTPArgument">
+                  <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                  <stringProp name="Argument.value">{"nome":"${nome}","email":"${username}-${__P(perf.runId)}@example.invalid","matricula":"${matricula}-${__P(perf.runId)}","perfil":"SOLICITANTE"}</stringProp>
+                  <stringProp name="Argument.metadata">=</stringProp>
+                </elementProp>
+              </collectionProp>
+            </elementProp>
+            <stringProp name="HTTPSampler.path">/usuarios</stringProp>
+            <stringProp name="HTTPSampler.method">POST</stringProp>
+            <boolProp name="HTTPSampler.follow_redirects">false</boolProp>
+            <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+          </HTTPSamplerProxy>
+          <hashTree>
+            <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Autenticacao seed local" enabled="true">
+              <collectionProp name="HeaderManager.headers">
+                <elementProp name="Authorization" elementType="Header">
+                  <stringProp name="Header.name">Authorization</stringProp>
+                  <stringProp name="Header.value">Bearer ${admin_token}</stringProp>
+                </elementProp>
+                <elementProp name="Content-Type" elementType="Header">
+                  <stringProp name="Header.name">Content-Type</stringProp>
+                  <stringProp name="Header.value">application/json</stringProp>
+                </elementProp>
+              </collectionProp>
+            </HeaderManager>
+            <hashTree/>
+            <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="Extrair id do usuario seed" enabled="true">
+              <stringProp name="JSONPostProcessor.referenceNames">createdUserId</stringProp>
+              <stringProp name="JSONPostProcessor.jsonPathExprs">$.id</stringProp>
+              <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+              <stringProp name="JSONPostProcessor.defaultValues">USUARIO_AUSENTE</stringProp>
+            </JSONPostProcessor>
+            <hashTree/>
+            <JSR223PostProcessor guiclass="TestBeanGUI" testclass="JSR223PostProcessor" testname="Guardar id por usuario" enabled="true">
+              <stringProp name="cacheKey">true</stringProp>
+              <stringProp name="filename"></stringProp>
+              <stringProp name="parameters"></stringProp>
+              <stringProp name="scriptLanguage">groovy</stringProp>
+              <stringProp name="script"><![CDATA[String userIndex = vars.get('username').replace('perf-user-', '')
+String createdUserId = vars.get('createdUserId')
+if (createdUserId == null || createdUserId == 'USUARIO_AUSENTE') {
+    throw new IllegalStateException('Falha ao criar usuario ficticio no seed local.')
+}
+props.put('perf.userId.' + userIndex, createdUserId)]]></stringProp>
+            </JSR223PostProcessor>
+            <hashTree/>
+          </hashTree>
+        </hashTree>
+      </hashTree>
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Carga - disponibilidade e disputa de reserva" enabled="true">
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <stringProp name="ThreadGroup.num_threads">${__P(perf.threads,50)}</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">${__P(perf.rampUpSeconds,60)}</stringProp>
+        <boolProp name="ThreadGroup.scheduler">true</boolProp>
+        <stringProp name="ThreadGroup.duration">${__P(perf.durationSeconds,360)}</stringProp>
+        <stringProp name="ThreadGroup.delay">0</stringProp>
+        <boolProp name="ThreadGroup.same_user_on_next_iteration">true</boolProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Iteracao continua" enabled="true">
+          <boolProp name="LoopController.continue_forever">true</boolProp>
+          <stringProp name="LoopController.loops">1</stringProp>
+        </elementProp>
+      </ThreadGroup>
+      <hashTree>
+        <CSVDataSet guiclass="TestBeanGUI" testclass="CSVDataSet" testname="Usuarios ficticios" enabled="true">
+          <stringProp name="filename">usuarios.csv</stringProp>
+          <stringProp name="fileEncoding">UTF-8</stringProp>
+          <stringProp name="variableNames">username,password,nome,email,matricula</stringProp>
+          <stringProp name="delimiter">,</stringProp>
+          <boolProp name="quotedData">false</boolProp>
+          <boolProp name="ignoreFirstLine">true</boolProp>
+          <boolProp name="recycle">true</boolProp>
+          <boolProp name="stopThread">false</boolProp>
+          <stringProp name="shareMode">shareMode.all</stringProp>
+        </CSVDataSet>
+        <hashTree/>
+        <JSR223Sampler guiclass="TestBeanGUI" testclass="JSR223Sampler" testname="LOGIN local simulado - JWT HS256" enabled="true">
+          <stringProp name="cacheKey">true</stringProp>
+          <stringProp name="filename"></stringProp>
+          <stringProp name="parameters"></stringProp>
+          <stringProp name="scriptLanguage">groovy</stringProp>
+          <stringProp name="script"><![CDATA[import groovy.json.JsonOutput
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
+import java.nio.charset.StandardCharsets
+import java.util.Base64
+
+String secret = props.getProperty('JWT_SECRET') ?: System.getenv('JWT_SECRET')
+String userIndex = vars.get('username').replace('perf-user-', '')
+String subject = props.getProperty('perf.userId.' + userIndex)
+if (secret == null || secret.trim().isEmpty() || subject == null) {
+    throw new IllegalStateException('JWT_SECRET ou usuario seed ausente; confirme o setup local.')
+}
+long now = System.currentTimeMillis() / 1000L
+def encode = { byte[] value -> Base64.getUrlEncoder().withoutPadding().encodeToString(value) }
+String header = encode(JsonOutput.toJson([alg: 'HS256', typ: 'JWT']).getBytes(StandardCharsets.UTF_8))
+String payload = encode(JsonOutput.toJson([sub: subject, profile: 'SOLICITANTE', iat: now, exp: now + 3600]).getBytes(StandardCharsets.UTF_8))
+String input = header + '.' + payload
+Mac mac = Mac.getInstance('HmacSHA256')
+mac.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), 'HmacSHA256'))
+String token = input + '.' + encode(mac.doFinal(input.getBytes(StandardCharsets.US_ASCII)))
+SampleResult.setResponseCode('200')
+SampleResult.setResponseMessage('OK')
+SampleResult.setSuccessful(true)
+SampleResult.setResponseData(JsonOutput.toJson([access_token: token]), 'UTF-8')]]></stringProp>
+          </JSR223Sampler>
+          <hashTree>
+            <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="Extrair token de acesso" enabled="true">
+              <stringProp name="JSONPostProcessor.referenceNames">access_token</stringProp>
+              <stringProp name="JSONPostProcessor.jsonPathExprs">$.access_token</stringProp>
+              <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+              <stringProp name="JSONPostProcessor.defaultValues">TOKEN_AUSENTE</stringProp>
+            </JSONPostProcessor>
+            <hashTree/>
+          </hashTree>
+          <UniformRandomTimer guiclass="UniformRandomTimerGui" testclass="UniformRandomTimer" testname="Pausa de 200 a 1000 ms" enabled="true">
+            <stringProp name="ConstantTimer.delay">200</stringProp>
+            <stringProp name="RandomTimer.range">800</stringProp>
+          </UniformRandomTimer>
+          <hashTree/>
+          <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="Consulta ou criacao de reserva" enabled="true">
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+            <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
+              <collectionProp name="Arguments.arguments">
+                <elementProp name="" elementType="HTTPArgument">
+                  <boolProp name="HTTPArgument.always_encode">false</boolProp>
+                  <stringProp name="Argument.value">${requestBody}</stringProp>
+                  <stringProp name="Argument.metadata">=</stringProp>
+                </elementProp>
+              </collectionProp>
+            </elementProp>
+            <stringProp name="HTTPSampler.path">/reservas</stringProp>
+            <stringProp name="HTTPSampler.method">${requestMethod}</stringProp>
+            <boolProp name="HTTPSampler.follow_redirects">false</boolProp>
+            <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
+            <boolProp name="HTTPSampler.postBodyRaw">true</boolProp>
+          </HTTPSamplerProxy>
+          <hashTree>
+            <JSR223PreProcessor guiclass="TestBeanGUI" testclass="JSR223PreProcessor" testname="Escolher consulta 70% ou reserva 30%" enabled="true">
+              <stringProp name="cacheKey">true</stringProp>
+              <stringProp name="filename"></stringProp>
+              <stringProp name="parameters"></stringProp>
+              <stringProp name="scriptLanguage">groovy</stringProp>
+              <stringProp name="script"><![CDATA[import groovy.json.JsonOutput
+
+  boolean consulta = Math.random() < 0.70
+  vars.put('perf.operation', consulta ? 'consulta' : 'reserva')
+  vars.put('requestMethod', consulta ? 'GET' : 'POST')
+  vars.put('requestBody', consulta ? '' : JsonOutput.toJson([
+      recursoId: props.getProperty('perf.resourceId'),
+      usuarioId: props.getProperty('perf.userId.' + vars.get('username').replace('perf-user-', '')),
+      dataInicio: props.getProperty('perf.intervalStart'),
+      dataFim: props.getProperty('perf.intervalEnd')
+  ]))]]></stringProp>
+            </JSR223PreProcessor>
+            <hashTree/>
+            <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Bearer usuario ficticio" enabled="true">
+              <collectionProp name="HeaderManager.headers">
+                <elementProp name="Authorization" elementType="Header">
+                  <stringProp name="Header.name">Authorization</stringProp>
+                  <stringProp name="Header.value">Bearer ${access_token}</stringProp>
+                </elementProp>
+                <elementProp name="Content-Type" elementType="Header">
+                  <stringProp name="Header.name">Content-Type</stringProp>
+                  <stringProp name="Header.value">application/json</stringProp>
+                </elementProp>
+              </collectionProp>
+            </HeaderManager>
+            <hashTree/>
+            <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Operacao retorna somente status de negocio" enabled="true">
+              <stringProp name="Assertion.custom_message">Resposta inesperada: consulta exige 200; criacao exige 201 ou 409.</stringProp>
+              <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+              <boolProp name="Assertion.assume_success">true</boolProp>
+              <intProp name="Assertion.test_type">1</intProp>
+              <collectionProp name="Asserion.test_strings">
+                <stringProp name="^(200|201|409)$">^(200|201|409)$</stringProp>
+              </collectionProp>
+            </ResponseAssertion>
+            <hashTree/>
+            <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Nunca responder 500" enabled="true">
+              <stringProp name="Assertion.custom_message">HTTP 500 proibido para operacoes de reserva.</stringProp>
+              <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
+              <boolProp name="Assertion.assume_success">false</boolProp>
+              <intProp name="Assertion.test_type">5</intProp>
+              <collectionProp name="Asserion.test_strings">
+                <stringProp name="^500$">^500$</stringProp>
+              </collectionProp>
+            </ResponseAssertion>
+            <hashTree/>
+            <JSR223Assertion guiclass="TestBeanGUI" testclass="JSR223Assertion" testname="Status HTTP corresponde a operacao" enabled="true">
+              <stringProp name="cacheKey">true</stringProp>
+              <stringProp name="filename"></stringProp>
+              <stringProp name="parameters"></stringProp>
+              <stringProp name="scriptLanguage">groovy</stringProp>
+              <stringProp name="script"><![CDATA[String code = prev.getResponseCode()
+  boolean valid = vars.get('perf.operation') == 'consulta'
+      ? code == '200'
+      : code == '201' || code == '409'
+  AssertionResult.setFailure(false)
+  if (!valid) {
+      AssertionResult.setFailure(true)
+      AssertionResult.setFailureMessage('Status ' + code + ' nao permitido para ' + vars.get('perf.operation'))
+  }]]></stringProp>
+            </JSR223Assertion>
+            <hashTree/>
+            <JSR223PostProcessor guiclass="TestBeanGUI" testclass="JSR223PostProcessor" testname="Separar metricas por operacao" enabled="true">
+              <stringProp name="cacheKey">true</stringProp>
+              <stringProp name="filename"></stringProp>
+              <stringProp name="parameters"></stringProp>
+              <stringProp name="scriptLanguage">groovy</stringProp>
+              <stringProp name="script"><![CDATA[prev.setSampleLabel(vars.get('perf.operation') == 'consulta'
+      ? 'Disponibilidade - GET /reservas (proxy da agenda)'
+      : 'Reserva - POST /reservas')]]></stringProp>
+            </JSR223PostProcessor>
+            <hashTree/>
+          </hashTree>
+      </hashTree>
+    </hashTree>
+  </hashTree>
+</jmeterTestPlan>
