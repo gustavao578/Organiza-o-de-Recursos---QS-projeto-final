@@ -12,6 +12,7 @@ import static org.hamcrest.Matchers.containsString;
 import br.edu.organizacaorecursos.domain.Recurso;
 import br.edu.organizacaorecursos.domain.Perfil;
 import br.edu.organizacaorecursos.domain.Usuario;
+import br.edu.organizacaorecursos.domain.StatusReserva;
 import br.edu.organizacaorecursos.dto.ReservaRequestDTO;
 import br.edu.organizacaorecursos.exception.RegraNegocioException;
 import br.edu.organizacaorecursos.repository.RecursoRepository;
@@ -476,6 +477,70 @@ class ReservaApiIntegrationTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.erro")
                         .value("Reserva não encontrada para o ID informado."));
+    }
+
+    @Test
+    void disponibilizaHistoricoDeEstadoComDadosDeAuditoria() throws Exception {
+        Usuario solicitante = criarUsuario("solicitante-historico");
+        Usuario responsavel = criarUsuario("responsavel-historico");
+        Recurso recurso = recursoRepository.save(new Recurso(
+                null, "Sala com Histórico", "SALA", false, responsavel.getId()));
+        LocalDateTime inicio = inicioFuturo();
+        br.edu.organizacaorecursos.domain.Reserva reserva =
+                reservaRepository.save(new br.edu.organizacaorecursos.domain.Reserva(
+                        null,
+                        recurso,
+                        inicio,
+                        inicio.plusHours(1),
+                        StatusReserva.APROVADA,
+                        solicitante));
+
+        reservaService.iniciarReserva(reserva.getId(), responsavel.getId());
+
+        try {
+            mockMvc.perform(get("/reservas/{id}/historico", reserva.getId())
+                            .with(jwtContexto(responsavel.getId(), "RESPONSAVEL")))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$[0].reservaId").value(reserva.getId().toString()))
+                    .andExpect(jsonPath("$[0].usuarioId").value(responsavel.getId().toString()))
+                    .andExpect(jsonPath("$[0].instante").isNotEmpty())
+                    .andExpect(jsonPath("$[0].estadoAnterior").value("APROVADA"))
+                    .andExpect(jsonPath("$[0].estadoNovo").value("EM_USO"))
+                    .andExpect(jsonPath("$[0].motivo").isNotEmpty());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void solicitanteRecebe403AoConsultarHistoricoDaReserva() throws Exception {
+        UUID solicitanteId = criarUsuario("solicitante-sem-historico").getId();
+        try {
+            mockMvc.perform(get("/reservas/{id}/historico", UUID.randomUUID())
+                            .with(jwtContexto(solicitanteId, "SOLICITANTE")))
+                    .andExpect(status().isForbidden());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    void apiNaoPermiteAlterarOuExcluirRegistroDeAuditoria() throws Exception {
+        UUID reservaId = UUID.randomUUID();
+        UUID responsavelId = criarUsuario("responsavel-historico-imutavel").getId();
+        try {
+            mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                            .put("/reservas/{id}/historico", reservaId)
+                            .with(jwtContexto(responsavelId, "RESPONSAVEL"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isMethodNotAllowed());
+            mockMvc.perform(delete("/reservas/{id}/historico", reservaId)
+                            .with(jwtContexto(responsavelId, "RESPONSAVEL")))
+                    .andExpect(status().isMethodNotAllowed());
+        } finally {
+            SecurityContextHolder.clearContext();
+        }
     }
 
     @Test

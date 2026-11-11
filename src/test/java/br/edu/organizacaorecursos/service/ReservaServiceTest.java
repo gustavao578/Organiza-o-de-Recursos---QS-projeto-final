@@ -28,6 +28,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -219,6 +220,21 @@ class ReservaServiceTest {
 
         assertEquals(StatusReserva.REJEITADA, response.getStatus());
         verify(reservaRepository).save(reserva);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = StatusReserva.class, names = {"EM_USO", "CONCLUÍDA", "NÃO_COMPARECEU"})
+    void impedeExcluirReservaQueJaFoiIniciada(StatusReserva status) {
+        Reserva reserva = criarReservaPendente();
+        reserva.setStatus(status);
+        when(reservaRepository.findById(reserva.getId())).thenReturn(Optional.of(reserva));
+        when(usuarioRepository.findById(usuario.getId())).thenReturn(Optional.of(usuario));
+
+        assertThrows(
+                RegraNegocioException.class,
+                () -> reservaService.deletarReserva(reserva.getId(), usuario.getId()));
+
+        verify(reservaRepository, never()).delete(reserva);
     }
 
     @Test
