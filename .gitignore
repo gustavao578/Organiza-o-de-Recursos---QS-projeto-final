@@ -17,6 +17,8 @@ build/
 /target/
 *.log
 logs/
+/perf/resultados/*.jtl
+/perf/relatorio-*/
 
 # IDE & OS (AIOX)
 .DS_Store

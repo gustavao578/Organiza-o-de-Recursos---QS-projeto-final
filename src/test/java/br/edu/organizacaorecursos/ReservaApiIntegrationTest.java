@@ -119,7 +119,7 @@ class ReservaApiIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("APROVADA"));
         atualizarStatusReserva(segundaReservaId, admin.getId(), "RESPONSAVEL", "APROVADA")
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isConflict());
 
         Usuario usuarioComum = criarUsuario("usuario-patch-comum");
         UUID terceiraReservaId = reservaRepository.save(new br.edu.organizacaorecursos.domain.Reserva(
@@ -538,7 +538,7 @@ class ReservaApiIntegrationTest {
                 .andExpect(status().isCreated());
 
         enviarReserva(reserva(recurso.getId(), inicio.plusMinutes(30), "segundo"))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.erro")
                         .value("O recurso já está reservado neste período."));
 
@@ -553,7 +553,7 @@ class ReservaApiIntegrationTest {
         enviarReserva(reservaExistente).andExpect(status().isCreated());
 
         enviarReserva(reserva(recurso.getId(), inicioExistente.plusMinutes(30), "segundo"))
-                .andExpect(status().isBadRequest())
+                .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.erro")
                         .value("O recurso já está reservado neste período."))
                 .andExpect(jsonPath("$.detalhes").value(allOf(

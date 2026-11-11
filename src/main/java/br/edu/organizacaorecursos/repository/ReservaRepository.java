@@ -25,6 +25,22 @@ public interface ReservaRepository extends JpaRepository<Reserva, UUID> {
             @Param("dataFim") LocalDateTime dataFim);
 
     @Query("""
+            SELECT COUNT(r) > 0
+            FROM Reserva r
+            WHERE r.recurso.responsavelId = :responsavelId
+              AND (:reservaId IS NULL OR r.id <> :reservaId)
+              AND r.dataInicio < :dataFim
+              AND r.dataFim > :dataInicio
+              AND r.status IN (br.edu.organizacaorecursos.domain.StatusReserva.APROVADA,
+                               br.edu.organizacaorecursos.domain.StatusReserva.EM_USO)
+            """)
+    boolean existeConflitoDeAgendaResponsavel(
+            @Param("responsavelId") UUID responsavelId,
+            @Param("reservaId") UUID reservaId,
+            @Param("dataInicio") LocalDateTime dataInicio,
+            @Param("dataFim") LocalDateTime dataFim);
+
+    @Query("""
             SELECT r
             FROM Reserva r
             WHERE r.recurso.id = :recursoId

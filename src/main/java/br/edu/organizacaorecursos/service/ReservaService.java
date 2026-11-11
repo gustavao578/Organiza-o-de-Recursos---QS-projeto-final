@@ -46,6 +46,7 @@ public class ReservaService {
 
         Recurso recurso = recursoRepository.buscarPorIdComBloqueio(dto.getRecursoId())
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Recurso não encontrado."));
+        UUID responsavelId = bloquearAgendaDoResponsavel(recurso);
 
         Usuario usuario = usuarioRepository.findById(dto.getUsuarioId())
                 .orElseThrow(() -> new RegraNegocioException("Usuário não encontrado."));
@@ -61,8 +62,10 @@ public class ReservaService {
                 ? StatusReserva.PENDENTE
                 : StatusReserva.APROVADA;
         boolean temConflito = statusInicial == StatusReserva.APROVADA
-                && reservaRepository.existeConflitoDeHorario(
-                        recurso.getId(), dto.getDataInicio(), dto.getDataFim());
+                && (reservaRepository.existeConflitoDeHorario(
+                                recurso.getId(), dto.getDataInicio(), dto.getDataFim())
+                        || responsavelId != null && reservaRepository.existeConflitoDeAgendaResponsavel(
+                                responsavelId, null, dto.getDataInicio(), dto.getDataFim()));
         if (temConflito) {
             Reserva conflito = reservaRepository.buscarConflitosDeHorario(
                             recurso.getId(), dto.getDataInicio(), dto.getDataFim())
@@ -125,6 +128,7 @@ public class ReservaService {
 
                 Recurso recurso = recursoRepository.buscarPorIdComBloqueio(dto.getRecursoId())
                                 .orElseThrow(() -> new RecursoNaoEncontradoException("Recurso não encontrado."));
+                UUID responsavelId = bloquearAgendaDoResponsavel(recurso);
                 if (manutencaoRepository.isRecursoEmManutencao(
                                 recurso.getId(), dto.getDataInicio(), dto.getDataFim())) {
                         throw new RegraNegocioException(
@@ -135,8 +139,10 @@ public class ReservaService {
                                 ? StatusReserva.PENDENTE
                                 : StatusReserva.APROVADA;
                 if (novoStatus == StatusReserva.APROVADA
-                                && reservaRepository.existeConflitoDeHorarioAprovado(
-                                                recurso.getId(), reserva.getId(), dto.getDataInicio(), dto.getDataFim())) {
+                                && (reservaRepository.existeConflitoDeHorarioAprovado(
+                                                recurso.getId(), reserva.getId(), dto.getDataInicio(), dto.getDataFim())
+                                        || responsavelId != null && reservaRepository.existeConflitoDeAgendaResponsavel(
+                                                responsavelId, reserva.getId(), dto.getDataInicio(), dto.getDataFim()))) {
                         throw new ConflitoReservaException(
                                         "O recurso já está reservado neste período.",
                                         recurso.getNome() + ": período conflitante de "
@@ -179,11 +185,16 @@ public class ReservaService {
                 }
 
                 if (novoStatus == StatusReserva.APROVADA) {
-                        recursoRepository.buscarPorIdComBloqueio(reserva.getRecurso().getId())
+                                                Recurso recurso = recursoRepository.buscarPorIdComBloqueio(reserva.getRecurso().getId())
                                 .orElseThrow(() -> new RecursoNaoEncontradoException("Recurso não encontrado."));
+                                                responsavelId = bloquearAgendaDoResponsavel(recurso);
                         boolean temConflito = reservaRepository.existeConflitoDeHorarioAprovado(
                                 reserva.getRecurso().getId(), reserva.getId(),
                                 reserva.getDataInicio(), reserva.getDataFim());
+                        temConflito = temConflito || responsavelId != null
+                                && reservaRepository.existeConflitoDeAgendaResponsavel(
+                                        responsavelId, reserva.getId(),
+                                        reserva.getDataInicio(), reserva.getDataFim());
                         if (temConflito) {
                                 throw new ConflitoReservaException(
                                         "O recurso já está reservado neste período.",
@@ -328,7 +339,15 @@ public class ReservaService {
                 reservaRepository.delete(reserva);
     }
 
-    private ReservaResponseDTO mapearParaResponseDTO(Reserva reserva) {
+        private UUID bloquearAgendaDoResponsavel(Recurso recurso) {
+                UUID responsavelId = recurso.getResponsavelId();
+                if (responsavelId != null) {
+                        usuarioRepository.buscarPorIdComBloqueio(responsavelId);
+                }
+                return responsavelId;
+        }
+
+        private ReservaResponseDTO mapearParaResponseDTO(Reserva reserva) {
         ReservaResponseDTO response = new ReservaResponseDTO();
         response.setId(reserva.getId());
         response.setRecursoId(reserva.getRecurso().getId());
