@@ -11,6 +11,17 @@ import org.springframework.data.repository.query.Param;
 public interface ReservaRepository extends JpaRepository<Reserva, UUID> {
 
     @Query("""
+            SELECT r
+            FROM Reserva r
+            WHERE r.dataInicio < :fim
+              AND r.dataFim > :inicio
+              AND r.status <> br.edu.organizacaorecursos.domain.StatusReserva.CANCELADA
+            """)
+    List<Reserva> buscarReservasSobrepondoPeriodo(
+            @Param("inicio") LocalDateTime inicio,
+            @Param("fim") LocalDateTime fim);
+
+    @Query("""
             SELECT COUNT(r) > 0
             FROM Reserva r
             WHERE r.recurso.id = :recursoId

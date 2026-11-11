@@ -31,7 +31,8 @@ public class SecurityConfig {
             new AntPathRequestMatcher("/api/reservas/**"),
             new AntPathRequestMatcher("/recursos/**"),
             new AntPathRequestMatcher("/usuarios/**"),
-            new AntPathRequestMatcher("/manutencoes/**")));
+            new AntPathRequestMatcher("/manutencoes/**"),
+            new AntPathRequestMatcher("/relatorios/**")));
 
     private static final RequestMatcher BEARER_API_REQUEST = new AndRequestMatcher(
             API_REQUEST,

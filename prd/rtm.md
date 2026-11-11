@@ -10,6 +10,11 @@ de exclusão após início implementados após os testes RED do commit `a34547c`
 atomicidade/rollback executam em PostgreSQL via Testcontainers. Esta atualização
 local não substitui uma nova execução remota de CI/SonarCloud.
 
+**Atualização local RF-12 2026-11-11:** relatório de utilização implementado
+parcialmente conforme a linha RF-12; `./mvnw -B verify` passou com 112 testes
+(0 falhas/erros/ignorados), incluindo os testes PostgreSQL via Testcontainers.
+Esta execução local não substitui a confirmação do workflow remoto.
+
 ## 1. Objetivo e convenções
 
 Esta matriz liga cada requisito oficial RF/RNF e cada regra crítica da visão geral às evidências disponíveis e ao estado observado. Ela distingue rastreabilidade documental de cobertura comportamental: listar um requisito na RTM não significa que esteja implementado ou validado.
@@ -37,7 +42,7 @@ Os nomes de testes referem-se aos métodos das classes em `src/test/java/br/edu/
 | RF-09 | Retirada e devolução de materiais/equipamentos | Nenhuma evidência executável. | **BLOQUEADO** — modelo, estoque e fluxo de empréstimo não implementados. |
 | RF-10 | Histórico auditável de mudanças | `ReservaAuditoriaPostgresIntegrationTest` — `persisteHistoricoComMudancaDeEstadoNaMesmaTransacao`, `rollbackDaMudancaDeEstadoTambemRemoveAuditoria`; `ReservaApiIntegrationTest` — `disponibilizaHistoricoDeEstadoComDadosDeAuditoria`, `solicitanteRecebe403AoConsultarHistoricoDaReserva`, `apiNaoPermiteAlterarOuExcluirRegistroDeAuditoria`. | **PARCIAL** — transições de estado de reservas têm ator, instante via `Clock`, estado anterior/novo, motivo e leitura autorizada, com atomicidade verificada em PostgreSQL/Testcontainers; auditoria de recursos, usuários, manutenção e retenção não implementadas. |
 | RF-11 | Notificação simulada ou integração externa | Nenhuma evidência executável. | **BLOQUEADO** — canal, eventos, destinatários e comportamento de falha pendentes. |
-| RF-12 | Relatórios de utilização, carga horária e conflitos evitados | Nenhuma evidência executável. | **BLOQUEADO** — fórmulas, autorização, filtros e exportação não implementados/definidos. |
+| RF-12 | Relatórios de utilização, carga horária e conflitos evitados | `RelatorioUtilizacaoApiTest` — `agregaHorasPorRecursoEUsuarioComInterseccaoDoPeriodo`, `periodoSemReservasRetornaListasVaziasEZeroConflitos`, `rejeitaPeriodoVazioOuInvertido`, `exigeTokenEPermiteSomenteResponsavelOuAdministrador`, `registraTentativa409EContaPeloInstanteDaRecusa`, `publicaEndpointNoOpenApi`; OpenAPI `/relatorios/utilizacao`; README, seção Relatório de utilização. | **PARCIAL** — horas por recurso e por `Reserva.usuario`, interseção semiaberta e exclusão de `CANCELADA`, recusas 409 por sobreposição filtradas pelo instante, validação do período e autorização dos perfis permitidos têm testes HTTP black-box. Volume aprovado/cancelado, solicitações que exigiram aprovação, exportação e visualização não estão neste recorte. |
 | RF-13 | Interface responsiva e mensagens compreensíveis | `validaCamposObrigatoriosDoRequest`, `informaRecursoEIntervaloQuandoExisteConflitoDeReserva`, `retornaBadRequestQuandoRecursoNaoExiste`, `rejeitaUsuarioInexistente`, `rejeitaDataDeInicioNoPassado`. | **PARCIAL** — respostas HTTP e erros de API têm evidência; não há UI responsiva, nem critérios de viewport/usabilidade validados. |
 | RF-14 | Documentação de API ou fluxos públicos | `publicaDocumentacaoOpenApiEEndpointsDeReserva`. | **PARCIAL** — OpenAPI/Swagger básico validado; autenticação, erros/exemplos completos e sincronismo contínuo não verificados. |
 

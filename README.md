@@ -29,3 +29,22 @@ Os tokens carregam o identificador do usuário em `sub` e o perfil em `profile`
 (`SOLICITANTE`, `RESPONSAVEL` ou `ADMINISTRADOR`). A chave de teste em
 `src/test/resources/application.properties` existe somente para testes e não
 deve ser reutilizada em ambientes reais.
+
+## Relatório de utilização
+
+`GET /relatorios/utilizacao?inicio=2026-03-15T10:00:00&fim=2026-03-15T15:00:00`
+retorna as horas reservadas por recurso (`porRecurso`), as horas agrupadas por
+usuário associado à reserva (`porUsuario`) e a quantidade de recusas por
+sobreposição no período (`conflitosEvitados`). Os parâmetros usam data/hora
+ISO-8601; `inicio` é inclusivo e `fim` é exclusivo. Cada reserva contribui
+somente com sua interseção com o período, e reservas `CANCELADA` não contam.
+Os conflitos são filtrados pelo instante da tentativa recusada. Períodos sem
+dados retornam listas vazias e zero conflitos; um fim igual ou anterior ao
+início resulta em HTTP 400.
+
+A rota requer Bearer JWT e está disponível somente para os perfis
+`RESPONSAVEL` e `ADMINISTRADOR`. O contrato completo está publicado em
+`/v3/api-docs` e no Swagger UI em `/swagger-ui/index.html`. `porUsuario` usa
+`Reserva.usuario` como chave de agrupamento (para representar a carga horária
+associada ao professor no modelo atual); isso não infere nem valida o perfil
+Professor.

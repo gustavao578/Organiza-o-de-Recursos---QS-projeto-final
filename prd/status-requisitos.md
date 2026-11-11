@@ -3,7 +3,7 @@
 **Data da verificação:** 2026-11-11
 **Fontes:** [requisitos funcionais](requisitos-funcionais.md), [RTM](rtm.md),
 [visão geral](visão-geral.md), código e testes atuais.
-**Execução local:** `./mvnw -B verify` — BUILD SUCCESS, 105 testes, 0 falhas,
+**Execução local:** `./mvnw -B verify` — BUILD SUCCESS, 112 testes, 0 falhas,
 0 erros e 0 ignorados. A suíte inclui Spring Boot, Cucumber e PostgreSQL via
 Testcontainers. A execução verifica o build e os limites globais de JaCoCo;
 não equivale a uma validação de produção.
@@ -64,7 +64,7 @@ ordenados por risco de negócio antes de itens de apresentação/documentação.
 | **RF-09 — Registro de retirada e devolução de materiais/equipamentos** | **ausente** | Nenhum teste de retirada/devolução; não há entidades, endpoints ou fluxo de empréstimo correspondentes em `src/main/java`. | Perda de controle de estoque, itens não devolvidos, danos e responsabilidade pela retirada. |
 | **RF-10 — Histórico auditável de mudanças** | **parcial** | `ReservaAuditoriaPostgresIntegrationTest.java` — `persisteHistoricoComMudancaDeEstadoNaMesmaTransacao`, `rollbackDaMudancaDeEstadoTambemRemoveAuditoria`; `ReservaApiIntegrationTest.java` — `disponibilizaHistoricoDeEstadoComDadosDeAuditoria`, `solicitanteRecebe403AoConsultarHistoricoDaReserva`, `apiNaoPermiteAlterarOuExcluirRegistroDeAuditoria`. Prova transação/rollback de uma transição, campos do evento, leitura restrita e ausência de mutação pela API; não prova cada caminho de mudança nem audita recursos, usuários ou manutenção. | Mudanças por caminhos não cobertos ou operações fora de reservas podem ficar sem trilha para investigação e prestação de contas. |
 | **RF-11 — Notificação simulada ou integração externa** | **ausente** | Nenhum teste, serviço ou adaptador de notificação encontrado em `src/main/java` e `src/test/java`. | Usuários podem não saber sobre criação, rejeição, decisão ou pendência de reserva. |
-| **RF-12 — Relatório de utilização, carga horária e conflitos evitados** | **ausente** | Nenhum endpoint, serviço ou teste de relatório encontrado em `src/main/java` e `src/test/java`. | Gestores não conseguem medir uso, alocação ou efeito da prevenção de conflitos. |
+| **RF-12 — Relatório de utilização, carga horária e conflitos evitados** | **parcial** | `RelatorioUtilizacaoApiTest.java` — `agregaHorasPorRecursoEUsuarioComInterseccaoDoPeriodo`, `periodoSemReservasRetornaListasVaziasEZeroConflitos`, `rejeitaPeriodoVazioOuInvertido`, `exigeTokenEPermiteSomenteResponsavelOuAdministrador`, `registraTentativa409EContaPeloInstanteDaRecusa`, `publicaEndpointNoOpenApi`; `RelatorioController.java`; README, seção Relatório de utilização. Prova via HTTP real as horas por recurso/usuário (`Reserva.usuario`), recorte temporal, exclusão de canceladas, registro de conflito por instante, validação e autorização. | Ainda faltam volume de reservas aprovadas/canceladas, quantidade de solicitações que exigiram aprovação, exportação e visualização simples do relatório. |
 | **RF-13 — Interface responsiva e mensagens compreensíveis** | **parcial** | `ReservaApiIntegrationTest.java` — `informaRecursoEIntervaloQuandoExisteConflitoDeReserva`, `validaCamposObrigatoriosDoRequest`, `retornaBadRequestQuandoRecursoNaoExiste`; `ApiExceptionHandlerTest.java` cobre respostas de erro. Não foi encontrada interface web responsiva nem teste por viewport. | Erros podem ser claros na API, mas não há experiência verificável para usuário final ou dispositivos móveis. |
 | **RF-14 — Documentação da API e fluxos públicos** | **parcial** | `ReservaApiIntegrationTest.java` — `publicaDocumentacaoOpenApiEEndpointsDeReserva`; `src/main/java/br/edu/organizacaorecursos/config/OpenApiConfig.java`. OpenAPI está publicado, mas autenticação, autorização, exemplos/erros completos e sincronismo com todos os fluxos não são demonstrados. | Consumidores podem integrar incorretamente ou depender de comportamentos não documentados. |
 
@@ -88,13 +88,14 @@ ordenados por risco de negócio antes de itens de apresentação/documentação.
   `ReservaConcorrenciaPostgresIntegrationTest`, executado sem falhas no
   `verify` atual: atualizar a evidência; ainda falta testar atualização
   concorrente.
-- A RTM informa 92 testes e SonarCloud verde no run `42859680966`; esta
-  execução local contou 105 testes. A avaliação arquitetural anterior registra
-  falha de secrets/vars no SonarCloud. Não inferir o estado remoto atual sem
-  conferir o run e a configuração do repositório.
+- A RTM informa 92 testes e SonarCloud verde no run `42859680966`; a execução
+  local anterior contou 105 testes e a execução atual, 112. A avaliação
+  arquitetural anterior registra falha de secrets/vars no SonarCloud. Não
+  inferir o estado remoto atual sem conferir o run e a configuração do
+  repositório.
 - A cobertura global ou aprovação do Sonar não substitui evidência
-  comportamento-a-comportamento: RF-03, RF-09, RF-11 e RF-12 seguem sem teste
-  funcional; RF-10 e RC-08 têm cobertura parcial dos caminhos auditados.
+  comportamento-a-comportamento: RF-03, RF-09 e RF-11 seguem sem teste
+  funcional; RF-10 e RF-12 têm cobertura parcial dos caminhos auditados.
 
 ## Proposta de divisão até a Semana 46
 
