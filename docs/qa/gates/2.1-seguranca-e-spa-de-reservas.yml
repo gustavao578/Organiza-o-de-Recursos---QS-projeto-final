@@ -1,0 +1,48 @@
+schema: 1
+story: '2.1'
+story_title: 'Correções de segurança e base SPA de reservas'
+gate: CONCERNS
+status_reason: 'A suíte e os controles de API/constraint atendem às evidências disponíveis, mas o smoke em navegador do AC14 não foi executado. Também permanece exposição do console H2 habilitado e público na configuração atual; recomenda-se restringi-lo antes de produção.'
+reviewer: 'Quinn (Test Architect)'
+reviewed_revision: 'working-tree-sha256:ccda6a95194faf8420619c5705dae74ad55e773ae7294bce102af5cddf124309'
+updated: '2026-11-12T13:46:24Z'
+top_issues:
+  - id: 'TEST-001'
+    severity: medium
+    finding: 'O smoke do AC14 em navegador real (navegação, fluxos de sucesso, 401, 403 e 409) não foi executado por indisponibilidade de browser/runner; os smoke HTTP existentes e node --check não validam comportamento visual/interativo no navegador.'
+    suggested_action: 'Executar e registrar o smoke completo em Chromium/Playwright ou runner equivalente quando disponível, incluindo os fluxos de autenticação, autorização e conflito.'
+    suggested_owner: 'dev'
+  - id: 'SEC-001'
+    severity: medium
+    finding: 'O console H2 continua habilitado em application.properties e permitido sem autenticação em /h2-console/**; a configuração não o desativa no perfil prod.'
+    suggested_action: 'Desabilitar o console H2 em produção (ou restringi-lo por autenticação/rede) e validar a configuração do perfil prod antes da implantação.'
+    suggested_owner: 'dev'
+waiver: { active: false }
+quality_score: 80
+expires: '2026-11-26T13:46:24Z'
+evidence:
+  tests_reviewed: 179
+  risks_identified: 2
+  trace:
+    ac_covered: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15]
+    ac_gaps: [14]
+nfr_validation:
+  security:
+    status: CONCERNS
+    notes: 'Matriz de autorização, claims JWT, sessão e proteção da API foram revisados; persistem o console H2 público e a necessidade de selecionar explicitamente prod com JWT_SECRET.'
+  performance:
+    status: PASS
+    notes: 'Nenhuma regressão de performance foi identificada na revisão; não há meta de latência nem benchmark definidos pela story.'
+  reliability:
+    status: PASS
+    notes: 'Verify e evidências de PostgreSQL/Testcontainers reportados como aprovados; migration não remove dados e a violação de constraint é mapeada para HTTP 409.'
+  maintainability:
+    status: PASS
+    notes: 'SPA em módulos nativos, API centralizada, testes automatizados e instruções operacionais presentes; checklist QA master não está disponível no repositório.'
+recommendations:
+  immediate:
+    - action: 'Executar e registrar o smoke AC14 em navegador real antes de declarar esse critério validado.'
+      refs: ['docs/stories/2.1-seguranca-e-spa-de-reservas.md#acceptance-criteria']
+    - action: 'Desabilitar ou restringir o console H2 no perfil de produção.'
+      refs: ['src/main/resources/application.properties', 'src/main/java/br/edu/organizacaorecursos/config/SecurityConfig.java']
+  future: []

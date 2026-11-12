@@ -188,6 +188,9 @@ class ReservaServiceTest {
         when(manutencaoRepository.isRecursoEmManutencao(
                 recurso.getId(), request.getDataInicio(), request.getDataFim()))
                 .thenReturn(false);
+        when(reservaRepository.existeConflitoDeHorario(
+                recurso.getId(), request.getDataInicio(), request.getDataFim()))
+                .thenReturn(false);
         when(reservaRepository.save(any(Reserva.class))).thenAnswer(invocacao -> {
             Reserva reservaSalva = invocacao.getArgument(0);
             reservaSalva.setId(UUID.randomUUID());
@@ -197,7 +200,8 @@ class ReservaServiceTest {
         ReservaResponseDTO response = reservaService.criarReserva(request);
 
         assertEquals(StatusReserva.PENDENTE, response.getStatus());
-        verify(reservaRepository, never()).existeConflitoDeHorario(any(), any(), any());
+        verify(reservaRepository).existeConflitoDeHorario(
+                recurso.getId(), request.getDataInicio(), request.getDataFim());
     }
 
     @Test

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#153a55">
+  <title>Organização de Recursos</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script type="module" src="/js/app.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="Organização de Recursos, início">Organização de Recursos</a>
+    <div class="session-controls">
+      <span id="session-identity" class="session-identity" hidden></span>
+      <button id="logout-button" class="button button-secondary" type="button" hidden>
+        Encerrar sessão
+      </button>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <p id="app-message" class="app-message" role="status" aria-live="polite" hidden></p>
+
+    <section id="login-view" class="card login-card" aria-labelledby="login-title">
+      <h1 id="login-title">Entrar</h1>
+      <p>Use um JWT já emitido pelo provedor de identidade da sua organização.</p>
+      <form id="login-form">
+        <label for="jwt-token">Token de acesso</label>
+        <textarea id="jwt-token" name="token" rows="4" required
+                  autocomplete="off" spellcheck="false"
+                  aria-describedby="token-help"></textarea>
+        <small id="token-help">O token fica apenas nesta sessão do navegador.</small>
+        <button class="button" type="submit">Acessar painel</button>
+      </form>
+    </section>
+
+    <section id="dashboard-view" hidden aria-labelledby="dashboard-title">
+      <div class="dashboard-heading">
+        <div>
+          <p class="eyebrow">Painel</p>
+          <h1 id="dashboard-title">Reservas e recursos</h1>
+        </div>
+      </div>
+      <nav class="tabs" aria-label="Seções do painel">
+        <button class="tab-button" type="button" data-view="resources-view" aria-current="page">
+          Recursos
+        </button>
+        <button class="tab-button" type="button" data-view="reservations-view">
+          Reservas
+        </button>
+      </nav>
+      <section id="resources-view" class="card content-view" aria-labelledby="resources-title">
+        <h2 id="resources-title">Recursos disponíveis</h2>
+        <div id="resources-content"></div>
+      </section>
+      <section id="reservations-view" class="card content-view" aria-labelledby="reservations-title" hidden>
+        <h2 id="reservations-title">Reservas</h2>
+        <div id="reservations-content"></div>
+      </section>
+    </section>
+  </main>
+</body>
+</html>

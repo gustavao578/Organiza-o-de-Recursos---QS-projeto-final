@@ -10,6 +10,7 @@ import br.edu.organizacaorecursos.service.ReservaService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.http.HttpStatus;
@@ -35,13 +36,14 @@ public class ReservaController {
     private final ReservaService reservaService;
 
     @PostMapping
+    @PreAuthorize("hasAuthority('ROLE_SOLICITANTE')")
     public ResponseEntity<ReservaResponseDTO> criarReserva(
             @Valid @RequestBody ReservaRequestDTO request,
             @AuthenticationPrincipal Jwt jwt) {
-        exigirUmDosPerfis(jwt, "COMUM", "SOLICITANTE");
-        if (jwt != null) {
-            request.setUsuarioId(UUID.fromString(jwt.getSubject()));
+        if (jwt == null || !"SOLICITANTE".equals(jwt.getClaimAsString("profile"))) {
+            throw new AccessDeniedException("Somente usuários SOLICITANTE podem criar reservas.");
         }
+        request.setUsuarioId(UUID.fromString(jwt.getSubject()));
         return ResponseEntity.status(HttpStatus.CREATED).body(reservaService.criarReserva(request));
     }
 
