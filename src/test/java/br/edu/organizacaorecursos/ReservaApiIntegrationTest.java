@@ -658,6 +658,31 @@ class ReservaApiIntegrationTest {
     }
 
     @Test
+    void rejeitaSobreposicaoDePendentesEmRecursoRestrito() throws Exception {
+        // Teste de validação para RC-02 lacuna:
+        // Reservas PENDENTES (recurso restrito) não são validadas contra sobreposição
+        // porque a verificação de conflito está vinculada a statusInicial == APROVADA
+        UUID recursoId = criarRecursoRestrito(null);
+        LocalDateTime inicio = inicioFuturo();
+
+        // Primeira reserva PENDENTE criada (não aprovada, pois recurso restrito)
+        enviarReserva(reserva(recursoId, inicio, "primeiro"))
+                .andExpect(status().isCreated());
+
+        // Segunda reserva PENDENTE com sobreposição
+        // Esperado: 409 CONFLICT
+        // Atual (lacuna): 201 CREATED (sem validação de conflito para PENDENTES)
+        enviarReserva(reserva(recursoId, inicio.plusMinutes(30), "segundo"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.erro")
+                        .value("O recurso já está reservado neste período."));
+
+        // Se teste falhar aqui, é porque a lacuna existe:
+        // Duas PENDENTES foram criadas sem conflito
+        org.assertj.core.api.Assertions.assertThat(reservaRepository.count()).isEqualTo(1);
+    }
+
+    @Test
     void rejeitaDataFimIgualAoInicio() throws Exception {
         Recurso recurso = criarRecurso();
         LocalDateTime inicio = inicioFuturo();

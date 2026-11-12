@@ -1,0 +1,298 @@
+================================================================================
+                   ANÁLISE DE SEGURANÇA - RELATÓRIO EXECUTIVO
+================================================================================
+Data: 2026-11-12
+Projeto: Organização de Recursos - QS (Projeto Final)
+Analisador: Análise de Segurança de Aplicações
+Status: ⚠️ REVISÃO CRÍTICA NECESSÁRIA
+
+================================================================================
+                                 SUMÁRIO EXECUTIVO
+================================================================================
+
+ACHADO CRÍTICO: 54% dos endpoints (15 de 28) carecem de proteção adequada de 
+autenticação e autorização. 3 controladores estão completamente desprotegidos.
+
+RISCO: ALTO → Possibilidade de:
+  • Criação de recursos falsos por usuários anônimos
+  • Deleção de recursos críticos do sistema
+  • Escalação de privilégio (usuário comum → administrador)
+  • Bloqueio de sistema via manutenção indefinida
+  • Exposição de dados sensíveis (emails, matrículas)
+
+IMPACTO ESTIMADO: Crítico para negócio
+TEMPO DE CORREÇÃO: 2-3 horas (Prioridade 1) + 1-2 horas (Prioridade 2)
+
+================================================================================
+                          ESTATÍSTICAS POR CONTROLADOR
+================================================================================
+
+1. RecursoController
+   ├─ Total de endpoints: 5
+   ├─ Protegidos: 0 (0%) ❌❌❌
+   ├─ Desprotegidos: 5 (100%)
+   ├─ Severidade: 🔴 CRÍTICA
+   └─ Problema: Qualquer pessoa cria/modifica/deleta recursos
+      └─ Impacto: Recurso pode ser deletado por atacante anônimo
+
+2. ManutencaoController
+   ├─ Total de endpoints: 2
+   ├─ Protegidos: 0 (0%) ❌❌
+   ├─ Desprotegidos: 2 (100%)
+   ├─ Severidade: 🔴 CRÍTICA
+   └─ Problema: Qualquer pessoa cria/lista manutenções
+      └─ Impacto: Negócio parado (recurso bloqueado 24h)
+
+3. UsuarioController
+   ├─ Total de endpoints: 5
+   ├─ Protegidos: 1 (20%) ⚠️
+   ├─ Desprotegidos: 4 (80%)
+   ├─ Severidade: 🔴 CRÍTICA + 🟠 ALTA
+   └─ Problemas:
+      ├─ DELETE sem autenticação → CRÍTICO
+      ├─ PUT sem validação de posse → CRÍTICO (escalação de privilégio)
+      └─ GET sem autenticação → ALTA (exposição de dados)
+
+4. ReservaController
+   ├─ Total de endpoints: 13
+   ├─ Protegidos: 11 (85%) ✅
+   ├─ Com problemas: 2 (15%) ⚠️
+   ├─ Severidade: 🟡 MÉDIA
+   └─ Problemas:
+      ├─ GET /historico → Lógica confusa (exclui Solicitante)
+      └─ POST /nao-compareceu → Rejeita Admin sem razão clara
+
+5. RelatorioController
+   ├─ Total de endpoints: 1
+   ├─ Protegidos: 1 (100%) ✅
+   ├─ Severidade: NENHUMA
+   └─ Status: Correto
+
+RESUMO GERAL:
+  Total de endpoints: 28
+  Bem protegidos: 13 (46%) ✅
+  Com problemas: 2 (7%) ⚠️
+  Desprotegidos: 13 (46%) ❌
+  Taxa de proteção: 46%
+
+================================================================================
+                          DIVERGÊNCIAS POR SEVERIDADE
+================================================================================
+
+🔴 CRÍTICAS (4) - Implementar HOJE:
+  1. RecursoController - Sem autenticação (POST/PUT/DELETE)
+  2. ManutencaoController - Sem autenticação (POST)
+  3. UsuarioController - DELETE sem autenticação
+  4. UsuarioController - PUT sem validação de posse (escalação)
+
+🟠 ALTAS (1) - Implementar esta semana:
+  5. UsuarioController - GET sem autenticação (exposição de dados)
+
+🟡 MÉDIAS (4) - Próximo sprint:
+  6. ReservaController - GET /historico (Solicitante excluído)
+  7. ReservaController - POST /nao-compareceu (Admin rejeitado)
+  8. UsuarioController - Validação de posse em GET (ver a si mesmo)
+  9. Falta auditoria de operações sensíveis
+
+================================================================================
+                            TOP 3 CENÁRIOS DE ATAQUE
+================================================================================
+
+CENÁRIO 1: Bloqueio de Sistema
+┌─────────────────────────────────────────────────────────────────┐
+│ 1. Atacante (anônimo) descobre UUID de recurso crítico         │
+│ 2. POST /manutencoes → Cria manutenção indefinida              │
+│ 3. Recurso está 100% bloqueado                                  │
+│ 4. Negócio parado até admin deletar manutenção manualmente    │
+│                                                                 │
+│ Tempo para executar: < 10 segundos                             │
+│ Conhecimento técnico necessário: Mínimo                        │
+│ Impacto: CRÍTICO (sistema indisponível)                        │
+└─────────────────────────────────────────────────────────────────┘
+
+CENÁRIO 2: Escalação de Privilégio (Usuário → Admin)
+┌─────────────────────────────────────────────────────────────────┐
+│ 1. Atacante cria conta como Solicitante (POST /usuarios)        │
+│ 2. Obtém UUID de um Admin (GET /usuarios)                       │
+│ 3. PUT /usuarios/{admin-uuid} com perfil=SOLICITANTE            │
+│ 4. Agora é Admin (ou conseguiu descobrir seus dados)            │
+│ 5. DELETE todos os usuários legítimos                           │
+│                                                                 │
+│ Tempo para executar: < 1 minuto                                │
+│ Conhecimento técnico: Baixo (curl + UUIDs)                     │
+│ Impacto: CRÍTICO (invasão total)                               │
+└─────────────────────────────────────────────────────────────────┘
+
+CENÁRIO 3: Deleção em Cascata
+┌─────────────────────────────────────────────────────────────────┐
+│ 1. DELETE /usuarios/{id} × 10 → Remove usuários                 │
+│ 2. DELETE /recursos/{id} × 20 → Remove recursos                 │
+│ 3. DELETE /manutencoes/{id} não existe, mas POST cria bloqueios  │
+│ 4. Sistema inoperável                                           │
+│                                                                 │
+│ Tempo para executar: < 5 minutos (script automatizado)         │
+│ Conhecimento técnico: Médio (automação)                        │
+│ Impacto: CRÍTICO (perda de dados)                              │
+└─────────────────────────────────────────────────────────────────┘
+
+================================================================================
+                         PLANO DE CORREÇÃO (PRIORIZADO)
+================================================================================
+
+✓ PRIORIDADE 1️⃣ - HOJE (2-3 horas)
+  Implementar autenticação obrigatória nos 4 controllers críticos
+  
+  [ ] RecursoController
+      [ ] POST /recursos → Exigir ADMINISTRADOR
+      [ ] PUT /recursos/{id} → Exigir ADMINISTRADOR
+      [ ] DELETE /recursos/{id} → Exigir ADMINISTRADOR
+      [ ] Tempo: ~45 minutos
+  
+  [ ] ManutencaoController
+      [ ] POST /manutencoes → Exigir RESPONSAVEL/ADMINISTRADOR
+      [ ] GET /manutencoes → Exigir autenticação mínima
+      [ ] Tempo: ~30 minutos
+  
+  [ ] UsuarioController (correções críticas)
+      [ ] DELETE /usuarios/{id} → Exigir ADMINISTRADOR
+      [ ] PUT /usuarios/{id} → Adicionar validação de posse
+      [ ] Tempo: ~45 minutos
+  
+  [ ] Rodar testes de segurança
+      [ ] npm test (ou maven test)
+      [ ] Tempo: ~15 minutos
+
+✓ PRIORIDADE 2️⃣ - ESTA SEMANA (1-2 horas)
+  
+  [ ] UsuarioController
+      [ ] GET /usuarios → Exigir autenticação
+      [ ] GET /usuarios/{id} → Exigir autenticação
+      [ ] Tempo: ~30 minutos
+  
+  [ ] ReservaController
+      [ ] GET /reservas/{id}/historico → Permitir Solicitante
+      [ ] POST /reservas/{id}/nao-compareceu → Definir política
+      [ ] Tempo: ~45 minutos
+
+✓ PRIORIDADE 3️⃣ - PRÓXIMO SPRINT
+  
+  [ ] Implementar auditoria
+  [ ] Criar testes de segurança automatizados
+  [ ] Documento de política de autenticação/autorização
+
+================================================================================
+                          TESTES CRÍTICOS (VALIDAÇÃO)
+================================================================================
+
+TESTE 1: RecursoController POST sem autenticação
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Comando:
+  curl -X POST http://localhost:8080/recursos \
+    -H "Content-Type: application/json" \
+    -d '{"nome":"Recurso Fake","tipo":"SALA","restrito":false}'
+
+Status ATUAL: 201 Created ❌ (INCORRETO)
+Status ESPERADO: 401 Unauthorized ✅
+
+TESTE 2: UsuarioController DELETE sem autenticação
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Comando:
+  curl -X DELETE http://localhost:8080/usuarios/550e8400-e29b-41d4-a716-446655440000
+
+Status ATUAL: 204 No Content ❌ (INCORRETO)
+Status ESPERADO: 401 Unauthorized ✅
+
+TESTE 3: UsuarioController PUT (escalação de privilégio)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Comando:
+  # Assumir que você tem token de Solicitante e UUID de Admin
+  curl -X PUT http://localhost:8080/usuarios/ADMIN-UUID \
+    -H "Authorization: Bearer SOLICITANTE-TOKEN" \
+    -H "Content-Type: application/json" \
+    -d '{"perfil":"SOLICITANTE"}'
+
+Status ATUAL: 200 OK ❌ (INCORRETO - permite escalar)
+Status ESPERADO: 403 Forbidden ✅
+
+TESTE 4: ManutencaoController POST sem autenticação
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Comando:
+  curl -X POST http://localhost:8080/manutencoes \
+    -H "Content-Type: application/json" \
+    -d '{"recursoId":"550e8400-e29b-41d4-a716-446655440000","dataInicio":"2026-11-12T10:00:00","dataFim":"2026-11-13T10:00:00"}'
+
+Status ATUAL: 201 Created ❌ (INCORRETO)
+Status ESPERADO: 401 Unauthorized ✅
+
+================================================================================
+                              MATRIZ RÁPIDA
+================================================================================
+
+Controlador          | Protegido | Falhas | Severidade | Ação
+─────────────────────┼───────────┼────────┼────────────┼─────────────────
+ReservaController    | ✅ 11/13  | 2      | 🟡 Média   | Corrigir lógica
+RecursoController    | ❌ 0/5    | 5      | 🔴 Crítica | Adicionar auth
+UsuarioController    | ⚠️ 1/5    | 4      | 🔴 Crítica | Múltiplas falhas
+ManutencaoController | ❌ 0/2    | 2      | 🔴 Crítica | Adicionar auth
+RelatorioController  | ✅ 1/1    | 0      | ✅ Correto | Nenhuma ação
+
+================================================================================
+                             RECOMENDAÇÕES FINAIS
+================================================================================
+
+1. CURTO PRAZO (Hoje):
+   ✓ Implementar correções Prioridade 1️⃣
+   ✓ Rodar testes para validar
+   ✓ Fazer code review de segurança
+   ✓ Revisar e aprovar esta análise com o time
+
+2. MÉDIO PRAZO (Semana):
+   ✓ Implementar correções Prioridade 2️⃣
+   ✓ Adicionar testes de segurança automatizados
+   ✓ Documen política de autenticação/autorização
+
+3. LONGO PRAZO (Sprint):
+   ✓ Auditoria de segurança periódica
+   ✓ Code review com foco em segurança
+   ✓ Treinamento de segurança para o time
+
+================================================================================
+                              DOCUMENTAÇÃO GERADA
+================================================================================
+
+Todos os detalhes estão documentados em docs/seguranca/:
+
+1. README.md
+   └─ Visão geral e guia de leitura por perfil
+   
+2. matriz-autorizacao.md (294 linhas)
+   └─ Matriz completa operação × perfil × código HTTP
+   └─ Regras especiais (posse, recurso restrito, auto-aprovação)
+   └─ Divergências marcadas com ⚠️
+   
+3. DIVERGENCIAS.md (377 linhas)
+   └─ Análise detalhada de cada divergência
+   └─ Cenários de ataque com passo-a-passo
+   └─ Código de correção sugerido
+   └─ Plano de implementação por fases
+   
+4. ROTAS-DESPROTEGIDAS.md (300 linhas)
+   └─ Inventário de endpoints sem proteção
+   └─ Análise de risco (Confidencialidade/Integridade/Disponibilidade)
+   └─ Templates prontos para copiar/colar
+   └─ Checklist de remediação
+
+TOTAL: 1.197 linhas de documentação
+
+================================================================================
+                                PRÓXIMAS ETAPAS
+================================================================================
+
+1. Revisar esta análise com o time de desenvolvimento
+2. Aprovar plano de correção (Prioridades 1/2/3)
+3. Implementar Prioridade 1️⃣ HOJE
+4. Rodar testes de segurança após implementação
+5. Documentar políticas em docs/seguranca/POLITICA-AUTENTICACAO.md
+6. Integrar testes de segurança ao CI/CD
+
+================================================================================
