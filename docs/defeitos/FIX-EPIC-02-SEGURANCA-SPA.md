@@ -24,16 +24,27 @@ inicialização de JWT_SECRET.
 ## Inicialização e segredo JWT
 
 - `application.properties` não contém fallback JWT e declara
-  `spring.profiles.default=local`. O segredo de desenvolvimento existe somente
-  em `application-local.properties`, para o perfil local padrão.
-- `application-prod.properties` exige `${JWT_SECRET}` sem fallback. Para
-  produção, ative `SPRING_PROFILES_ACTIVE=prod` e injete um segredo aleatório
-  com no mínimo 32 bytes; sem a variável, a inicialização falha.
-- `SecurityConfig.jwtDecoder` valida o tamanho em bytes no início do contexto e
-  falha explicitamente para segredos menores que 256 bits.
-- O segredo de teste continua isolado em `src/test/resources/application.properties`.
-- Boot validado com `JWT_SECRET` ausente: o perfil padrão seleciona `local` e
-  inicia; `local` explícito também inicia; `prod` falha ao resolver `${JWT_SECRET}`.
+  `spring.profiles.default=local`.
+- Sem `JWT_SECRET`, `SecurityConfig` gera uma chave HS256 aleatória de 256 bits
+  em memória. Ela não é persistida/compartilhada e muda a cada inicialização;
+  ambientes com tokens emitidos por provedor externo devem configurar o mesmo
+  segredo em todas as instâncias.
+- Segredos configurados são validados em bytes no startup e rejeitados se
+  menores que 256 bits. Testes usam a chave efêmera do próprio contexto e não
+  armazenam segredos em arquivos `.properties`.
+- H2 e suas configurações foram limitados ao perfil local, sem senha textual e
+  com console desativado. O perfil `prod` usa PostgreSQL com credenciais via
+  `DATABASE_URL`, `DATABASE_USERNAME` e `DATABASE_PASSWORD`, desativa o console
+  H2 e valida o schema sem atualizá-lo.
+
+## Vulnerabilidade SonarCloud e cobertura
+
+- `ManutencaoController` recebe `ManutencaoRequestDTO` em vez da entidade JPA;
+  o identificador é sempre gerado no servidor, impedindo merge/edição por
+  `id` enviado pelo cliente (SonarCloud `java:S4684`).
+- Testes focados cobrem chave JWT efêmera/configurada, rejeição de JWT expirado,
+  guards de principal ausente e tentativa de alterar manutenção enviando um
+  `id` existente.
 
 ## Sobreposição de reservas
 
@@ -68,7 +79,10 @@ inicialização de JWT_SECRET.
 ## Evidências e arquivos de referência
 
 - Testes de integração e autorização: `src/test/java/br/edu/organizacaorecursos/`.
-- `./mvnw -B verify`: 179 testes, 0 falhas/erros/ignorados; gate JaCoCo aprovado.
+- `./mvnw -B clean verify`: 189 testes, 0 falhas/erros/ignorados; JaCoCo
+  registra 92% de cobertura de linhas e 74% de branches, acima dos limites do
+  build (80% linhas, 70% branches). A reanálise SonarCloud após o push ainda é
+  necessária para confirmar a métrica de cobertura em código novo do PR.
 - O smoke browser do AC14 permanece pendente: não há Chromium, Playwright ou
   Puppeteer/runner de browser instalado no ambiente. Não considerar essa
   validação de browser cumprida.

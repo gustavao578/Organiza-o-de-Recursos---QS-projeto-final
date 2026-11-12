@@ -13,6 +13,7 @@ import br.edu.organizacaorecursos.domain.Recurso;
 import br.edu.organizacaorecursos.domain.Perfil;
 import br.edu.organizacaorecursos.domain.Usuario;
 import br.edu.organizacaorecursos.domain.StatusReserva;
+import br.edu.organizacaorecursos.dto.ManutencaoRequestDTO;
 import br.edu.organizacaorecursos.dto.ReservaRequestDTO;
 import br.edu.organizacaorecursos.exception.RegraNegocioException;
 import br.edu.organizacaorecursos.repository.RecursoRepository;
@@ -766,12 +767,8 @@ class ReservaApiIntegrationTest {
     void impedeReservaDuranteManutencao() throws Exception {
         Recurso recurso = criarRecurso();
         LocalDateTime inicio = inicioFuturo();
-        var manutencao = new br.edu.organizacaorecursos.domain.Manutencao(
-                null,
-                recurso,
-                inicio,
-                inicio.plusHours(2),
-                "Reparo");
+        var manutencao = new ManutencaoRequestDTO(
+                recurso.getId(), inicio, inicio.plusHours(2), "Reparo");
 
         mockMvc.perform(post("/manutencoes")
                         .with(jwtContexto(UUID.randomUUID(), "RESPONSAVEL"))
@@ -874,8 +871,8 @@ class ReservaApiIntegrationTest {
     void listaManutencoesPelaApi() throws Exception {
         Recurso recurso = criarRecurso();
         LocalDateTime inicio = inicioFuturo();
-        var manutencao = new br.edu.organizacaorecursos.domain.Manutencao(
-                null, recurso, inicio, inicio.plusHours(1), "Reparo");
+        var manutencao = new ManutencaoRequestDTO(
+                recurso.getId(), inicio, inicio.plusHours(1), "Reparo");
 
         mockMvc.perform(post("/manutencoes")
                         .with(jwtContexto(UUID.randomUUID(), "RESPONSAVEL"))
@@ -891,10 +888,36 @@ class ReservaApiIntegrationTest {
     }
 
     @Test
+    void naoPermiteAtualizarManutencaoAoEnviarIdExistenteNoCorpo() throws Exception {
+        Recurso recurso = criarRecurso();
+        LocalDateTime inicio = inicioFuturo();
+        var manutencaoExistente = manutencaoRepository.save(
+                new br.edu.organizacaorecursos.domain.Manutencao(
+                        null, recurso, inicio, inicio.plusHours(1), "Descrição original"));
+        String request = """
+                {"id":"%s","recursoId":"%s","dataInicio":"%s","dataFim":"%s","descricao":"Alterada"}
+                """.formatted(manutencaoExistente.getId(), recurso.getId(), inicio.plusHours(2),
+                inicio.plusHours(3));
+
+        mockMvc.perform(post("/manutencoes")
+                        .with(jwtContexto(UUID.randomUUID(), "ADMINISTRADOR"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(org.hamcrest.Matchers.not(
+                        manutencaoExistente.getId().toString())));
+
+        org.assertj.core.api.Assertions.assertThat(manutencaoRepository.count()).isEqualTo(2);
+        org.assertj.core.api.Assertions.assertThat(
+                        manutencaoRepository.findById(manutencaoExistente.getId()).orElseThrow().getDescricao())
+                .isEqualTo("Descrição original");
+    }
+
+    @Test
     void rejeitaManutencaoSemDatasOuDescricaoObrigatorias() throws Exception {
         Recurso recurso = criarRecurso();
         String request = """
-                {"recurso":{"id":"%s"}}
+                {"recursoId":"%s"}
                 """.formatted(recurso.getId());
 
         mockMvc.perform(post("/manutencoes")
@@ -913,7 +936,7 @@ class ReservaApiIntegrationTest {
     void rejeitaManutencaoSemIdentificadorDeRecurso() throws Exception {
         LocalDateTime inicio = inicioFuturo();
         String request = """
-                {"recurso":{},"dataInicio":"%s","dataFim":"%s","descricao":"Reparo"}
+                {"dataInicio":"%s","dataFim":"%s","descricao":"Reparo"}
                 """.formatted(inicio, inicio.plusHours(1));
 
         mockMvc.perform(post("/manutencoes")
@@ -938,7 +961,7 @@ class ReservaApiIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(request))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.recurso").value("O recurso é obrigatório."));
+                .andExpect(jsonPath("$.erro").value("O ID do recurso é obrigatório."));
 
         org.assertj.core.api.Assertions.assertThat(manutencaoRepository.count()).isZero();
     }
@@ -947,7 +970,7 @@ class ReservaApiIntegrationTest {
     void retornaNotFoundAoCriarManutencaoParaRecursoInexistente() throws Exception {
         LocalDateTime inicio = inicioFuturo();
         String request = """
-                {"recurso":{"id":"%s"},"dataInicio":"%s","dataFim":"%s","descricao":"Reparo"}
+                {"recursoId":"%s","dataInicio":"%s","dataFim":"%s","descricao":"Reparo"}
                 """.formatted(UUID.randomUUID(), inicio, inicio.plusHours(1));
 
         mockMvc.perform(post("/manutencoes")

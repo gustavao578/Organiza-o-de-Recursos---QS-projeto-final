@@ -1,6 +1,7 @@
 package br.edu.organizacaorecursos.controller;
 
 import br.edu.organizacaorecursos.domain.Manutencao;
+import br.edu.organizacaorecursos.dto.ManutencaoRequestDTO;
 import br.edu.organizacaorecursos.exception.RegraNegocioException;
 import jakarta.validation.Valid;
 import br.edu.organizacaorecursos.repository.ManutencaoRepository;
@@ -8,9 +9,9 @@ import br.edu.organizacaorecursos.repository.RecursoRepository;
 import jakarta.persistence.EntityNotFoundException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
@@ -31,14 +32,16 @@ public class ManutencaoController {
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'RESPONSAVEL')")
     public ResponseEntity<Manutencao> criarManutencao(
-            @Valid @RequestBody Manutencao manutencao,
+            @Valid @RequestBody ManutencaoRequestDTO request,
             @AuthenticationPrincipal Jwt jwt) {
         exigirJwt(jwt);
-        if (manutencao.getRecurso() == null || manutencao.getRecurso().getId() == null) {
+        if (request.recursoId() == null) {
             throw new RegraNegocioException("O ID do recurso é obrigatório.");
         }
-        manutencao.setRecurso(recursoRepository.findById(manutencao.getRecurso().getId())
-                .orElseThrow(() -> new EntityNotFoundException("Recurso não encontrado.")));
+        var recurso = recursoRepository.findById(request.recursoId())
+                .orElseThrow(() -> new EntityNotFoundException("Recurso não encontrado."));
+        Manutencao manutencao = new Manutencao(
+                null, recurso, request.dataInicio(), request.dataFim(), request.descricao());
         return ResponseEntity.status(HttpStatus.CREATED).body(manutencaoRepository.save(manutencao));
     }
 

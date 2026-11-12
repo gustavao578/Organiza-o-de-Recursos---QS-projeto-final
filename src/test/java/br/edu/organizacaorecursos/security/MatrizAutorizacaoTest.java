@@ -21,12 +21,11 @@ import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.UUID;
 import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.SecretKey;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
@@ -54,7 +53,7 @@ class MatrizAutorizacaoTest {
     @Autowired private ReservaRepository reservaRepository;
     @Autowired private UsuarioRepository usuarioRepository;
     @Autowired private JdbcTemplate jdbcTemplate;
-    @Value("${security.jwt.secret}") private String jwtSecret;
+    @Autowired private SecretKey jwtSigningKey;
 
     private Usuario solicitante1;
     private Usuario solicitante2;
@@ -308,7 +307,7 @@ class MatrizAutorizacaoTest {
     @CsvSource({"Anônimo,401,null", "Solicitante,403,SOLICITANTE", "Responsável,201,RESPONSAVEL", "Administrador,201,ADMINISTRADOR"})
     void testarCriarManutencaoDesprotegido(String descricao, int statusEsperado, String perfilStr) throws Exception {
         var request = java.util.Map.of(
-                "recurso", java.util.Map.of("id", recursoPublico.getId()),
+                "recursoId", recursoPublico.getId(),
                 "dataInicio", LocalDateTime.now().plusHours(1).toString(),
                 "dataFim", LocalDateTime.now().plusHours(2).toString(),
                 "descricao", "Manutenção de teste");
@@ -370,7 +369,7 @@ class MatrizAutorizacaoTest {
         String content = header + "." + payload;
         try {
             Mac mac = Mac.getInstance("HmacSHA256");
-            mac.init(new SecretKeySpec(jwtSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            mac.init(jwtSigningKey);
             return content + "." + Base64.getUrlEncoder().withoutPadding()
                     .encodeToString(mac.doFinal(content.getBytes(StandardCharsets.US_ASCII)));
         } catch (java.security.GeneralSecurityException exception) {

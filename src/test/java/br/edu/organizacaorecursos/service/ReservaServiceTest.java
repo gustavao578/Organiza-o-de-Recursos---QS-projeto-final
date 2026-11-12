@@ -16,6 +16,7 @@ import br.edu.organizacaorecursos.domain.StatusReserva;
 import br.edu.organizacaorecursos.domain.Usuario;
 import br.edu.organizacaorecursos.dto.ReservaRequestDTO;
 import br.edu.organizacaorecursos.dto.ReservaResponseDTO;
+import br.edu.organizacaorecursos.exception.ConflitoReservaException;
 import br.edu.organizacaorecursos.exception.RegraNegocioException;
 import br.edu.organizacaorecursos.repository.ManutencaoRepository;
 import br.edu.organizacaorecursos.repository.ReservaAuditoriaRepository;
@@ -27,6 +28,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.Optional;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -135,7 +137,8 @@ class ReservaServiceTest {
     }
 
     @Test
-    void rejeitaReservaQuandoExisteChoqueDeHorario() {
+    void rejeitaSobreposicaoMesmoQuandoRecursoRestritoGerariaStatusPendente() {
+        recurso.setRestrito(true);
         prepararRecursoEUsuario();
         when(manutencaoRepository.isRecursoEmManutencao(
                 recurso.getId(), request.getDataInicio(), request.getDataFim()))
@@ -143,13 +146,18 @@ class ReservaServiceTest {
         when(reservaRepository.existeConflitoDeHorario(
                 recurso.getId(), request.getDataInicio(), request.getDataFim()))
                 .thenReturn(true);
+        when(reservaRepository.buscarConflitosDeHorario(
+                recurso.getId(), request.getDataInicio(), request.getDataFim()))
+                .thenReturn(List.of());
 
-        RegraNegocioException exception = assertThrows(
-                RegraNegocioException.class,
+        ConflitoReservaException exception = assertThrows(
+                ConflitoReservaException.class,
                 () -> reservaService.criarReserva(request));
 
         assertEquals("O recurso já está reservado neste período.", exception.getMessage());
         verify(reservaRepository, never()).save(any(Reserva.class));
+        verify(reservaRepository).existeConflitoDeHorario(
+                recurso.getId(), request.getDataInicio(), request.getDataFim());
     }
 
     @Test
