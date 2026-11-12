@@ -5,6 +5,7 @@ import br.edu.organizacaorecursos.dto.RelatorioUtilizacaoResponseDTO;
 import br.edu.organizacaorecursos.exception.RegraNegocioException;
 import br.edu.organizacaorecursos.repository.ConflitoReservaRepository;
 import br.edu.organizacaorecursos.repository.ReservaRepository;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -20,6 +21,7 @@ public class RelatorioUtilizacaoService {
 
     private final ReservaRepository reservaRepository;
     private final ConflitoReservaRepository conflitoReservaRepository;
+    private final Clock clock;
 
     @Transactional(readOnly = true)
     public RelatorioUtilizacaoResponseDTO gerar(LocalDateTime inicio, LocalDateTime fim) {
@@ -37,7 +39,9 @@ public class RelatorioUtilizacaoService {
             LocalDateTime fimInterseccao = reserva.getDataFim().isBefore(fim)
                     ? reserva.getDataFim()
                     : fim;
-            Duration duracao = Duration.between(inicioInterseccao, fimInterseccao);
+            Duration duracao = Duration.between(
+                    inicioInterseccao.atZone(clock.getZone()).toInstant(),
+                    fimInterseccao.atZone(clock.getZone()).toInstant());
 
             somar(porRecurso, reserva.getRecurso().getId(), reserva.getRecurso().getNome(), duracao);
             somar(porUsuario, reserva.getUsuario().getId(), reserva.getUsuario().getNome(), duracao);

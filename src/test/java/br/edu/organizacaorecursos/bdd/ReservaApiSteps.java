@@ -26,13 +26,12 @@ import io.cucumber.java.Before;
 import io.cucumber.java.pt.Dado;
 import io.cucumber.java.pt.Entao;
 import io.cucumber.java.pt.Quando;
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import javax.crypto.SecretKey;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -64,8 +63,8 @@ public class ReservaApiSteps {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    @Value("${security.jwt.secret}")
-    private String jwtSecret;
+    @Autowired
+    private SecretKey jwtSigningKey;
 
     private UUID recursoId;
     private UUID solicitanteId;
@@ -354,7 +353,7 @@ public class ReservaApiSteps {
                     .expirationTime(Date.from(clock.instant().plusSeconds(3600)))
                     .build();
             SignedJWT jwt = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims);
-            jwt.sign(new MACSigner(jwtSecret.getBytes(StandardCharsets.UTF_8)));
+            jwt.sign(new MACSigner(jwtSigningKey.getEncoded()));
             return jwt.serialize();
         } catch (Exception exception) {
             throw new IllegalStateException("Não foi possível gerar o token de teste.", exception);
