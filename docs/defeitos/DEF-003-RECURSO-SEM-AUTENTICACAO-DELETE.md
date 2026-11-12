@@ -1,9 +1,12 @@
 # DEF-003: DELETE /recursos sem autenticação obrigatória
 
 **Data**: 2026-11-12  
-**Status**: 🔴 ABERTO  
+**Status**: ✅ FECHADO  
 **Severidade**: CRÍTICA  
 **Categoria**: Falta de autenticação  
+**Fechado por**: PR #8 - fix(epic-02): secure reservation SPA and API  
+**Merged em**: 2026-11-12T12:14:52-03:00  
+**Commit**: 58411ac0904a248e1ccae74094f775e8611c3cf8  
 
 ## Resumo
 
