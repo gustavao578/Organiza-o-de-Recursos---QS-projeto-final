@@ -88,6 +88,9 @@ docs/
 ├── DOCUMENTACAO-AUDITORIA-FINAL-2026-11-12.md
 │   └── Sumário consolidado com todas as métricas
 │
+├── relatorio-qualidade.md ⭐ RELATÓRIO EXECUTIVO DE QUALIDADE
+│   └── Cobertura de código, RTM, bloqueadores e recomendações
+│
 ├── testes/
 │   ├── AUDITORIA-INDEX.md ⭐ GUIA DE NAVEGAÇÃO
 │   │   └── Roteiros por perfil (Exec, QA, Dev, Arquiteto)
