@@ -42,9 +42,13 @@ inicialização de JWT_SECRET.
 - `ManutencaoController` recebe `ManutencaoRequestDTO` em vez da entidade JPA;
   o identificador é sempre gerado no servidor, impedindo merge/edição por
   `id` enviado pelo cliente (SonarCloud `java:S4684`).
+- `RelatorioUtilizacaoService` converte as datas locais para instantes usando o
+  fuso do `Clock` antes de calcular durações. Isso evita contabilizar
+  incorretamente reservas que atravessam transições de horário de verão
+  (SonarCloud `java:S8700`).
 - Testes focados cobrem chave JWT efêmera/configurada, rejeição de JWT expirado,
-  guards de principal ausente e tentativa de alterar manutenção enviando um
-  `id` existente.
+  guards de principal ausente, tentativa de alterar manutenção enviando um
+  `id` existente e duração durante transição de horário de verão.
 
 ## Sobreposição de reservas
 
