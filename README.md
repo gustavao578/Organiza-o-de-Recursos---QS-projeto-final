@@ -24,27 +24,31 @@ O passo SonarCloud do workflow requer o secret `SONAR_TOKEN` e as variáveis
 ## Autenticação da API
 
 As rotas da API exigem `Authorization: Bearer <JWT>`. Em desenvolvimento local,
-o perfil `local` é o padrão quando nenhum perfil é selecionado. Somente
-`application-local.properties` oferece um segredo JWT de fallback destinado
-exclusivamente ao desenvolvimento. Para tokens HS256 próprios, configure
-`JWT_SECRET` com uma chave aleatória de pelo menos 32 bytes; a aplicação valida
-o tamanho durante a inicialização.
+o perfil `local` é o padrão quando nenhum perfil é selecionado e usa H2 sem
+expor o console web. Se `JWT_SECRET` não estiver definido, o backend gera uma
+chave HS256 aleatória em memória para aquele processo. Essa chave efêmera não é
+compartilhada entre instâncias e muda a cada reinício; configure uma chave
+aleatória de pelo menos 32 bytes em `JWT_SECRET` para validar tokens do provedor
+de identidade e manter compatibilidade entre reinícios/instâncias.
 
-Em produção, ative o perfil `prod` e injete `JWT_SECRET`. O perfil exige a
-variável, não herda o fallback local e a aplicação falha ao iniciar se o segredo
-estiver ausente ou vazio:
+Em produção, ative o perfil `prod`, configure a conexão PostgreSQL e injete
+`JWT_SECRET`:
 
 ```bash
-SPRING_PROFILES_ACTIVE=prod JWT_SECRET="<chave-aleatoria-com-pelo-menos-32-bytes>" ./mvnw spring-boot:run
+SPRING_PROFILES_ACTIVE=prod \
+DATABASE_URL="jdbc:postgresql://<host>:5432/<database>" \
+DATABASE_USERNAME="<usuario>" \
+DATABASE_PASSWORD="<senha>" \
+JWT_SECRET="<chave-aleatoria-com-pelo-menos-32-bytes>" \
+./mvnw spring-boot:run
 ```
 
-Nunca use o segredo local padrão em ambientes compartilhados ou de produção.
-Garanta que implantações de produção ativem explicitamente `prod`; não defina
-`JWT_SECRET` com o fallback documentado.
+O perfil de produção desativa o console H2 e valida o schema PostgreSQL sem
+alterá-lo automaticamente. A dependência PostgreSQL está disponível no runtime.
 Os tokens carregam o identificador do usuário em `sub` e o perfil em `profile`
 (`SOLICITANTE`, `RESPONSAVEL` ou `ADMINISTRADOR`). A chave de teste em
-`src/test/resources/application.properties` existe somente para testes e não
-deve ser reutilizada em ambientes reais.
+execução de testes é gerada em memória e não deve ser reutilizada em ambientes
+reais.
 
 ## SPA de recursos e reservas
 

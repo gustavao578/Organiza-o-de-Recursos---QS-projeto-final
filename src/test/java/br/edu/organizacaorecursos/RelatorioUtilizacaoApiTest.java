@@ -19,11 +19,10 @@ import java.util.Base64;
 import java.util.Map;
 import java.util.UUID;
 import javax.crypto.Mac;
-import javax.crypto.spec.SecretKeySpec;
+import javax.crypto.SecretKey;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -67,8 +66,8 @@ class RelatorioUtilizacaoApiTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
-    @Value("${security.jwt.secret}")
-    private String jwtSecret;
+    @Autowired
+    private SecretKey jwtSigningKey;
 
     @BeforeEach
     void limparDados() {
@@ -298,7 +297,7 @@ class RelatorioUtilizacaoApiTest {
                 "exp", agora + 3600)));
         String conteudo = cabecalho + "." + claims;
         Mac mac = Mac.getInstance("HmacSHA256");
-        mac.init(new SecretKeySpec(jwtSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+        mac.init(jwtSigningKey);
         return conteudo + "." + Base64.getUrlEncoder().withoutPadding()
                 .encodeToString(mac.doFinal(conteudo.getBytes(StandardCharsets.US_ASCII)));
     }

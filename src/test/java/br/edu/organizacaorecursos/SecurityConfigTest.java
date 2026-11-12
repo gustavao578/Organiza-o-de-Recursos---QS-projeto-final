@@ -6,6 +6,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import br.edu.organizacaorecursos.config.SecurityConfig;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.JWSHeader;
+import com.nimbusds.jose.crypto.MACSigner;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.SignedJWT;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.util.Date;
+import javax.crypto.SecretKey;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -15,8 +26,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
-import br.edu.organizacaorecursos.config.SecurityConfig;
-import java.time.Clock;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -25,13 +36,52 @@ class SecurityConfigTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @Autowired
+    private SecretKey jwtSigningKey;
+
     @Test
     void jwtDecoderRejeitaSegredoComMenosDe256Bits() {
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> new SecurityConfig().jwtDecoder("curto", Clock.systemUTC()));
+                () -> new SecurityConfig().jwtSigningKey("curto"));
 
         org.junit.jupiter.api.Assertions.assertTrue(exception.getMessage().contains("32 bytes"));
+    }
+
+    @Test
+    void geraChaveJwtAleatoriaDe256BitsQuandoNaoHaSegredoConfigurado() {
+        SecretKey first = new SecurityConfig().jwtSigningKey("");
+        SecretKey second = new SecurityConfig().jwtSigningKey(null);
+
+        org.assertj.core.api.Assertions.assertThat(first.getEncoded()).hasSize(32);
+        org.assertj.core.api.Assertions.assertThat(second.getEncoded()).hasSize(32);
+        org.assertj.core.api.Assertions.assertThat(first.getEncoded()).isNotEqualTo(second.getEncoded());
+    }
+
+    @Test
+    void usaChaveConfiguradaQuandoVariavelDeAmbienteEstaDisponivel() {
+        String configuredSecret = "x".repeat(32);
+
+        org.assertj.core.api.Assertions.assertThat(
+                        new SecurityConfig().jwtSigningKey(configuredSecret).getEncoded())
+                .isEqualTo(configuredSecret.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    @Test
+    void jwtDecoderRejeitaTokenExpirado() throws Exception {
+        Instant now = Instant.parse("2026-11-12T12:00:00Z");
+        SignedJWT expired = new SignedJWT(
+                new JWSHeader(JWSAlgorithm.HS256),
+                new JWTClaimsSet.Builder()
+                        .subject("usuario")
+                        .issueTime(Date.from(now.minusSeconds(120)))
+                        .expirationTime(Date.from(now.minusSeconds(61)))
+                        .build());
+        expired.sign(new MACSigner(jwtSigningKey.getEncoded()));
+        JwtDecoder decoder = new SecurityConfig().jwtDecoder(
+                jwtSigningKey, Clock.fixed(now, ZoneOffset.UTC));
+
+        assertThrows(JwtException.class, () -> decoder.decode(expired.serialize()));
     }
 
     @Test
@@ -54,8 +104,8 @@ class SecurityConfigTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"/recursos", "/usuarios", "/manutencoes"})
-    void rotasApiContinuamExigindoAutenticacaoMesmoComSpaPublica(String path) throws Exception {
+    @ValueSource(strings = {"/recursos", "/usuarios", "/manutencoes", "/h2-console"})
+    void rotasPrivadasContinuamExigindoAutenticacao(String path) throws Exception {
         mockMvc.perform(get(path))
                 .andExpect(status().isUnauthorized());
     }

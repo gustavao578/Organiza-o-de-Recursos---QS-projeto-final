@@ -1,8 +1,10 @@
 package br.edu.organizacaorecursos.config;
 
 import java.nio.charset.StandardCharsets;
+import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.util.List;
+import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.beans.factory.annotation.Value;
@@ -44,7 +46,7 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.ignoringRequestMatchers(API_REQUEST))
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/h2-console/**")
+                        .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                         .permitAll()
                         .requestMatchers(HttpMethod.GET,
                                 "/", "/index.html", "/styles.css",
@@ -54,26 +56,42 @@ public class SecurityConfig {
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(resourceServer -> resourceServer
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)))
-                .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
                 .build();
     }
 
     @Bean
-    public JwtDecoder jwtDecoder(@Value("${security.jwt.secret}") String secret, Clock clock) {
-        byte[] secretBytes = secret.getBytes(StandardCharsets.UTF_8);
-        if (secretBytes.length < 32) {
-            throw new IllegalArgumentException(
-                    "security.jwt.secret deve ter pelo menos 32 bytes para HS256.");
-        }
+    public SecretKey jwtSigningKey(@Value("${security.jwt.secret:}") String secret) {
+        return createSigningKey(secret);
+    }
 
-        SecretKey key = new SecretKeySpec(secretBytes, "HmacSHA256");
-        NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(key)
+    @Bean
+    public JwtDecoder jwtDecoder(SecretKey jwtSigningKey, Clock clock) {
+        NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(jwtSigningKey)
                 .macAlgorithm(MacAlgorithm.HS256)
                 .build();
         JwtTimestampValidator timestamps = new JwtTimestampValidator();
         timestamps.setClock(clock);
         decoder.setJwtValidator(timestamps);
         return decoder;
+    }
+
+    static SecretKey createSigningKey(String secret) {
+        if (secret == null || secret.isBlank()) {
+            try {
+                KeyGenerator generator = KeyGenerator.getInstance("HmacSHA256");
+                generator.init(256);
+                return generator.generateKey();
+            } catch (NoSuchAlgorithmException exception) {
+                throw new IllegalStateException("Não foi possível gerar uma chave JWT efêmera.", exception);
+            }
+        }
+
+        byte[] secretBytes = secret.getBytes(StandardCharsets.UTF_8);
+        if (secretBytes.length < 32) {
+            throw new IllegalArgumentException(
+                    "security.jwt.secret deve ter pelo menos 32 bytes para HS256.");
+        }
+        return new SecretKeySpec(secretBytes, "HmacSHA256");
     }
 
     @Bean
