@@ -27,7 +27,8 @@ public interface ReservaRepository extends JpaRepository<Reserva, UUID> {
             WHERE r.recurso.id = :recursoId
               AND r.dataInicio < :dataFim
               AND r.dataFim > :dataInicio
-              AND r.status IN (br.edu.organizacaorecursos.domain.StatusReserva.APROVADA,
+              AND r.status IN (br.edu.organizacaorecursos.domain.StatusReserva.PENDENTE,
+                               br.edu.organizacaorecursos.domain.StatusReserva.APROVADA,
                                br.edu.organizacaorecursos.domain.StatusReserva.EM_USO)
             """)
     boolean existeConflitoDeHorario(
@@ -42,7 +43,8 @@ public interface ReservaRepository extends JpaRepository<Reserva, UUID> {
               AND (:reservaId IS NULL OR r.id <> :reservaId)
               AND r.dataInicio < :dataFim
               AND r.dataFim > :dataInicio
-              AND r.status IN (br.edu.organizacaorecursos.domain.StatusReserva.APROVADA,
+              AND r.status IN (br.edu.organizacaorecursos.domain.StatusReserva.PENDENTE,
+                               br.edu.organizacaorecursos.domain.StatusReserva.APROVADA,
                                br.edu.organizacaorecursos.domain.StatusReserva.EM_USO)
             """)
     boolean existeConflitoDeAgendaResponsavel(
@@ -57,7 +59,8 @@ public interface ReservaRepository extends JpaRepository<Reserva, UUID> {
             WHERE r.recurso.id = :recursoId
               AND r.dataInicio < :dataFim
               AND r.dataFim > :dataInicio
-              AND r.status IN (br.edu.organizacaorecursos.domain.StatusReserva.APROVADA,
+              AND r.status IN (br.edu.organizacaorecursos.domain.StatusReserva.PENDENTE,
+                               br.edu.organizacaorecursos.domain.StatusReserva.APROVADA,
                                br.edu.organizacaorecursos.domain.StatusReserva.EM_USO)
             ORDER BY r.dataInicio
             """)
@@ -73,7 +76,8 @@ public interface ReservaRepository extends JpaRepository<Reserva, UUID> {
               AND r.id <> :reservaId
               AND r.dataInicio < :dataFim
               AND r.dataFim > :dataInicio
-              AND r.status IN (br.edu.organizacaorecursos.domain.StatusReserva.APROVADA,
+              AND r.status IN (br.edu.organizacaorecursos.domain.StatusReserva.PENDENTE,
+                               br.edu.organizacaorecursos.domain.StatusReserva.APROVADA,
                                br.edu.organizacaorecursos.domain.StatusReserva.EM_USO)
             """)
     boolean existeConflitoDeHorarioAprovado(

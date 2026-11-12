@@ -31,7 +31,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -170,12 +175,19 @@ class ReservaConcorrenciaPostgresIntegrationTest {
                     if (!iniciar.await(10, TimeUnit.SECONDS)) {
                         throw new IllegalStateException("A barreira concorrente não foi liberada.");
                     }
-                    return mockMvc.perform(post("/reservas")
+                    UUID usuarioId = UUID.fromString(
+                            objectMapper.readTree(corpo).get("usuarioId").asText());
+                    try {
+                        return mockMvc.perform(post("/reservas")
+                                    .with(jwtContexto(usuarioId))
                                     .contentType(MediaType.APPLICATION_JSON)
                                     .content(corpo))
                             .andReturn()
                             .getResponse()
                             .getStatus();
+                    } finally {
+                        SecurityContextHolder.clearContext();
+                    }
                 }));
             }
 
@@ -205,6 +217,21 @@ class ReservaConcorrenciaPostgresIntegrationTest {
         assertThat(cenario.linhasNoBanco())
                 .as("linhas sobrepostas no banco em %s", nome)
                 .isEqualTo(1);
+    }
+
+    private RequestPostProcessor jwtContexto(UUID subject) {
+        return request -> {
+            Jwt jwt = Jwt.withTokenValue("token-de-teste")
+                    .header("alg", "none")
+                    .subject(subject.toString())
+                    .claim("profile", "SOLICITANTE")
+                    .build();
+            var context = SecurityContextHolder.createEmptyContext();
+            context.setAuthentication(new JwtAuthenticationToken(
+                    jwt, List.of(new SimpleGrantedAuthority("ROLE_SOLICITANTE"))));
+            SecurityContextHolder.setContext(context);
+            return request;
+        };
     }
 
     private record Cenario(List<Integer> statusHttp, int linhasNoBanco) {

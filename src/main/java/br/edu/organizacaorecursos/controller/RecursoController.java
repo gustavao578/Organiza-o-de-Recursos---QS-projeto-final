@@ -11,6 +11,10 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -28,7 +32,11 @@ public class RecursoController {
     private final RecursoRepository recursoRepository;
 
     @PostMapping
-    public ResponseEntity<RecursoResponseDTO> criarRecurso(@Valid @RequestBody RecursoRequestDTO request) {
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public ResponseEntity<RecursoResponseDTO> criarRecurso(
+            @Valid @RequestBody RecursoRequestDTO request,
+            @AuthenticationPrincipal Jwt jwt) {
+        exigirJwt(jwt);
         Recurso recurso = new Recurso(null, request.getNome(), request.getTipo(),
                 request.isRestrito(), request.getResponsavelId());
         return ResponseEntity.status(HttpStatus.CREATED).body(mapear(recursoRepository.save(recurso)));
@@ -46,8 +54,12 @@ public class RecursoController {
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<RecursoResponseDTO> atualizarRecurso(
-            @PathVariable UUID id, @Valid @RequestBody RecursoRequestDTO request) {
+            @PathVariable UUID id,
+            @Valid @RequestBody RecursoRequestDTO request,
+            @AuthenticationPrincipal Jwt jwt) {
+        exigirJwt(jwt);
         Recurso recurso = recursoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Recurso não encontrado."));
         recurso.setNome(request.getNome());
@@ -58,12 +70,22 @@ public class RecursoController {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deletarRecurso(@PathVariable UUID id) {
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public ResponseEntity<Void> deletarRecurso(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal Jwt jwt) {
+        exigirJwt(jwt);
         if (!recursoRepository.existsById(id)) {
             throw new EntityNotFoundException("Recurso não encontrado.");
         }
         recursoRepository.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private void exigirJwt(Jwt jwt) {
+        if (jwt == null) {
+            throw new AccessDeniedException("A autenticação é obrigatória para gerenciar recursos.");
+        }
     }
 
     private RecursoResponseDTO mapear(Recurso recurso) {

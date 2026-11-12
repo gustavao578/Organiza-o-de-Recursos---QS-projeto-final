@@ -65,14 +65,10 @@ public class ReservaService {
                     "O recurso não pode ser reservado pois estará em manutenção neste período.");
         }
 
-        StatusReserva statusInicial = recurso.isRestrito()
-                ? StatusReserva.PENDENTE
-                : StatusReserva.APROVADA;
-        boolean temConflito = statusInicial == StatusReserva.APROVADA
-                && (reservaRepository.existeConflitoDeHorario(
-                                recurso.getId(), dto.getDataInicio(), dto.getDataFim())
-                        || responsavelId != null && reservaRepository.existeConflitoDeAgendaResponsavel(
-                                responsavelId, null, dto.getDataInicio(), dto.getDataFim()));
+        boolean temConflito = reservaRepository.existeConflitoDeHorario(
+                        recurso.getId(), dto.getDataInicio(), dto.getDataFim())
+                || responsavelId != null && reservaRepository.existeConflitoDeAgendaResponsavel(
+                        responsavelId, null, dto.getDataInicio(), dto.getDataFim());
         if (temConflito) {
             Reserva conflito = reservaRepository.buscarConflitosDeHorario(
                             recurso.getId(), dto.getDataInicio(), dto.getDataFim())
@@ -91,6 +87,9 @@ public class ReservaService {
                     "O recurso já está reservado neste período.", detalhes);
         }
 
+        StatusReserva statusInicial = recurso.isRestrito()
+                ? StatusReserva.PENDENTE
+                : StatusReserva.APROVADA;
         Reserva novaReserva = new Reserva();
         novaReserva.setRecurso(recurso);
         novaReserva.setDataInicio(dto.getDataInicio());
@@ -155,11 +154,10 @@ public class ReservaService {
                 StatusReserva novoStatus = recurso.isRestrito()
                                 ? StatusReserva.PENDENTE
                                 : StatusReserva.APROVADA;
-                if (novoStatus == StatusReserva.APROVADA
-                                && (reservaRepository.existeConflitoDeHorarioAprovado(
+                if (reservaRepository.existeConflitoDeHorarioAprovado(
                                                 recurso.getId(), reserva.getId(), dto.getDataInicio(), dto.getDataFim())
-                                        || responsavelId != null && reservaRepository.existeConflitoDeAgendaResponsavel(
-                                                responsavelId, reserva.getId(), dto.getDataInicio(), dto.getDataFim()))) {
+                                || responsavelId != null && reservaRepository.existeConflitoDeAgendaResponsavel(
+                                                responsavelId, reserva.getId(), dto.getDataInicio(), dto.getDataFim())) {
                         throw new ConflitoReservaException(
                                         "O recurso já está reservado neste período.",
                                         recurso.getNome() + ": período conflitante de "

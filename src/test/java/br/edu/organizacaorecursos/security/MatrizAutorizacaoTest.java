@@ -10,23 +10,28 @@ import br.edu.organizacaorecursos.domain.StatusReserva;
 import br.edu.organizacaorecursos.domain.Usuario;
 import br.edu.organizacaorecursos.dto.ReservaRequestDTO;
 import br.edu.organizacaorecursos.dto.RecursoRequestDTO;
+import br.edu.organizacaorecursos.repository.ManutencaoRepository;
 import br.edu.organizacaorecursos.repository.RecursoRepository;
 import br.edu.organizacaorecursos.repository.ReservaRepository;
 import br.edu.organizacaorecursos.repository.UsuarioRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.UUID;
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.jwt.Jwt;
-import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
@@ -39,15 +44,17 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
  * - Divergências marcadas com [DIVERGÊNCIA]
  */
 @SpringBootTest
-@AutoConfigureMockMvc(addFilters = false)
+@AutoConfigureMockMvc
 class MatrizAutorizacaoTest {
 
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
+    @Autowired private ManutencaoRepository manutencaoRepository;
     @Autowired private RecursoRepository recursoRepository;
     @Autowired private ReservaRepository reservaRepository;
     @Autowired private UsuarioRepository usuarioRepository;
     @Autowired private JdbcTemplate jdbcTemplate;
+    @Value("${security.jwt.secret}") private String jwtSecret;
 
     private Usuario solicitante1;
     private Usuario solicitante2;
@@ -63,6 +70,7 @@ class MatrizAutorizacaoTest {
     void setup() {
         jdbcTemplate.execute("DELETE FROM tb_reserva_auditorias");
         reservaRepository.deleteAll();
+        manutencaoRepository.deleteAll();
         usuarioRepository.deleteAll();
         recursoRepository.deleteAll();
 
@@ -103,7 +111,7 @@ class MatrizAutorizacaoTest {
     // ==================== RESERVAS ====================
 
     @ParameterizedTest(name = "GET /reservas - {0} espera {1}")
-    @CsvSource({"Anônimo,200,null", "Solicitante,200,SOLICITANTE", "Responsável,200,RESPONSAVEL", "Administrador,200,ADMINISTRADOR"})
+    @CsvSource({"Anônimo,401,null", "Solicitante,200,SOLICITANTE", "Responsável,200,RESPONSAVEL", "Administrador,200,ADMINISTRADOR"})
     void testarGetReservas(String descricao, int statusEsperado, String perfilStr) throws Exception {
         if ("null".equals(perfilStr)) {
             mockMvc.perform(get("/reservas"))
@@ -117,8 +125,24 @@ class MatrizAutorizacaoTest {
         SecurityContextHolder.clearContext();
     }
 
+    @ParameterizedTest(name = "POST /reservas rejeita perfil legado {0}")
+    @CsvSource({"COMUM", "ADMIN"})
+    void naoAceitaAliasesLegadosNaCriacaoDeReserva(String perfil) throws Exception {
+        ReservaRequestDTO request = new ReservaRequestDTO();
+        request.setRecursoId(recursoPublico.getId());
+        request.setUsuarioId(solicitante1.getId());
+        request.setDataInicio(LocalDateTime.now().plusHours(5));
+        request.setDataFim(LocalDateTime.now().plusHours(6));
+
+        mockMvc.perform(post("/reservas")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                        .with(jwtContexto(solicitante1.getId(), perfil)))
+                .andExpect(status().isForbidden());
+    }
+
     @ParameterizedTest(name = "POST /reservas - {0} espera {1}")
-    @CsvSource({"Anônimo,401,null", "Solicitante,201,SOLICITANTE", "Responsável,201,RESPONSAVEL", "Administrador,201,ADMINISTRADOR"})
+    @CsvSource({"Anônimo,401,null", "Solicitante,201,SOLICITANTE", "Responsável,403,RESPONSAVEL", "Administrador,403,ADMINISTRADOR"})
     void testarCriarReserva(String descricao, int statusEsperado, String perfilStr) throws Exception {
         ReservaRequestDTO request = new ReservaRequestDTO();
         request.setRecursoId(recursoPublico.getId());
@@ -144,7 +168,7 @@ class MatrizAutorizacaoTest {
 
     // ==================== POSSE (OWNERSHIP) ====================
 
-    @ParameterizedTest(name = "PUT /reservas/{id} - {0} espera {1}")
+    @ParameterizedTest(name = "Atualização de reserva - {0} espera {1}")
     @CsvSource({"Solicitante altera própria,200,proprio", "Solicitante altera de outro,403,outro"})
     void testarOwnershipReservaAlteracao(String descricao, int statusEsperado, String tipo) throws Exception {
         ReservaRequestDTO request = new ReservaRequestDTO();
@@ -167,7 +191,7 @@ class MatrizAutorizacaoTest {
     // ==================== RECURSOS DESPROTEGIDOS [DIVERGÊNCIA] ====================
 
     @ParameterizedTest(name = "POST /recursos - {0} espera {1} [DIVERGÊNCIA]")
-    @CsvSource({"Anônimo,401,null", "Solicitante,401,SOLICITANTE", "Responsável,401,RESPONSAVEL", "Administrador,201,ADMINISTRADOR"})
+    @CsvSource({"Anônimo,401,null", "Solicitante,403,SOLICITANTE", "Responsável,403,RESPONSAVEL", "Administrador,201,ADMINISTRADOR"})
     void testarCriarRecursoDesprotegido(String descricao, int statusEsperado, String perfilStr) throws Exception {
         RecursoRequestDTO request = new RecursoRequestDTO();
         request.setNome("Sala Nova");
@@ -190,14 +214,16 @@ class MatrizAutorizacaoTest {
     }
 
     @ParameterizedTest(name = "DELETE /recursos - {0} espera {1} [DIVERGÊNCIA]")
-    @CsvSource({"Anônimo,401,null", "Solicitante,401,SOLICITANTE", "Responsável,401,RESPONSAVEL", "Administrador,204,ADMINISTRADOR"})
+    @CsvSource({"Anônimo,401,null", "Solicitante,403,SOLICITANTE", "Responsável,403,RESPONSAVEL", "Administrador,204,ADMINISTRADOR"})
     void testarDeletarRecursoDesprotegido(String descricao, int statusEsperado, String perfilStr) throws Exception {
+        Recurso recursoParaExcluir = recursoRepository.save(
+                new Recurso(null, "Sala para excluir", "SALA"));
         if ("null".equals(perfilStr)) {
-            mockMvc.perform(delete("/recursos/{id}", recursoPublico.getId()))
+            mockMvc.perform(delete("/recursos/{id}", recursoParaExcluir.getId()))
                 .andExpect(status().is(statusEsperado));
         } else {
             UUID usuarioId = obterUsuarioId(perfilStr);
-            mockMvc.perform(delete("/recursos/{id}", recursoPublico.getId())
+            mockMvc.perform(delete("/recursos/{id}", recursoParaExcluir.getId())
                 .with(jwtContexto(usuarioId, perfilStr)))
                 .andExpect(status().is(statusEsperado));
         }
@@ -205,7 +231,7 @@ class MatrizAutorizacaoTest {
     }
 
     @ParameterizedTest(name = "PUT /recursos - {0} espera {1} [DIVERGÊNCIA]")
-    @CsvSource({"Anônimo,401,null", "Solicitante,401,SOLICITANTE", "Responsável,401,RESPONSAVEL", "Administrador,200,ADMINISTRADOR"})
+    @CsvSource({"Anônimo,401,null", "Solicitante,403,SOLICITANTE", "Responsável,403,RESPONSAVEL", "Administrador,200,ADMINISTRADOR"})
     void testarAtualizarRecursoDesprotegido(String descricao, int statusEsperado, String perfilStr) throws Exception {
         RecursoRequestDTO request = new RecursoRequestDTO();
         request.setNome("Sala Atualizada");
@@ -247,19 +273,21 @@ class MatrizAutorizacaoTest {
     @ParameterizedTest(name = "DELETE /usuarios - {0} espera {1} [DIVERGÊNCIA]")
     @CsvSource({"Anônimo,401,null", "Solicitante,403,SOLICITANTE", "Responsável,403,RESPONSAVEL", "Administrador,204,ADMINISTRADOR"})
     void testarDeletarUsuarioDesprotegido(String descricao, int statusEsperado, String perfilStr) throws Exception {
+        Usuario usuarioParaExcluir = usuarioRepository.save(
+                new Usuario(null, "Usuário para excluir", "excluir@test.com", "MAT005", Perfil.SOLICITANTE));
         if ("null".equals(perfilStr)) {
-            mockMvc.perform(delete("/usuarios/{id}", solicitante2.getId()))
+            mockMvc.perform(delete("/usuarios/{id}", usuarioParaExcluir.getId()))
                 .andExpect(status().is(statusEsperado));
         } else {
             UUID usuarioId = obterUsuarioId(perfilStr);
-            mockMvc.perform(delete("/usuarios/{id}", solicitante2.getId())
+            mockMvc.perform(delete("/usuarios/{id}", usuarioParaExcluir.getId())
                 .with(jwtContexto(usuarioId, perfilStr)))
                 .andExpect(status().is(statusEsperado));
         }
         SecurityContextHolder.clearContext();
     }
 
-    @ParameterizedTest(name = "GET /usuarios/{id} - {0} espera {1} [DIVERGÊNCIA]")
+    @ParameterizedTest(name = "GET de usuário por id - {0} espera {1} [DIVERGÊNCIA]")
     @CsvSource({"Anônimo,401,null", "Solicitante,200,SOLICITANTE", "Responsável,200,RESPONSAVEL", "Administrador,200,ADMINISTRADOR"})
     void testarBuscarUsuarioDesprotegido(String descricao, int statusEsperado, String perfilStr) throws Exception {
         if ("null".equals(perfilStr)) {
@@ -277,12 +305,13 @@ class MatrizAutorizacaoTest {
     // ==================== MANUTENÇÕES DESPROTEGIDAS [DIVERGÊNCIA] ====================
 
     @ParameterizedTest(name = "POST /manutencoes - {0} espera {1} [DIVERGÊNCIA]")
-    @CsvSource({"Anônimo,401,null", "Solicitante,401,SOLICITANTE", "Responsável,201,RESPONSAVEL", "Administrador,201,ADMINISTRADOR"})
+    @CsvSource({"Anônimo,401,null", "Solicitante,403,SOLICITANTE", "Responsável,201,RESPONSAVEL", "Administrador,201,ADMINISTRADOR"})
     void testarCriarManutencaoDesprotegido(String descricao, int statusEsperado, String perfilStr) throws Exception {
-        var request = new java.util.HashMap<String, Object>();
-        request.put("recursoId", recursoPublico.getId().toString());
-        request.put("dataInicio", LocalDateTime.now().plusHours(1).toString());
-        request.put("dataFim", LocalDateTime.now().plusHours(2).toString());
+        var request = java.util.Map.of(
+                "recurso", java.util.Map.of("id", recursoPublico.getId()),
+                "dataInicio", LocalDateTime.now().plusHours(1).toString(),
+                "dataFim", LocalDateTime.now().plusHours(2).toString(),
+                "descricao", "Manutenção de teste");
 
         if ("null".equals(perfilStr)) {
             mockMvc.perform(post("/manutencoes")
@@ -328,15 +357,29 @@ class MatrizAutorizacaoTest {
 
     private RequestPostProcessor jwtContexto(UUID subject, String perfil) {
         return request -> {
-            Jwt jwt = Jwt.withTokenValue("token-de-teste")
-                .header("alg", "none")
-                .subject(subject.toString())
-                .claim("profile", perfil)
-                .build();
-            var contexto = SecurityContextHolder.createEmptyContext();
-            contexto.setAuthentication(new JwtAuthenticationToken(jwt));
-            SecurityContextHolder.setContext(contexto);
+            request.addHeader("Authorization", "Bearer " + token(subject, perfil));
             return request;
         };
+    }
+
+    private String token(UUID subject, String profile) {
+        long issuedAt = Instant.now().getEpochSecond();
+        String header = encode("{\"alg\":\"HS256\",\"typ\":\"JWT\"}");
+        String payload = encode("{\"sub\":\"" + subject + "\",\"profile\":\"" + profile
+                + "\",\"iat\":" + issuedAt + ",\"exp\":" + (issuedAt + 3600) + "}");
+        String content = header + "." + payload;
+        try {
+            Mac mac = Mac.getInstance("HmacSHA256");
+            mac.init(new SecretKeySpec(jwtSecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
+            return content + "." + Base64.getUrlEncoder().withoutPadding()
+                    .encodeToString(mac.doFinal(content.getBytes(StandardCharsets.US_ASCII)));
+        } catch (java.security.GeneralSecurityException exception) {
+            throw new IllegalStateException("Não foi possível gerar o JWT de teste.", exception);
+        }
+    }
+
+    private String encode(String value) {
+        return Base64.getUrlEncoder().withoutPadding()
+                .encodeToString(value.getBytes(StandardCharsets.UTF_8));
     }
 }
