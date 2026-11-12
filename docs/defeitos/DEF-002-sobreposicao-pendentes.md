@@ -3,9 +3,13 @@
 **ID:** DEF-002  
 **Título:** Reservas PENDENTES podem se sobrepor, violando RC-02  
 **Severidade:** 🔴 **CRÍTICA**  
-**Status:** 🔴 **ABERTO**  
+**Status:** ✅ **FECHADO**  
 **Detectado em:** 2026-11-12 02:45:00Z  
 **Detectado por:** Auditor de Rastreabilidade  
+**Fechado em:** 2026-11-12  
+**Fechado por:** PR #8 - fix(epic-02): secure reservation SPA and API  
+**Merged em:** 2026-11-12T12:14:52-03:00  
+**Commit:** 58411ac0904a248e1ccae74094f775e8611c3cf8  
 **Relacionado:** RC-02 (Reservas do mesmo recurso não se sobrepõem)
 
 ---

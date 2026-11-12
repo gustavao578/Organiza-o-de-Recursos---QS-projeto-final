@@ -1,7 +1,10 @@
 # Registro de Correções — EPIC-02 Segurança e SPA
 
-**Data:** 2026-11-12
-**Status:** Implementado localmente; aguardando revisão/merge
+**Data:** 2026-11-12  
+**Status:** ✅ **IMPLEMENTADO E MERGED**  
+**PR:** #8 - fix(epic-02): secure reservation SPA and API  
+**Merged em:** 2026-11-12T12:14:52-03:00  
+**Commit:** 58411ac0904a248e1ccae74094f775e8611c3cf8  
 **Story:** [2.1-seguranca-e-spa-de-reservas](../stories/2.1-seguranca-e-spa-de-reservas.md)
 
 Este registro consolida as correções dos defeitos DEF-001 a DEF-009, a prevenção de
