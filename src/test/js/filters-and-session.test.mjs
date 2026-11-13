@@ -48,6 +48,20 @@ test("session displays name, email or subject in that order", () => {
   }
 });
 
+test("session decodes UTF-8 names and normalizes profile aliases", () => {
+  for (const [profile, expected] of [["ADMIN", "ADMINISTRADOR"], ["COMUM", "SOLICITANTE"],
+    ["RESPONSAVEL", "RESPONSAVEL"]]) {
+    const jwt = token({ sub: "id-1", profile, name: "Responsável Laboratório" });
+    assert.equal(startSession(` ${jwt} `), true);
+    assert.equal(storedToken, jwt);
+    assert.equal(getSession().name, "Responsável Laboratório");
+    assert.equal(getSession().profile, expected);
+  }
+  assert.equal(startSession(token({ sub: "id-1", profile: "DESCONHECIDO" })), false);
+  assert.equal(startSession(token({ sub: "id-1", profile: "COMUM", exp: 1 })), false);
+  assert.equal(startSession("header._w.signature"), false);
+});
+
 test("resource and reservation filters send selected query parameters", async () => {
   const requests = [];
   globalThis.fetch = async (path) => {

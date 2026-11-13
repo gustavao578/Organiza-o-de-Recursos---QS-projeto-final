@@ -10,7 +10,9 @@ function decodePayload(token) {
   try {
     const encoded = parts[1].replace(/-/g, "+").replace(/_/g, "/");
     const padded = encoded.padEnd(Math.ceil(encoded.length / 4) * 4, "=");
-    return JSON.parse(atob(padded));
+    const binary = atob(padded);
+    const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes));
   } catch {
     return null;
   }
@@ -18,16 +20,18 @@ function decodePayload(token) {
 
 function sessionFromToken(token) {
   const claims = decodePayload(token);
+  const profile = claims?.profile === "ADMIN" ? "ADMINISTRADOR"
+    : claims?.profile === "COMUM" ? "SOLICITANTE" : claims?.profile;
   if (typeof claims?.sub !== "string"
       || claims.sub.length === 0
-      || !ALLOWED_PROFILES.has(claims.profile)) {
+      || !ALLOWED_PROFILES.has(profile)) {
     return null;
   }
   if (claims.exp !== undefined
       && (typeof claims.exp !== "number" || claims.exp <= Date.now() / 1000)) {
     return null;
   }
-  return { token, subject: claims.sub, profile: claims.profile, name: claims.name || claims.email || claims.sub };
+  return { token, subject: claims.sub, profile, name: claims.name || claims.email || claims.sub };
 }
 
 export function getToken() {

@@ -64,17 +64,27 @@ async function showPanel(session) {
   tabButtons.find((button) => button.dataset.view === "reports-view").hidden = !managementProfile;
   showView(selectedView);
 
-  await Promise.all([
-    mountResources(document.querySelector("#resources-content"), session),
-    mountReservations(document.querySelector("#reservations-content"), session),
-    mountUsers(document.querySelector("#users-content"), session),
-    managementProfile
-      ? mountMaintenance(document.querySelector("#maintenance-content"), session)
-      : Promise.resolve(),
-    managementProfile
-      ? mountReports(document.querySelector("#reports-content"))
-      : Promise.resolve(),
-  ]);
+  const modules = [
+    ["#resources-content", mountResources],
+    ["#reservations-content", mountReservations],
+    ["#users-content", mountUsers],
+  ];
+  if (managementProfile) {
+    modules.push(["#maintenance-content", mountMaintenance], ["#reports-content", mountReports]);
+  }
+  await Promise.all(modules.map(async ([selector, mount]) => {
+    const container = document.querySelector(selector);
+    try {
+      await mount(container, session);
+    } catch (error) {
+      console.error(`Falha ao carregar ${selector}:`, error);
+      if (container) {
+        container.textContent = "Não foi possível carregar esta seção. Tente novamente.";
+      } else {
+        showMessage(`Não foi possível carregar a seção ${selector}.`, "error");
+      }
+    }
+  }));
 }
 
 async function renderSession() {
