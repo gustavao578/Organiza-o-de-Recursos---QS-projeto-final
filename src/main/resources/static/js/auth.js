@@ -23,6 +23,10 @@ function sessionFromToken(token) {
       || !ALLOWED_PROFILES.has(claims.profile)) {
     return null;
   }
+  if (claims.exp !== undefined
+      && (typeof claims.exp !== "number" || claims.exp <= Date.now() / 1000)) {
+    return null;
+  }
   return { token, subject: claims.sub, profile: claims.profile };
 }
 

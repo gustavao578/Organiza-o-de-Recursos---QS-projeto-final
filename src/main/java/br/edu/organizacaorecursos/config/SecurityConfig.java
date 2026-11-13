@@ -7,6 +7,11 @@ import java.util.List;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jose.jwk.JWKSet;
+import com.nimbusds.jose.jwk.OctetSequenceKey;
+import com.nimbusds.jose.jwk.source.ImmutableJWKSet;
+import com.nimbusds.jose.proc.SecurityContext;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -16,10 +21,12 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtEncoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtTimestampValidator;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
-import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 import org.springframework.security.web.util.matcher.OrRequestMatcher;
@@ -35,7 +42,8 @@ public class SecurityConfig {
             new AntPathRequestMatcher("/recursos/**"),
             new AntPathRequestMatcher("/usuarios/**"),
             new AntPathRequestMatcher("/manutencoes/**"),
-            new AntPathRequestMatcher("/relatorios/**")));
+            new AntPathRequestMatcher("/relatorios/**"),
+            new AntPathRequestMatcher("/auth/login")));
 
     // API clients authenticate only with Bearer tokens, so API routes do not use cookie-based CSRF tokens.
     @SuppressWarnings("java:S4502")
@@ -48,10 +56,13 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers("/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
                         .permitAll()
+                        .requestMatchers(HttpMethod.POST, "/auth/login")
+                        .permitAll()
                         .requestMatchers(HttpMethod.GET,
                                 "/", "/index.html", "/styles.css",
                                 "/js/api.js", "/js/auth.js", "/js/app.js",
-                                "/js/recursos.js", "/js/reservas.js")
+                                "/js/recursos.js", "/js/reservas.js",
+                                "/js/usuarios.js", "/js/manutencoes.js", "/js/relatorios.js")
                         .permitAll()
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(resourceServer -> resourceServer
@@ -75,6 +86,15 @@ public class SecurityConfig {
         return decoder;
     }
 
+    @Bean
+    public JwtEncoder jwtEncoder(SecretKey jwtSigningKey) {
+        OctetSequenceKey jwk = new OctetSequenceKey.Builder(jwtSigningKey)
+                .algorithm(JWSAlgorithm.HS256)
+                .build();
+        return new NimbusJwtEncoder(
+                new ImmutableJWKSet<SecurityContext>(new JWKSet(jwk)));
+    }
+
     static SecretKey createSigningKey(String secret) {
         if (secret == null || secret.isBlank()) {
             try {
@@ -96,11 +116,19 @@ public class SecurityConfig {
 
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
-        JwtGrantedAuthoritiesConverter authoritiesConverter = new JwtGrantedAuthoritiesConverter();
-        authoritiesConverter.setAuthoritiesClaimName("profile");
-        authoritiesConverter.setAuthorityPrefix("ROLE_");
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-        converter.setJwtGrantedAuthoritiesConverter(authoritiesConverter);
+        converter.setJwtGrantedAuthoritiesConverter(jwt -> {
+            String profile = jwt.getClaimAsString("profile");
+            String normalized = switch (profile == null ? "" : profile) {
+                case "ADMIN" -> "ADMINISTRADOR";
+                case "COMUM" -> "SOLICITANTE";
+                case "SOLICITANTE", "RESPONSAVEL", "ADMINISTRADOR" -> profile;
+                default -> null;
+            };
+            return normalized == null
+                    ? List.of()
+                    : List.of(new SimpleGrantedAuthority("ROLE_" + normalized));
+        });
         return converter;
     }
 }

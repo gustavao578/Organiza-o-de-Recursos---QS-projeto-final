@@ -124,9 +124,9 @@ class MatrizAutorizacaoTest {
         SecurityContextHolder.clearContext();
     }
 
-    @ParameterizedTest(name = "POST /reservas rejeita perfil legado {0}")
-    @CsvSource({"COMUM", "ADMIN"})
-    void naoAceitaAliasesLegadosNaCriacaoDeReserva(String perfil) throws Exception {
+    @ParameterizedTest(name = "POST /reservas normaliza perfil legado {0}")
+    @CsvSource({"COMUM,201", "ADMIN,403"})
+    void normalizaAliasesLegadosNaCriacaoDeReserva(String perfil, int statusEsperado) throws Exception {
         ReservaRequestDTO request = new ReservaRequestDTO();
         request.setRecursoId(recursoPublico.getId());
         request.setUsuarioId(solicitante1.getId());
@@ -137,7 +137,7 @@ class MatrizAutorizacaoTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request))
                         .with(jwtContexto(solicitante1.getId(), perfil)))
-                .andExpect(status().isForbidden());
+                .andExpect(status().is(statusEsperado));
     }
 
     @ParameterizedTest(name = "POST /reservas - {0} espera {1}")
@@ -252,11 +252,11 @@ class MatrizAutorizacaoTest {
         SecurityContextHolder.clearContext();
     }
 
-    // ==================== USUÁRIOS DESPROTEGIDOS [DIVERGÊNCIA] ====================
+    // ==================== AUTORIZAÇÃO DE USUÁRIOS ====================
 
-    @ParameterizedTest(name = "GET /usuarios - {0} espera {1} [DIVERGÊNCIA]")
-    @CsvSource({"Anônimo,401,null", "Solicitante,200,SOLICITANTE", "Responsável,200,RESPONSAVEL", "Administrador,200,ADMINISTRADOR"})
-    void testarListarUsuariosDesprotegido(String descricao, int statusEsperado, String perfilStr) throws Exception {
+    @ParameterizedTest(name = "GET /usuarios - {0} espera {1}")
+    @CsvSource({"Anônimo,401,null", "Solicitante,403,SOLICITANTE", "Responsável,403,RESPONSAVEL", "Administrador,200,ADMINISTRADOR"})
+    void testarListarUsuarios(String descricao, int statusEsperado, String perfilStr) throws Exception {
         if ("null".equals(perfilStr)) {
             mockMvc.perform(get("/usuarios"))
                 .andExpect(status().is(statusEsperado));
@@ -286,9 +286,9 @@ class MatrizAutorizacaoTest {
         SecurityContextHolder.clearContext();
     }
 
-    @ParameterizedTest(name = "GET de usuário por id - {0} espera {1} [DIVERGÊNCIA]")
-    @CsvSource({"Anônimo,401,null", "Solicitante,200,SOLICITANTE", "Responsável,200,RESPONSAVEL", "Administrador,200,ADMINISTRADOR"})
-    void testarBuscarUsuarioDesprotegido(String descricao, int statusEsperado, String perfilStr) throws Exception {
+    @ParameterizedTest(name = "GET de usuário por id - {0} espera {1}")
+    @CsvSource({"Anônimo,401,null", "Solicitante,200,SOLICITANTE", "Responsável,403,RESPONSAVEL", "Administrador,200,ADMINISTRADOR"})
+    void testarBuscarUsuario(String descricao, int statusEsperado, String perfilStr) throws Exception {
         if ("null".equals(perfilStr)) {
             mockMvc.perform(get("/usuarios/{id}", solicitante1.getId()))
                 .andExpect(status().is(statusEsperado));
@@ -308,8 +308,8 @@ class MatrizAutorizacaoTest {
     void testarCriarManutencaoDesprotegido(String descricao, int statusEsperado, String perfilStr) throws Exception {
         var request = java.util.Map.of(
                 "recursoId", recursoPublico.getId(),
-                "dataInicio", LocalDateTime.now().plusHours(1).toString(),
-                "dataFim", LocalDateTime.now().plusHours(2).toString(),
+                "dataInicio", LocalDateTime.now().plusDays(5).toString(),
+                "dataFim", LocalDateTime.now().plusDays(5).plusHours(1).toString(),
                 "descricao", "Manutenção de teste");
 
         if ("null".equals(perfilStr)) {

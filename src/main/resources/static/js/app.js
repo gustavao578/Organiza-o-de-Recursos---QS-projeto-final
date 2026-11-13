@@ -1,17 +1,22 @@
 import { clearSession, getSession, startSession } from "./auth.js";
+import { apiPost } from "./api.js";
+import { mountMaintenance } from "./manutencoes.js";
+import { mountReports } from "./relatorios.js";
 import { mountResources } from "./recursos.js";
 import { mountReservations } from "./reservas.js";
+import { mountUsers } from "./usuarios.js";
 
 const loginView = document.querySelector("#login-view");
 const dashboardView = document.querySelector("#dashboard-view");
 const loginForm = document.querySelector("#login-form");
+const manualTokenForm = document.querySelector("#manual-token-form");
+const loginIdentifier = document.querySelector("#login-identifier");
 const tokenField = document.querySelector("#jwt-token");
 const appMessage = document.querySelector("#app-message");
 const logoutButton = document.querySelector("#logout-button");
 const sessionIdentity = document.querySelector("#session-identity");
-const resourceView = document.querySelector("#resources-view");
-const reservationsView = document.querySelector("#reservations-view");
 const tabButtons = [...document.querySelectorAll(".tab-button")];
+const contentViews = [...document.querySelectorAll(".content-view")];
 let selectedView = "resources-view";
 
 function showMessage(message, kind = "info") {
@@ -26,9 +31,16 @@ function hideMessage() {
 }
 
 function showView(viewId) {
+  const selectedTab = tabButtons.find((button) => (
+    button.dataset.view === viewId && !button.hidden
+  ));
+  if (!selectedTab) {
+    viewId = "resources-view";
+  }
   selectedView = viewId;
-  resourceView.hidden = viewId !== "resources-view";
-  reservationsView.hidden = viewId !== "reservations-view";
+  contentViews.forEach((view) => {
+    view.hidden = view.id !== viewId;
+  });
   tabButtons.forEach((button) => {
     if (button.dataset.view === viewId) {
       button.setAttribute("aria-current", "page");
@@ -44,11 +56,24 @@ async function showPanel(session) {
   logoutButton.hidden = false;
   sessionIdentity.hidden = false;
   sessionIdentity.textContent = `${session.subject} · ${session.profile}`;
+  const administrator = session.profile === "ADMINISTRADOR";
+  const managementProfile = administrator || session.profile === "RESPONSAVEL";
+  const usersTab = tabButtons.find((button) => button.dataset.view === "users-view");
+  usersTab.textContent = administrator ? "Usuários" : "Meu cadastro";
+  tabButtons.find((button) => button.dataset.view === "maintenance-view").hidden = !managementProfile;
+  tabButtons.find((button) => button.dataset.view === "reports-view").hidden = !managementProfile;
   showView(selectedView);
 
   await Promise.all([
-    mountResources(document.querySelector("#resources-content"), session.profile),
-    mountReservations(document.querySelector("#reservations-content"), session.profile),
+    mountResources(document.querySelector("#resources-content"), session),
+    mountReservations(document.querySelector("#reservations-content"), session),
+    mountUsers(document.querySelector("#users-content"), session),
+    managementProfile
+      ? mountMaintenance(document.querySelector("#maintenance-content"), session)
+      : Promise.resolve(),
+    managementProfile
+      ? mountReports(document.querySelector("#reports-content"))
+      : Promise.resolve(),
   ]);
 }
 
@@ -68,13 +93,33 @@ async function renderSession() {
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   hideMessage();
+  const submit = loginForm.querySelector("button[type='submit']");
+  submit.disabled = true;
+  try {
+    const response = await apiPost("/auth/login", {
+      identificador: loginIdentifier.value.trim(),
+    });
+    if (!startSession(response?.token || "")) {
+      throw new Error("O servidor retornou um token inválido ou expirado.");
+    }
+    loginIdentifier.value = "";
+    await renderSession();
+  } catch (error) {
+    showMessage(error.message, "error");
+  } finally {
+    submit.disabled = false;
+  }
+});
+
+manualTokenForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  hideMessage();
   const token = tokenField.value.trim();
   tokenField.value = "";
   if (!startSession(token)) {
-    showMessage("Token inválido ou armazenamento de sessão indisponível. Confira o JWT e tente novamente.", "error");
+    showMessage("Token inválido, expirado ou armazenamento de sessão indisponível.", "error");
     return;
   }
-  hideMessage();
   await renderSession();
 });
 

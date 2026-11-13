@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -40,9 +41,7 @@ public class ReservaController {
     public ResponseEntity<ReservaResponseDTO> criarReserva(
             @Valid @RequestBody ReservaRequestDTO request,
             @AuthenticationPrincipal Jwt jwt) {
-        if (jwt == null || !"SOLICITANTE".equals(jwt.getClaimAsString("profile"))) {
-            throw new AccessDeniedException("Somente usuários SOLICITANTE podem criar reservas.");
-        }
+        exigirUmDosPerfis(jwt, "SOLICITANTE");
         request.setUsuarioId(UUID.fromString(jwt.getSubject()));
         return ResponseEntity.status(HttpStatus.CREATED).body(reservaService.criarReserva(request));
     }
@@ -52,7 +51,7 @@ public class ReservaController {
             @PathVariable UUID id,
             @Valid @RequestBody(required = false) AprovacaoRequestDTO request,
             @AuthenticationPrincipal Jwt jwt) {
-        exigirAdmin(jwt);
+        exigirUmDosPerfis(jwt, "ADMINISTRADOR", "RESPONSAVEL");
         return ResponseEntity.ok(reservaService.aprovarReserva(
                 id, atorId(jwt), request == null ? null : request.getMotivo()));
     }
@@ -76,7 +75,7 @@ public class ReservaController {
             @PathVariable UUID id,
             @Valid @RequestBody(required = false) AprovacaoRequestDTO request,
             @AuthenticationPrincipal Jwt jwt) {
-        exigirAdmin(jwt);
+        exigirUmDosPerfis(jwt, "ADMINISTRADOR", "RESPONSAVEL");
         return ResponseEntity.ok(reservaService.atualizarStatus(
                 id, StatusReserva.REJEITADA, atorId(jwt), request == null ? null : request.getMotivo()));
     }
@@ -99,7 +98,7 @@ public class ReservaController {
             @PathVariable UUID id,
             @Valid @RequestBody ReservaRequestDTO request,
             @AuthenticationPrincipal Jwt jwt) {
-        exigirUmDosPerfis(jwt, "COMUM", "SOLICITANTE");
+        exigirUmDosPerfis(jwt, "SOLICITANTE");
         if (jwt == null) {
             throw new AccessDeniedException("A identidade do solicitante é obrigatória.");
         }
@@ -113,7 +112,7 @@ public class ReservaController {
             @PathVariable UUID id,
             @Valid @RequestBody(required = false) AprovacaoRequestDTO request,
             @AuthenticationPrincipal Jwt jwt) {
-        exigirUmDosPerfis(jwt, "COMUM", "SOLICITANTE");
+        exigirUmDosPerfis(jwt, "SOLICITANTE");
         return ResponseEntity.ok(reservaService.cancelarReserva(
                 id, atorId(request, jwt), request == null ? null : request.getMotivo()));
     }
@@ -134,8 +133,10 @@ public class ReservaController {
     }
 
     @GetMapping
-    public ResponseEntity<java.util.List<ReservaResponseDTO>> listarReservas() {
-        return ResponseEntity.ok(reservaService.listarReservas());
+    public ResponseEntity<java.util.List<ReservaResponseDTO>> listarReservas(
+            @RequestParam(required = false) StatusReserva status,
+            @RequestParam(required = false) UUID recursoId) {
+        return ResponseEntity.ok(reservaService.listarReservas(status, recursoId));
     }
 
     @GetMapping("/{id}/historico")
@@ -173,19 +174,13 @@ public class ReservaController {
     }
 
     private void exigirPerfil(Jwt jwt, String perfilEsperado) {
-        if (jwt != null && !perfilEsperado.equals(perfilNormalizado(jwt.getClaimAsString("profile")))) {
+        if (jwt == null || !perfilEsperado.equals(perfilNormalizado(jwt.getClaimAsString("profile")))) {
             throw new AccessDeniedException("Perfil não autorizado para esta operação.");
         }
     }
 
-    private void exigirAdmin(Jwt jwt) {
-        if (jwt == null || !"ADMINISTRADOR".equals(perfilNormalizado(jwt.getClaimAsString("profile")))) {
-            throw new AccessDeniedException("Somente usuários ADMINISTRADOR podem decidir reservas.");
-        }
-    }
-
     private void exigirUmDosPerfis(Jwt jwt, String... perfisAceitos) {
-        if (jwt != null && java.util.Arrays.stream(perfisAceitos)
+        if (jwt == null || java.util.Arrays.stream(perfisAceitos)
                 .noneMatch(perfil -> perfil.equals(perfilNormalizado(jwt.getClaimAsString("profile"))))) {
             throw new AccessDeniedException("Perfil não autorizado para esta operação.");
         }

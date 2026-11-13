@@ -1,9 +1,15 @@
 package br.edu.organizacaorecursos.controller;
 
 import br.edu.organizacaorecursos.domain.Recurso;
+import br.edu.organizacaorecursos.domain.Perfil;
+import br.edu.organizacaorecursos.domain.StatusReserva;
 import br.edu.organizacaorecursos.dto.RecursoRequestDTO;
 import br.edu.organizacaorecursos.dto.RecursoResponseDTO;
+import br.edu.organizacaorecursos.exception.RegraNegocioException;
+import br.edu.organizacaorecursos.repository.ManutencaoRepository;
 import br.edu.organizacaorecursos.repository.RecursoRepository;
+import br.edu.organizacaorecursos.repository.ReservaRepository;
+import br.edu.organizacaorecursos.repository.UsuarioRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -22,6 +28,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -29,7 +36,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class RecursoController {
 
+    private static final List<StatusReserva> STATUS_RESERVA_ATIVA =
+            List.of(StatusReserva.PENDENTE, StatusReserva.APROVADA, StatusReserva.EM_USO);
+
     private final RecursoRepository recursoRepository;
+    private final UsuarioRepository usuarioRepository;
+    private final ReservaRepository reservaRepository;
+    private final ManutencaoRepository manutencaoRepository;
 
     @PostMapping
     @PreAuthorize("hasRole('ADMINISTRADOR')")
@@ -37,14 +50,17 @@ public class RecursoController {
             @Valid @RequestBody RecursoRequestDTO request,
             @AuthenticationPrincipal Jwt jwt) {
         exigirJwt(jwt);
+        validarResponsavel(request.getResponsavelId());
         Recurso recurso = new Recurso(null, request.getNome(), request.getTipo(),
                 request.isRestrito(), request.getResponsavelId());
         return ResponseEntity.status(HttpStatus.CREATED).body(mapear(recursoRepository.save(recurso)));
     }
 
     @GetMapping
-    public ResponseEntity<List<RecursoResponseDTO>> listarRecursos() {
-        return ResponseEntity.ok(recursoRepository.findAll().stream().map(this::mapear).toList());
+    public ResponseEntity<List<RecursoResponseDTO>> listarRecursos(
+            @RequestParam(required = false) String tipo,
+            @RequestParam(required = false) Boolean restrito) {
+        return ResponseEntity.ok(recursoRepository.filtrar(tipo, restrito).stream().map(this::mapear).toList());
     }
 
     @GetMapping("/{id}")
@@ -60,6 +76,7 @@ public class RecursoController {
             @Valid @RequestBody RecursoRequestDTO request,
             @AuthenticationPrincipal Jwt jwt) {
         exigirJwt(jwt);
+        validarResponsavel(request.getResponsavelId());
         Recurso recurso = recursoRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Recurso não encontrado."));
         recurso.setNome(request.getNome());
@@ -78,8 +95,26 @@ public class RecursoController {
         if (!recursoRepository.existsById(id)) {
             throw new EntityNotFoundException("Recurso não encontrado.");
         }
+        if (reservaRepository.existsByRecurso_IdAndStatusIn(id, STATUS_RESERVA_ATIVA)) {
+            throw new RegraNegocioException("Não é possível excluir um recurso com reservas ativas.");
+        }
+        if (reservaRepository.existsByRecurso_Id(id) || manutencaoRepository.existsByRecurso_Id(id)) {
+            throw new RegraNegocioException(
+                    "Não é possível excluir um recurso associado a reservas ou manutenções.");
+        }
         recursoRepository.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private void validarResponsavel(UUID responsavelId) {
+        if (responsavelId == null) {
+            return;
+        }
+        var responsavel = usuarioRepository.findById(responsavelId)
+                .orElseThrow(() -> new EntityNotFoundException("Responsável não encontrado."));
+        if (responsavel.getPerfil() != Perfil.RESPONSAVEL) {
+            throw new RegraNegocioException("O usuário informado não possui perfil RESPONSAVEL.");
+        }
     }
 
     private void exigirJwt(Jwt jwt) {

@@ -62,9 +62,16 @@ export async function apiRequest(path, options = {}) {
     throw new ApiError(409, details ? `${message} ${details}` : message, details);
   }
   if (!response.ok) {
-    const message = typeof payload?.erro === "string"
-      ? payload.erro
-      : `A solicitação falhou (HTTP ${response.status}).`;
+    const fieldErrors = response.status === 400 && payload && typeof payload === "object"
+      ? Object.entries(payload)
+        .filter(([, value]) => typeof value === "string")
+        .map(([field, value]) => `${field}: ${value}`)
+      : [];
+    const message = fieldErrors.length > 0
+      ? fieldErrors.join("; ")
+      : typeof payload?.erro === "string"
+        ? payload.erro
+        : `A solicitação falhou (HTTP ${response.status}).`;
     throw new ApiError(response.status, message);
   }
 
@@ -77,4 +84,16 @@ export function apiGet(path) {
 
 export function apiPost(path, body) {
   return apiRequest(path, { method: "POST", body: JSON.stringify(body) });
+}
+
+export function apiPut(path, body) {
+  return apiRequest(path, { method: "PUT", body: JSON.stringify(body) });
+}
+
+export function apiPatch(path, body) {
+  return apiRequest(path, { method: "PATCH", body: JSON.stringify(body) });
+}
+
+export function apiDelete(path) {
+  return apiRequest(path, { method: "DELETE" });
 }

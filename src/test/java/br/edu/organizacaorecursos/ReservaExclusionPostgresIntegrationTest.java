@@ -100,7 +100,7 @@ class ReservaExclusionPostgresIntegrationTest {
                 "ex_tb_reservas_sem_sobreposicao_ativa");
         if (constraintCount == null || constraintCount == 0) {
             new ResourceDatabasePopulator(
-                    new ClassPathResource("db/migration/V1__reservas_sem_sobreposicao_ativa.sql"))
+                    new ClassPathResource("db/migration/V2__reservas_sem_sobreposicao_ativa.sql"))
                     .execute(dataSource);
         }
         assertThat(jdbcTemplate.queryForObject(

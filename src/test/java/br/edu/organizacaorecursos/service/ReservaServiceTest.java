@@ -246,6 +246,34 @@ class ReservaServiceTest {
     }
 
     @ParameterizedTest
+    @EnumSource(value = StatusReserva.class, names = {"PENDENTE", "SOLICITADA", "APROVADA"})
+    void solicitantePodeCancelarReservaEmEstadosPermitidos(StatusReserva status) {
+        Reserva reserva = criarReservaPendente();
+        reserva.setStatus(status);
+        when(reservaRepository.findById(reserva.getId())).thenReturn(Optional.of(reserva));
+        when(reservaRepository.save(any(Reserva.class))).thenAnswer(invocacao -> invocacao.getArgument(0));
+
+        ReservaResponseDTO response = reservaService.cancelarReserva(reserva.getId(), usuario.getId());
+
+        assertEquals(StatusReserva.CANCELADA, response.getStatus());
+        verify(reservaRepository).save(reserva);
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = StatusReserva.class, names = {
+        "EM_USO", "CONCLUÍDA", "REJEITADA", "CANCELADA", "NÃO_COMPARECEU"
+    })
+    void solicitanteNaoPodeCancelarReservaEmEstadosBloqueados(StatusReserva status) {
+        Reserva reserva = criarReservaPendente();
+        reserva.setStatus(status);
+        when(reservaRepository.findById(reserva.getId())).thenReturn(Optional.of(reserva));
+
+        assertThrows(RegraNegocioException.class,
+                () -> reservaService.cancelarReserva(reserva.getId(), usuario.getId()));
+        verify(reservaRepository, never()).save(any(Reserva.class));
+    }
+
+    @ParameterizedTest
     @EnumSource(value = StatusReserva.class, names = {"EM_USO", "CONCLUÍDA", "NÃO_COMPARECEU"})
     void impedeExcluirReservaQueJaFoiIniciada(StatusReserva status) {
         Reserva reserva = criarReservaPendente();

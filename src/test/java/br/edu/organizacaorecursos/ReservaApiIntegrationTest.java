@@ -218,7 +218,8 @@ class ReservaApiIntegrationTest {
         Usuario solicitante = criarUsuario("solicitante-autorizado");
                 solicitante.setPerfil(Perfil.ADMINISTRADOR);
                 usuarioRepository.save(solicitante);
-        UUID recursoId = criarRecursoRestrito(solicitante.getId());
+        Usuario responsavel = criarUsuario("responsavel-autorizado");
+        UUID recursoId = criarRecursoRestrito(responsavel.getId());
         LocalDateTime inicio = inicioFuturo();
         ReservaRequestDTO request = new ReservaRequestDTO();
         request.setRecursoId(recursoId);
@@ -791,15 +792,16 @@ class ReservaApiIntegrationTest {
                 """;
 
         mockMvc.perform(post("/usuarios")
+                        .with(jwtContexto(UUID.randomUUID(), "ADMINISTRADOR"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(request))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.id").isNotEmpty())
                 .andExpect(jsonPath("$.nome").value("Usuário API"))
-                .andExpect(jsonPath("$.perfil").value("SOLICITANTE"));
+                .andExpect(jsonPath("$.perfil").value("ADMINISTRADOR"));
 
         mockMvc.perform(get("/usuarios")
-                        .with(jwtContexto(UUID.randomUUID(), "SOLICITANTE")))
+                        .with(jwtContexto(UUID.randomUUID(), "ADMINISTRADOR")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].email").value("usuario.api@example.com"));
 
@@ -846,10 +848,11 @@ class ReservaApiIntegrationTest {
     }
 
     @Test
-    void solicitanteNaoPodeAlterarPerfilAoAtualizarUsuario() throws Exception {
+    void usuarioPodeEditarProprioCadastroSemAlterarPerfil() throws Exception {
         Usuario usuario = criarUsuario("perfil-protegido");
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                         .put("/usuarios/{id}", usuario.getId())
+                        .with(jwtContexto(usuario.getId(), "SOLICITANTE"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {"nome":"Perfil protegido","email":"perfil.protegido@example.com",
@@ -884,7 +887,7 @@ class ReservaApiIntegrationTest {
         mockMvc.perform(get("/manutencoes")
                         .with(jwtContexto(UUID.randomUUID(), "RESPONSAVEL")))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].recurso.id").value(recurso.getId().toString()));
+                .andExpect(jsonPath("$[0].recursoId").value(recurso.getId().toString()));
     }
 
     @Test

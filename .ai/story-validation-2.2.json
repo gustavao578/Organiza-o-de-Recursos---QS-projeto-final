@@ -1,0 +1,71 @@
+{
+  "story_id": "2.2",
+  "story_path": "docs/stories/2.2-finalizacao-api-spa-reservas.md",
+  "validated_at": "2026-11-13",
+  "validator": "@po",
+  "project_type": "brownfield",
+  "includes_ui": true,
+  "verdict": "GO",
+  "score": 8,
+  "confidence": "medium",
+  "status_transition": "Draft -> Ready",
+  "duplicate_check": {
+    "available": true,
+    "has_duplicates": false,
+    "matches": []
+  },
+  "template_compliance": {
+    "required_sections_present": true,
+    "unfilled_placeholders": false,
+    "executor_assignment_valid": true,
+    "coderabbit_section_complete": true
+  },
+  "categories": {
+    "goal_context": {
+      "status": "PASS",
+      "evidence": "Connects to completed Story 2.1, states user value, and scopes the requested additions."
+    },
+    "technical_guidance": {
+      "status": "PARTIAL",
+      "evidence": "Existing files, routes, entities, test suites, and metrics are identified. The checkout has no architecture documents; this is noted in Dev Notes."
+    },
+    "references": {
+      "status": "PARTIAL",
+      "evidence": "References the existing story, build configuration, source tree, and tests; no architecture/PRD shards are available in the checkout."
+    },
+    "self_containment": {
+      "status": "PASS",
+      "evidence": "Acceptance criteria cover API behavior, roles, frontend flows, persistence, quality thresholds, and handoff."
+    },
+    "testing": {
+      "status": "PASS",
+      "evidence": "Requires existing regression suites, focused tests, PostgreSQL/Testcontainers, SPA smoke validation, and exact JaCoCo thresholds."
+    },
+    "coderabbit": {
+      "status": "PASS",
+      "evidence": "API, database, security, and frontend scope has matching agents, gates, self-healing, and focus areas."
+    },
+    "sequencing": {
+      "status": "PASS",
+      "evidence": "Baseline tests precede changes; schema/service work precedes SPA integration and final validation."
+    },
+    "security": {
+      "status": "PASS",
+      "evidence": "API protection, ownership/resource-role validation, JWT claims, and backend authority are explicit."
+    }
+  },
+  "critical_issues": [],
+  "risks": [
+    {
+      "severity": "medium",
+      "description": "No migration runner dependency/configuration is present in the checkout; implementation must ensure migrations execute before Hibernate schema validation.",
+      "mitigation": "AC1 requires a clean PostgreSQL bootstrap and ddl-auto=validate test; consult the applicable dependency approval rule if adding a dependency."
+    },
+    {
+      "severity": "medium",
+      "description": "Architecture documents configured by core-config.yaml are absent.",
+      "mitigation": "Use the existing code patterns and story/source references; do not extend requirements beyond the supplied scope."
+    }
+  ],
+  "recommendation": "Ready for implementation; verify migration execution and schema preservation in PostgreSQL before proceeding to dependent API/UI flows."
+}

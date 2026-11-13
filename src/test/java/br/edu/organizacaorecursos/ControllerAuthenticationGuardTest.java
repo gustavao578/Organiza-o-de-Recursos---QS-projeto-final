@@ -18,7 +18,7 @@ class ControllerAuthenticationGuardTest {
 
     @Test
     void manutencaoRecusaPrincipalJwtAusente() {
-        var controller = new ManutencaoController(null, null);
+        var controller = new ManutencaoController(null);
 
         assertThrows(AccessDeniedException.class,
                 () -> controller.criarManutencao(
@@ -27,7 +27,7 @@ class ControllerAuthenticationGuardTest {
 
     @Test
     void recursoRecusaPrincipalJwtAusente() {
-        var controller = new RecursoController(null);
+        var controller = new RecursoController(null, null, null, null);
 
         assertThrows(AccessDeniedException.class,
                 () -> controller.criarRecurso(new RecursoRequestDTO(), null));
@@ -35,7 +35,7 @@ class ControllerAuthenticationGuardTest {
 
     @Test
     void usuarioRecusaPrincipalJwtAusente() {
-        var controller = new UsuarioController(null);
+        var controller = new UsuarioController(null, null, null);
 
         assertThrows(AccessDeniedException.class,
                 () -> controller.deletarUsuario(UUID.randomUUID(), null));
