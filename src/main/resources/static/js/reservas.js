@@ -283,7 +283,7 @@ export async function mountReservations(container, session) {
         );
       }));
     }
-    if (isAdmin || session.profile === "RESPONSAVEL") {
+    if (isAdmin || isResponsible) {
       item.append(button("Ver histórico", () => showHistory(item, reservation)));
     }
     return item;

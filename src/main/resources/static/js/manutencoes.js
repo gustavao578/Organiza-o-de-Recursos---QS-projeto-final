@@ -18,7 +18,7 @@ function feedback(container, message, kind = "info") {
   container.prepend(element);
 }
 
-export async function mountMaintenance(container) {
+export async function mountMaintenance(container, session) {
   container.replaceChildren();
   const form = node("form");
   form.className = "form-grid";
