@@ -1,7 +1,9 @@
 package br.edu.organizacaorecursos.repository;
 
 import br.edu.organizacaorecursos.domain.Reserva;
+import br.edu.organizacaorecursos.domain.StatusReserva;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,6 +11,27 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface ReservaRepository extends JpaRepository<Reserva, UUID> {
+
+    @Query("""
+            SELECT r
+            FROM Reserva r
+            WHERE (:status IS NULL OR r.status = :status)
+              AND (:recursoId IS NULL OR r.recurso.id = :recursoId)
+            ORDER BY r.dataInicio
+            """)
+    List<Reserva> filtrar(
+            @Param("status") StatusReserva status,
+            @Param("recursoId") UUID recursoId);
+
+    boolean existsByUsuario_Id(UUID usuarioId);
+
+    boolean existsByUsuario_IdAndStatusIn(
+            UUID usuarioId, Collection<StatusReserva> statuses);
+
+    boolean existsByRecurso_Id(UUID recursoId);
+
+    boolean existsByRecurso_IdAndStatusIn(
+            UUID recursoId, Collection<StatusReserva> statuses);
 
     @Query("""
             SELECT r

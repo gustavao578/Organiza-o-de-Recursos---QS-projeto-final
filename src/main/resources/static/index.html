@@ -24,15 +24,24 @@
 
     <section id="login-view" class="card login-card" aria-labelledby="login-title">
       <h1 id="login-title">Entrar</h1>
-      <p>Use um JWT já emitido pelo provedor de identidade da sua organização.</p>
+      <p>O login por e-mail ou matrícula está disponível apenas no ambiente de demonstração.
+        Em outros ambientes, use um JWT emitido pelo provedor de identidade.</p>
       <form id="login-form">
-        <label for="jwt-token">Token de acesso</label>
-        <textarea id="jwt-token" name="token" rows="4" required
-                  autocomplete="off" spellcheck="false"
-                  aria-describedby="token-help"></textarea>
-        <small id="token-help">O token fica apenas nesta sessão do navegador.</small>
-        <button class="button" type="submit">Acessar painel</button>
+        <label for="login-identifier">E-mail ou matrícula</label>
+        <input id="login-identifier" name="identificador" required autocomplete="username">
+        <button class="button" type="submit">Entrar</button>
       </form>
+      <details>
+        <summary>Usar JWT manualmente</summary>
+        <form id="manual-token-form">
+          <label for="jwt-token">Token de acesso</label>
+          <textarea id="jwt-token" name="token" rows="4" required
+                    autocomplete="off" spellcheck="false"
+                    aria-describedby="token-help"></textarea>
+          <small id="token-help">O token fica apenas nesta sessão do navegador.</small>
+          <button class="button" type="submit">Acessar painel</button>
+        </form>
+      </details>
     </section>
 
     <section id="dashboard-view" hidden aria-labelledby="dashboard-title">
@@ -49,6 +58,9 @@
         <button class="tab-button" type="button" data-view="reservations-view">
           Reservas
         </button>
+        <button class="tab-button" type="button" data-view="users-view">Usuários</button>
+        <button class="tab-button" type="button" data-view="maintenance-view">Manutenções</button>
+        <button class="tab-button" type="button" data-view="reports-view">Relatórios</button>
       </nav>
       <section id="resources-view" class="card content-view" aria-labelledby="resources-title">
         <h2 id="resources-title">Recursos disponíveis</h2>
@@ -57,6 +69,18 @@
       <section id="reservations-view" class="card content-view" aria-labelledby="reservations-title" hidden>
         <h2 id="reservations-title">Reservas</h2>
         <div id="reservations-content"></div>
+      </section>
+      <section id="users-view" class="card content-view" aria-labelledby="users-title" hidden>
+        <h2 id="users-title">Usuários</h2>
+        <div id="users-content"></div>
+      </section>
+      <section id="maintenance-view" class="card content-view" aria-labelledby="maintenance-title" hidden>
+        <h2 id="maintenance-title">Manutenções</h2>
+        <div id="maintenance-content"></div>
+      </section>
+      <section id="reports-view" class="card content-view" aria-labelledby="reports-title" hidden>
+        <h2 id="reports-title">Relatórios de utilização</h2>
+        <div id="reports-content"></div>
       </section>
     </section>
   </main>

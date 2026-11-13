@@ -43,8 +43,11 @@ JWT_SECRET="<chave-aleatoria-com-pelo-menos-32-bytes>" \
 ./mvnw spring-boot:run
 ```
 
-O perfil de produção desativa o console H2 e valida o schema PostgreSQL sem
-alterá-lo automaticamente. A dependência PostgreSQL está disponível no runtime.
+O perfil de produção desativa o console H2. Flyway aplica as migrações
+PostgreSQL versionadas antes de o Hibernate validar o schema; a aplicação não
+altera nem remove dados existentes para contornar uma migração incompatível.
+Se já houver sobreposições impeditivas, a V2 falha e exige revisão dos dados.
+A dependência PostgreSQL está disponível no runtime.
 Os tokens carregam o identificador do usuário em `sub` e o perfil em `profile`
 (`SOLICITANTE`, `RESPONSAVEL` ou `ADMINISTRADOR`). A chave de teste em
 execução de testes é gerada em memória e não deve ser reutilizada em ambientes
@@ -57,34 +60,44 @@ Inicie a aplicação com `./mvnw spring-boot:run` e abra
 mesma origem da API; os arquivos ficam em `src/main/resources/static/` e não
 exigem instalação de dependências de frontend.
 
-A API não emite JWT nem oferece login por senha. Na tela inicial, informe um
-JWT válido emitido pelo provedor de identidade confiável da organização. O
-token deve conter `sub` (UUID do usuário) e `profile`, com um dos valores
-`SOLICITANTE`, `RESPONSAVEL` ou `ADMINISTRADOR`. A interface lê esses claims
-somente para exibir a identidade e adaptar as ações; assinatura, validade e
-autorização são sempre verificadas pelo backend. O token permanece em
+No perfil `demo`, a SPA permite entrar usando e-mail ou matrícula de um usuário
+cadastrado. Esse fluxo é somente para demonstração local: não verifica a posse
+do identificador e, portanto, não deve ser habilitado em produção. Para
+iniciá-lo, use `SPRING_PROFILES_ACTIVE=demo ./mvnw spring-boot:run`. O perfil
+`demo` inclui o armazenamento H2 local; não o use em ambientes compartilhados.
+O Swagger documenta `POST /auth/login` apenas quando esse perfil está ativo;
+o login é público e as operações de negócio herdam o esquema Bearer JWT.
+
+Em produção, o endpoint de login por identificador fica desabilitado. Na tela
+inicial, informe um JWT emitido por um provedor de identidade confiável. O
+token deve conter `sub` (UUID do usuário), `profile` (`SOLICITANTE`,
+`RESPONSAVEL` ou `ADMINISTRADOR`) e `exp`. A interface lê esses claims somente
+para exibir a identidade e adaptar as ações; assinatura, validade e autorização
+são sempre verificadas pelo backend. O token permanece em
 `sessionStorage` durante a sessão desta aba e é removido ao encerrar a sessão
 ou ao receber HTTP 401. `sessionStorage` não protege contra XSS: mantenha a
 origem protegida, não adicione scripts de terceiros e trate os dados exibidos
 como não confiáveis.
 
-Todos os endpoints da API continuam protegidos por Bearer JWT. Os arquivos
-estáticos da SPA podem ser carregados sem token, mas isso não libera rotas de
-negócio. A SPA permite listar recursos e reservas a usuários autenticados,
-oferece criação de recursos somente a `ADMINISTRADOR` e criação de reservas
-somente a `SOLICITANTE`.
+Todos os endpoints de negócio da API continuam protegidos por Bearer JWT. Os
+arquivos estáticos da SPA podem ser carregados sem token, mas isso não libera
+rotas de negócio. As reservas usam exclusivamente o caminho `/reservas`; o
+alias anterior `/api/reservas` não está mais disponível. A SPA permite listar recursos e reservas a usuários
+autenticados, oferece gestão de recursos e usuários a `ADMINISTRADOR` e mostra
+as ações de reservas conforme perfil, vínculo e estado.
 
 ## Migração PostgreSQL de conflitos de reservas
 
-Antes de liberar o backend contra PostgreSQL, garanta que o schema da aplicação
-já contenha `tb_reservas` e aplique a migração versionada:
+Ao iniciar com `SPRING_PROFILES_ACTIVE=prod`, o Flyway aplica automaticamente
+as migrações versionadas antes de `ddl-auto=validate`. A sequência é:
 
 ```bash
-psql "$DATABASE_URL" -v ON_ERROR_STOP=1 \
-  -f src/main/resources/db/migration/V1__reservas_sem_sobreposicao_ativa.sql
+src/main/resources/db/migration/V1__criar_tabelas.sql
+src/main/resources/db/migration/V2__reservas_sem_sobreposicao_ativa.sql
 ```
 
-A migração habilita `btree_gist` e cria uma constraint GiST que impede
+A V1 cria as tabelas e índices do domínio; a V2 habilita `btree_gist` e cria
+uma constraint GiST que impede
 sobreposição no mesmo recurso nos estados `PENDENTE`, `APROVADA` e `EM_USO`,
 usando intervalos semiabertos `[início, fim)`. Reservas adjacentes são
 permitidas. O script não remove nem altera registros preexistentes; se a

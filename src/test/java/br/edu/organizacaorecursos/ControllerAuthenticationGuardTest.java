@@ -18,7 +18,7 @@ class ControllerAuthenticationGuardTest {
 
     @Test
     void manutencaoRecusaPrincipalJwtAusente() {
-        var controller = new ManutencaoController(null, null);
+        var controller = new ManutencaoController(null);
 
         assertThrows(AccessDeniedException.class,
                 () -> controller.criarManutencao(
@@ -27,7 +27,7 @@ class ControllerAuthenticationGuardTest {
 
     @Test
     void recursoRecusaPrincipalJwtAusente() {
-        var controller = new RecursoController(null);
+        var controller = new RecursoController(null, null, null, null);
 
         assertThrows(AccessDeniedException.class,
                 () -> controller.criarRecurso(new RecursoRequestDTO(), null));
@@ -35,7 +35,7 @@ class ControllerAuthenticationGuardTest {
 
     @Test
     void usuarioRecusaPrincipalJwtAusente() {
-        var controller = new UsuarioController(null);
+        var controller = new UsuarioController(null, null, null);
 
         assertThrows(AccessDeniedException.class,
                 () -> controller.deletarUsuario(UUID.randomUUID(), null));
@@ -47,6 +47,27 @@ class ControllerAuthenticationGuardTest {
 
         assertThrows(AccessDeniedException.class,
                 () -> controller.criarReserva(new ReservaRequestDTO(), null));
+    }
+
+    @Test
+    void atualizacaoDeReservaRecusaPrincipalJwtAusente() {
+        var controller = new ReservaController(null);
+
+        assertThrows(AccessDeniedException.class,
+                () -> controller.atualizarReserva(UUID.randomUUID(), new ReservaRequestDTO(), null));
+    }
+
+    @Test
+    void atualizacaoDeReservaRecusaPerfilDiferenteDeSolicitante() {
+        var controller = new ReservaController(null);
+        Jwt jwt = Jwt.withTokenValue("test-token")
+                .header("alg", "HS256")
+                .subject(UUID.randomUUID().toString())
+                .claim("profile", "ADMINISTRADOR")
+                .build();
+
+        assertThrows(AccessDeniedException.class,
+                () -> controller.atualizarReserva(UUID.randomUUID(), new ReservaRequestDTO(), jwt));
     }
 
     @Test

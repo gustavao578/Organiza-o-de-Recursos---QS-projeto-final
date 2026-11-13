@@ -93,10 +93,21 @@ class SecurityConfigTest {
         assertNull(result.getRequest().getSession(false));
     }
 
+    @Test
+    void loginPorIdentificadorNaoFicaDisponivelForaDoPerfilDemo() throws Exception {
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"identificador":"admin@example.com"}
+                                """))
+                .andExpect(status().isNotFound());
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {
         "/", "/index.html", "/styles.css",
-        "/js/api.js", "/js/auth.js", "/js/app.js", "/js/recursos.js", "/js/reservas.js"
+        "/js/api.js", "/js/auth.js", "/js/app.js", "/js/recursos.js", "/js/reservas.js",
+        "/js/usuarios.js", "/js/manutencoes.js", "/js/relatorios.js"
     })
     void arquivosDaSpaSaoPublicosSemLiberarRotasDaApi(String path) throws Exception {
         mockMvc.perform(get(path))
@@ -121,7 +132,6 @@ class SecurityConfigTest {
     @ParameterizedTest
     @ValueSource(strings = {
         "/reservas",
-        "/api/reservas",
         "/recursos",
         "/usuarios",
         "/manutencoes"

@@ -111,7 +111,14 @@ public class ReservaService {
 
         @Transactional(readOnly = true)
         public List<ReservaResponseDTO> listarReservas() {
-                return reservaRepository.findAll().stream().map(this::mapearParaResponseDTO).toList();
+                return listarReservas(null, null);
+        }
+
+        @Transactional(readOnly = true)
+        public List<ReservaResponseDTO> listarReservas(StatusReserva status, UUID recursoId) {
+                return reservaRepository.filtrar(status, recursoId).stream()
+                        .map(this::mapearParaResponseDTO)
+                        .toList();
         }
 
         @Transactional(readOnly = true)
@@ -269,14 +276,6 @@ public class ReservaService {
         }
 
         @Transactional
-        public ReservaResponseDTO rejeitarReserva(UUID reservaId, UUID atorId) {
-                Reserva reserva = buscarReserva(reservaId);
-                validarResponsavel(reserva, atorId);
-                validarStatusPendente(reserva);
-                return persistirStatus(reserva, StatusReserva.REJEITADA, atorId, "Reserva rejeitada.");
-        }
-
-        @Transactional
         public ReservaResponseDTO cancelarReserva(UUID reservaId, UUID atorId) {
                 return cancelarReserva(reservaId, atorId, null);
         }
@@ -287,7 +286,12 @@ public class ReservaService {
                 if (!reserva.getUsuario().getId().equals(atorId)) {
                         throw new RegraNegocioException("Somente o solicitante pode cancelar a reserva.");
                 }
-                validarStatusPendente(reserva);
+                if (reserva.getStatus() != StatusReserva.PENDENTE
+                        && reserva.getStatus() != StatusReserva.SOLICITADA
+                        && reserva.getStatus() != StatusReserva.APROVADA) {
+                    throw new RegraNegocioException(
+                            "Somente reservas pendentes, solicitadas ou aprovadas podem ser canceladas.");
+                }
                 return persistirStatus(
                                 reserva,
                                 StatusReserva.CANCELADA,
@@ -341,13 +345,6 @@ public class ReservaService {
                 return reservaRepository.findById(reservaId)
                                 .orElseThrow(() -> new EntityNotFoundException(
                                                 "Reserva não encontrada para o ID informado."));
-        }
-
-        private void validarStatusPendente(Reserva reserva) {
-                if (reserva.getStatus() != StatusReserva.PENDENTE
-                                && reserva.getStatus() != StatusReserva.SOLICITADA) {
-                        throw new RegraNegocioException("Somente solicitações pendentes podem ser alteradas.");
-                }
         }
 
         private void validarResponsavel(Reserva reserva, UUID atorId) {

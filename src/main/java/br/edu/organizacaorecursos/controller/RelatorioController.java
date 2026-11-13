@@ -58,9 +58,17 @@ public class RelatorioController {
                     example = "2026-03-15T15:00:00")
             @RequestParam("fim") LocalDateTime fim,
             @AuthenticationPrincipal Jwt jwt) {
-        if (jwt == null || !PERFIS_AUTORIZADOS.contains(jwt.getClaimAsString("profile"))) {
+        if (jwt == null || !PERFIS_AUTORIZADOS.contains(perfilNormalizado(jwt.getClaimAsString("profile")))) {
             throw new AccessDeniedException("Perfil não autorizado para consultar relatórios.");
         }
         return ResponseEntity.ok(relatorioUtilizacaoService.gerar(inicio, fim));
+    }
+
+    private String perfilNormalizado(String perfil) {
+        return switch (perfil == null ? "" : perfil) {
+            case "ADMIN" -> "ADMINISTRADOR";
+            case "COMUM" -> "SOLICITANTE";
+            default -> perfil;
+        };
     }
 }

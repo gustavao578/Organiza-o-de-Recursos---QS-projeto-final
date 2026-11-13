@@ -4,6 +4,10 @@ import br.edu.organizacaorecursos.domain.Perfil;
 import br.edu.organizacaorecursos.domain.Usuario;
 import br.edu.organizacaorecursos.dto.UsuarioRequestDTO;
 import br.edu.organizacaorecursos.dto.UsuarioResponseDTO;
+import br.edu.organizacaorecursos.domain.StatusReserva;
+import br.edu.organizacaorecursos.exception.RegraNegocioException;
+import br.edu.organizacaorecursos.repository.RecursoRepository;
+import br.edu.organizacaorecursos.repository.ReservaRepository;
 import br.edu.organizacaorecursos.repository.UsuarioRepository;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
@@ -30,12 +34,19 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class UsuarioController {
 
+    private static final List<StatusReserva> STATUS_RESERVA_ATIVA =
+            List.of(StatusReserva.PENDENTE, StatusReserva.APROVADA, StatusReserva.EM_USO);
+
     private final UsuarioRepository usuarioRepository;
+    private final ReservaRepository reservaRepository;
+    private final RecursoRepository recursoRepository;
 
     @PostMapping
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<UsuarioResponseDTO> criarUsuario(
             @Valid @RequestBody UsuarioRequestDTO request,
             @AuthenticationPrincipal Jwt jwt) {
+        exigirJwt(jwt);
         Perfil perfil = request.getPerfil() != null && isAdministrador(jwt)
                 ? request.getPerfil()
                 : Perfil.SOLICITANTE;
@@ -45,14 +56,15 @@ public class UsuarioController {
     }
 
     @GetMapping
-    @PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasRole('ADMINISTRADOR')")
     public ResponseEntity<List<UsuarioResponseDTO>> listarUsuarios() {
         return ResponseEntity.ok(usuarioRepository.findAll().stream().map(this::mapear).toList());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<UsuarioResponseDTO> buscarUsuario(@PathVariable UUID id) {
+    public ResponseEntity<UsuarioResponseDTO> buscarUsuario(
+            @PathVariable UUID id, @AuthenticationPrincipal Jwt jwt) {
+        exigirProprietarioOuAdministrador(id, jwt);
         return ResponseEntity.ok(mapear(usuarioRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado."))));
     }
@@ -62,6 +74,7 @@ public class UsuarioController {
             @PathVariable UUID id,
             @Valid @RequestBody UsuarioRequestDTO request,
             @AuthenticationPrincipal Jwt jwt) {
+        exigirProprietarioOuAdministrador(id, jwt);
         Usuario usuario = usuarioRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Usuário não encontrado."));
         usuario.setNome(request.getNome());
@@ -84,6 +97,15 @@ public class UsuarioController {
         if (!usuarioRepository.existsById(id)) {
             throw new EntityNotFoundException("Usuário não encontrado.");
         }
+        if (reservaRepository.existsByUsuario_IdAndStatusIn(id, STATUS_RESERVA_ATIVA)) {
+            throw new RegraNegocioException("Não é possível excluir um usuário com reservas ativas.");
+        }
+        if (reservaRepository.existsByUsuario_Id(id)) {
+            throw new RegraNegocioException("Não é possível excluir um usuário associado a reservas.");
+        }
+        if (recursoRepository.existsByResponsavelId(id)) {
+            throw new RegraNegocioException("Não é possível excluir um usuário responsável por recursos.");
+        }
         usuarioRepository.deleteById(id);
         return ResponseEntity.noContent().build();
     }
@@ -102,7 +124,38 @@ public class UsuarioController {
         if (jwt == null) {
             return false;
         }
-        String perfil = jwt.getClaimAsString("profile");
+        String perfil = perfilNormalizado(jwt.getClaimAsString("profile"));
         return "ADMINISTRADOR".equals(perfil) || "ADMIN".equals(perfil);
+    }
+
+    private void exigirProprietarioOuAdministrador(UUID id, Jwt jwt) {
+        if (jwt == null) {
+            throw new AccessDeniedException("A autenticação é obrigatória para editar usuários.");
+        }
+        if (isAdministrador(jwt)) {
+            return;
+        }
+        try {
+            if (id.equals(UUID.fromString(jwt.getSubject()))) {
+                return;
+            }
+        } catch (IllegalArgumentException exception) {
+            throw new AccessDeniedException("A identidade do usuário autenticado é inválida.");
+        }
+        throw new AccessDeniedException("Somente o próprio usuário ou um administrador pode editar o cadastro.");
+    }
+
+    private void exigirJwt(Jwt jwt) {
+        if (jwt == null) {
+            throw new AccessDeniedException("A autenticação é obrigatória para gerenciar usuários.");
+        }
+    }
+
+    private String perfilNormalizado(String perfil) {
+        return switch (perfil == null ? "" : perfil) {
+            case "ADMIN" -> "ADMINISTRADOR";
+            case "COMUM" -> "SOLICITANTE";
+            default -> perfil;
+        };
     }
 }

@@ -1,0 +1,17 @@
+schema: 1
+story: '2.2'
+gate: CONCERNS
+status_reason: 'Os critérios funcionais, testes e cobertura passaram. A integridade de responsavel_id não é garantida no banco e a validação visual/acessível não pôde ser executada em navegador; ambos são itens não bloqueantes documentados.'
+reviewer: 'Quinn'
+reviewed_revision: 'commit:e1de11b'
+updated: '2026-11-13T15:27:28Z'
+top_issues:
+  - id: 'REL-001'
+    severity: medium
+    finding: 'tb_recursos.responsavel_id não possui foreign key nem índice; a aplicação valida a associação, mas o banco não impede inconsistências sob concorrência.'
+    suggested_action: 'Definir política de exclusão e adicionar FK/index em migration futura, com teste de integridade concorrente.'
+  - id: 'TEST-001'
+    severity: low
+    finding: 'Ações dinâmicas, ordem de foco e anúncios assistivos da SPA não foram validados em navegador.'
+    suggested_action: 'Executar smoke visual, navegação por teclado e leitor de tela antes da liberação para produção.'
+waiver: { active: false }
