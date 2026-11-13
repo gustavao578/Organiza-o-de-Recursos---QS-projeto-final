@@ -99,9 +99,6 @@ public class ReservaController {
             @Valid @RequestBody ReservaRequestDTO request,
             @AuthenticationPrincipal Jwt jwt) {
         exigirUmDosPerfis(jwt, "SOLICITANTE");
-        if (jwt == null) {
-            throw new AccessDeniedException("A identidade do solicitante é obrigatória.");
-        }
         UUID solicitanteId = UUID.fromString(jwt.getSubject());
         request.setUsuarioId(solicitanteId);
         return ResponseEntity.ok(reservaService.atualizarReserva(id, request, solicitanteId));

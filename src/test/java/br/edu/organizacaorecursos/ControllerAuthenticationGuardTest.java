@@ -50,6 +50,27 @@ class ControllerAuthenticationGuardTest {
     }
 
     @Test
+    void atualizacaoDeReservaRecusaPrincipalJwtAusente() {
+        var controller = new ReservaController(null);
+
+        assertThrows(AccessDeniedException.class,
+                () -> controller.atualizarReserva(UUID.randomUUID(), new ReservaRequestDTO(), null));
+    }
+
+    @Test
+    void atualizacaoDeReservaRecusaPerfilDiferenteDeSolicitante() {
+        var controller = new ReservaController(null);
+        Jwt jwt = Jwt.withTokenValue("test-token")
+                .header("alg", "HS256")
+                .subject(UUID.randomUUID().toString())
+                .claim("profile", "ADMINISTRADOR")
+                .build();
+
+        assertThrows(AccessDeniedException.class,
+                () -> controller.atualizarReserva(UUID.randomUUID(), new ReservaRequestDTO(), jwt));
+    }
+
+    @Test
     void reservaRecusaClaimDePerfilDiferenteDeSolicitante() {
         var controller = new ReservaController(null);
         Jwt jwt = Jwt.withTokenValue("test-token")
