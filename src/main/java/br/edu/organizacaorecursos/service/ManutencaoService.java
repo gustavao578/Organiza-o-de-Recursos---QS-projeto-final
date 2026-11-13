@@ -28,6 +28,7 @@ public class ManutencaoService {
         validarPeriodo(request);
         Recurso recurso = buscarRecurso(request.recursoId());
         validarConflitoComReserva(request);
+        validarConflitoComManutencao(request, null);
         return toResponse(manutencaoRepository.save(new Manutencao(
                 null, recurso, request.dataInicio(), request.dataFim(), request.descricao())));
     }
@@ -46,6 +47,7 @@ public class ManutencaoService {
         validarPeriodo(request);
         Recurso recurso = buscarRecurso(request.recursoId());
         validarConflitoComReserva(request);
+        validarConflitoComManutencao(request, id);
         manutencao.setRecurso(recurso);
         manutencao.setDataInicio(request.dataInicio());
         manutencao.setDataFim(request.dataFim());
@@ -65,7 +67,7 @@ public class ManutencaoService {
         if (recursoId == null) {
             throw new RegraNegocioException("O ID do recurso é obrigatório.");
         }
-        return recursoRepository.findById(recursoId)
+        return recursoRepository.buscarPorIdComBloqueio(recursoId)
                 .orElseThrow(() -> new EntityNotFoundException("Recurso não encontrado."));
     }
 
@@ -83,6 +85,14 @@ public class ManutencaoService {
                 request.recursoId(), request.dataInicio(), request.dataFim())) {
             throw new RegraNegocioException(
                     "A manutenção não pode sobrepor uma reserva ativa do recurso.");
+        }
+    }
+
+    private void validarConflitoComManutencao(ManutencaoRequestDTO request, UUID id) {
+        if (manutencaoRepository.existeConflito(
+                request.recursoId(), id, request.dataInicio(), request.dataFim())) {
+            throw new RegraNegocioException(
+                    "A manutenção não pode sobrepor outra manutenção do recurso.");
         }
     }
 

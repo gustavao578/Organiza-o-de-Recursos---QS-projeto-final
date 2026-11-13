@@ -25,6 +25,33 @@ export async function mountResources(container, session) {
   list.className = "item-list";
   list.setAttribute("aria-label", "Lista de recursos");
 
+  const filters = node("form");
+  filters.className = "form-grid";
+  filters.setAttribute("aria-label", "Filtrar recursos");
+  const typeLabel = node("label", "Tipo");
+  const typeFilter = node("input");
+  typeLabel.append(typeFilter);
+  const restrictedLabel = node("label", "Acesso");
+  const restrictedFilter = node("select");
+  [["", "Todos"], ["false", "Livres"], ["true", "Restritos"]].forEach(([value, label]) => {
+    const option = node("option", label);
+    option.value = value;
+    restrictedFilter.append(option);
+  });
+  restrictedLabel.append(restrictedFilter);
+  const filterSubmit = node("button", "Filtrar recursos", "button button-secondary");
+  filterSubmit.type = "submit";
+  filters.append(typeLabel, restrictedLabel, filterSubmit);
+  container.append(filters);
+
+  function resourcePath() {
+    const params = new URLSearchParams();
+    if (typeFilter.value.trim()) params.set("tipo", typeFilter.value.trim());
+    if (restrictedFilter.value) params.set("restrito", restrictedFilter.value);
+    const query = params.toString();
+    return query ? `/recursos?${query}` : "/recursos";
+  }
+
   if (administrator) {
     let responsibleUsers = [];
     try {
@@ -130,7 +157,7 @@ export async function mountResources(container, session) {
     async function loadList() {
       list.replaceChildren(node("li", "Carregando recursos…", "empty-state"));
       try {
-        const resources = await apiGet("/recursos");
+        const resources = await apiGet(resourcePath());
         list.replaceChildren();
         if (!Array.isArray(resources) || resources.length === 0) {
           list.append(node("li", "Nenhum recurso cadastrado.", "empty-state"));
@@ -173,6 +200,10 @@ export async function mountResources(container, session) {
     const reload = node("button", "Atualizar lista", "button button-secondary");
     reload.type = "button";
     reload.addEventListener("click", () => loadList());
+    filters.addEventListener("submit", (event) => {
+      event.preventDefault();
+      void loadList();
+    });
     form.after(reload);
     await loadList();
     return;
@@ -181,12 +212,16 @@ export async function mountResources(container, session) {
   const reload = node("button", "Atualizar lista", "button button-secondary");
   reload.type = "button";
   reload.addEventListener("click", () => loadList());
+  filters.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void loadList();
+  });
   container.append(reload, list);
 
   async function loadList() {
     list.replaceChildren(node("li", "Carregando recursos…", "empty-state"));
     try {
-      const resources = await apiGet("/recursos");
+      const resources = await apiGet(resourcePath());
       list.replaceChildren();
       if (!Array.isArray(resources) || resources.length === 0) {
         list.append(node("li", "Nenhum recurso cadastrado.", "empty-state"));

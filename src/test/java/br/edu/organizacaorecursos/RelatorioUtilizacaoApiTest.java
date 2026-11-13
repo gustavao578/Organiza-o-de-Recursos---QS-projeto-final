@@ -105,8 +105,8 @@ class RelatorioUtilizacaoApiTest {
 
         // Conta manual no período [10:00,15:00): Sala A = 1h (9–11) + 1h (14–16)
         // + 1h APROVADA + 1h EM_USO = 4h; a CANCELADA não conta.
-        // Laboratório B = 1h CONCLUÍDA + 1h REJEITADA + 1h NÃO_COMPARECEU = 3h.
-        // Professora A totaliza 5h e Professor B 2h; total geral = 7h.
+        // Laboratório B = 1h CONCLUÍDA + 1h NÃO_COMPARECEU = 2h; REJEITADA não conta.
+        // Professora A totaliza 4h e Professor B 2h; total geral = 6h.
         ResponseEntity<JsonNode> response = consultarRelatorio(
                 PERIODO_INICIO, PERIODO_FIM, "RESPONSAVEL", UUID.randomUUID());
 
@@ -119,9 +119,9 @@ class RelatorioUtilizacaoApiTest {
         assertThat(linhaPorId(relatorio.path("porRecurso"), sala.getId()).path("horas").asDouble())
                 .isEqualTo(4.0);
         assertThat(linhaPorId(relatorio.path("porRecurso"), laboratorio.getId()).path("horas").asDouble())
-                .isEqualTo(3.0);
+                .isEqualTo(2.0);
         assertThat(linhaPorId(relatorio.path("porUsuario"), professoraA.getId()).path("horas").asDouble())
-                .isEqualTo(5.0);
+                .isEqualTo(4.0);
         assertThat(linhaPorId(relatorio.path("porUsuario"), professoraB.getId()).path("horas").asDouble())
                 .isEqualTo(2.0);
     }

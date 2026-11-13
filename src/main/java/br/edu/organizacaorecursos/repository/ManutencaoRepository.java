@@ -24,6 +24,20 @@ public interface ManutencaoRepository extends JpaRepository<Manutencao, UUID> {
             SELECT COUNT(m) > 0
             FROM Manutencao m
             WHERE m.recurso.id = :recursoId
+              AND (:id IS NULL OR m.id <> :id)
+              AND m.dataInicio < :dataFim
+              AND m.dataFim > :dataInicio
+            """)
+    boolean existeConflito(
+            @Param("recursoId") UUID recursoId,
+            @Param("id") UUID id,
+            @Param("dataInicio") LocalDateTime dataInicio,
+            @Param("dataFim") LocalDateTime dataFim);
+
+    @Query("""
+            SELECT COUNT(m) > 0
+            FROM Manutencao m
+            WHERE m.recurso.id = :recursoId
               AND m.dataInicio < :dataFim
               AND m.dataFim > :dataInicio
             """)

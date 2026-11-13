@@ -27,7 +27,7 @@ function sessionFromToken(token) {
       && (typeof claims.exp !== "number" || claims.exp <= Date.now() / 1000)) {
     return null;
   }
-  return { token, subject: claims.sub, profile: claims.profile };
+  return { token, subject: claims.sub, profile: claims.profile, name: claims.name || claims.email || claims.sub };
 }
 
 export function getToken() {

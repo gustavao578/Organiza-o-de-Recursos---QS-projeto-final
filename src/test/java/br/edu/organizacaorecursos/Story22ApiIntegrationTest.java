@@ -133,6 +133,42 @@ class Story22ApiIntegrationTest {
                         "A manutenção não pode sobrepor uma reserva ativa do recurso."));
     }
 
+    @Test
+    void manutencoesNaoPodemSobreporOutraMasPermitemAdjacenciaEAtualizacaoPropria() throws Exception {
+        LocalDateTime start = LocalDateTime.now().plusDays(3).withNano(0);
+        Manutencao original = manutencaoRepository.save(
+                new Manutencao(null, resource, start, start.plusHours(1), "Original"));
+        manutencaoRepository.save(
+                new Manutencao(null, resource, start.plusHours(2), start.plusHours(3), "Outra"));
+
+        mockMvc.perform(post("/manutencoes")
+                        .with(jwt(admin.getId(), "ADMINISTRADOR"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(manutencaoJson(resource.getId(), start.plusMinutes(30),
+                                start.plusHours(2), "Sobreposta")))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value(
+                        "A manutenção não pode sobrepor outra manutenção do recurso."));
+        mockMvc.perform(put("/manutencoes/{id}", original.getId())
+                        .with(jwt(admin.getId(), "ADMINISTRADOR"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(manutencaoJson(resource.getId(), start.plusMinutes(30),
+                                start.plusHours(1), "Própria")))
+                .andExpect(status().isOk());
+        mockMvc.perform(put("/manutencoes/{id}", original.getId())
+                        .with(jwt(admin.getId(), "ADMINISTRADOR"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(manutencaoJson(resource.getId(), start.plusHours(1),
+                                start.plusHours(2).plusMinutes(1), "Conflito")))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/manutencoes")
+                        .with(jwt(admin.getId(), "ADMINISTRADOR"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(manutencaoJson(resource.getId(), start.plusHours(1),
+                                start.plusHours(2), "Adjacente")))
+                .andExpect(status().isCreated());
+    }
+
     @ParameterizedTest
     @EnumSource(value = StatusReserva.class, names = {"PENDENTE", "APROVADA", "EM_USO"})
     void bloqueiaExclusaoDeUsuarioERecursoComReservaAtiva(StatusReserva statusAtivo) throws Exception {

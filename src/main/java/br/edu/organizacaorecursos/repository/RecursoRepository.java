@@ -25,6 +25,8 @@ public interface RecursoRepository extends JpaRepository<Recurso, UUID> {
 
     boolean existsByResponsavelId(UUID responsavelId);
 
+    boolean existsByNomeIgnoreCase(String nome);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT r FROM Recurso r WHERE r.id = :recursoId")
     Optional<Recurso> buscarPorIdComBloqueio(@Param("recursoId") UUID recursoId);

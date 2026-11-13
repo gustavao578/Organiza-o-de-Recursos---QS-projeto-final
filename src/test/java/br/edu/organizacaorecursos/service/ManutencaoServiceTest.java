@@ -46,7 +46,7 @@ class ManutencaoServiceTest {
     @Test
     void criaManutencaoQuandoPeriodoEstaDisponivel() {
         ManutencaoRequestDTO request = request(resource.getId(), start, start.plusHours(1));
-        when(recursoRepository.findById(resource.getId())).thenReturn(Optional.of(resource));
+        when(recursoRepository.buscarPorIdComBloqueio(resource.getId())).thenReturn(Optional.of(resource));
         when(reservaRepository.existeConflitoDeHorario(
                 resource.getId(), request.dataInicio(), request.dataFim())).thenReturn(false);
         when(manutencaoRepository.save(any(Manutencao.class))).thenAnswer(invocation -> {
@@ -67,7 +67,7 @@ class ManutencaoServiceTest {
         assertThrows(RegraNegocioException.class,
                 () -> service.criar(request(null, start, start.plusHours(1))));
 
-        when(recursoRepository.findById(resource.getId())).thenReturn(Optional.empty());
+        when(recursoRepository.buscarPorIdComBloqueio(resource.getId())).thenReturn(Optional.empty());
         assertThrows(EntityNotFoundException.class,
                 () -> service.criar(request(resource.getId(), start, start.plusHours(1))));
     }
@@ -84,7 +84,7 @@ class ManutencaoServiceTest {
 
     @Test
     void rejeitaSobreposicaoComReservaAtiva() {
-        when(recursoRepository.findById(resource.getId())).thenReturn(Optional.of(resource));
+        when(recursoRepository.buscarPorIdComBloqueio(resource.getId())).thenReturn(Optional.of(resource));
         when(reservaRepository.existeConflitoDeHorario(
                 resource.getId(), start, start.plusHours(1))).thenReturn(true);
 
@@ -101,7 +101,7 @@ class ManutencaoServiceTest {
         assertEquals("Original", service.listar(resource.getId()).get(0).descricao());
 
         when(manutencaoRepository.findById(existing.getId())).thenReturn(Optional.of(existing));
-        when(recursoRepository.findById(resource.getId())).thenReturn(Optional.of(resource));
+        when(recursoRepository.buscarPorIdComBloqueio(resource.getId())).thenReturn(Optional.of(resource));
         when(reservaRepository.existeConflitoDeHorario(
                 resource.getId(), start.plusHours(2), start.plusHours(3))).thenReturn(false);
         when(manutencaoRepository.save(any(Manutencao.class))).thenAnswer(invocation -> invocation.getArgument(0));

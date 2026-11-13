@@ -1,4 +1,5 @@
 import { apiDelete, apiGet, apiPost, apiPut } from "./api.js";
+import { formatDate } from "./reservas.js";
 
 function node(tagName, text, className) {
   const element = document.createElement(tagName);
@@ -129,8 +130,8 @@ export async function mountMaintenance(container, session) {
         item.className = "item-card";
         item.append(
           node("h3", entry.nomeRecurso || "Recurso"),
-          node("p", `Início: ${entry.dataInicio}`),
-          node("p", `Fim: ${entry.dataFim}`),
+          node("p", `Início: ${formatDate(entry.dataInicio)}`),
+          node("p", `Fim: ${formatDate(entry.dataFim)}`),
           node("p", entry.descricao),
         );
         const edit = node("button", "Editar", "button button-secondary");
@@ -138,8 +139,8 @@ export async function mountMaintenance(container, session) {
         edit.addEventListener("click", () => {
           editingId = entry.id;
           resourceSelect.value = entry.recursoId;
-          start.value = entry.dataInicio;
-          end.value = entry.dataFim;
+          start.value = entry.dataInicio.slice(0, 19);
+          end.value = entry.dataFim.slice(0, 19);
           description.value = entry.descricao;
           submit.textContent = "Salvar alterações";
           cancel.hidden = false;
