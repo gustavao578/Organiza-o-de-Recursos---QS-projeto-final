@@ -30,23 +30,38 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     @Transactional
     public void run(String... args) {
-        if (usuarios.count() == 0) {
-            usuarios.save(new Usuario(null, "Administrador", "admin@organizacao.edu.br",
-                    "ADM001", Perfil.ADMINISTRADOR));
-            usuarios.save(new Usuario(null, "Responsável Laboratório", "responsavel@organizacao.edu.br",
-                    "RESP001", Perfil.RESPONSAVEL));
-            usuarios.save(new Usuario(null, "Aluno Solicitante", "solicitante@organizacao.edu.br",
-                    "SOL001", Perfil.SOLICITANTE));
+        criarUsuarioSeAusente("Administrador", "admin@organizacao.edu.br", "ADM001", Perfil.ADMINISTRADOR);
+        criarUsuarioSeAusente("Responsável Laboratório", "responsavel@organizacao.edu.br", "RESP001",
+                Perfil.RESPONSAVEL);
+        criarUsuarioSeAusente("Aluno Solicitante", "solicitante@organizacao.edu.br", "SOL001",
+                Perfil.SOLICITANTE);
+        if (!recursos.existsByNomeIgnoreCase("Sala de estudos")) {
+            recursos.save(new Recurso(null, "Sala de estudos", "SALA", false, null));
         }
-        if (recursos.count() == 0) {
+        if (!recursos.existsByNomeIgnoreCase("Laboratório")) {
             var responsavel = usuarios.findByMatricula("RESP001")
                     .filter(usuario -> usuario.getPerfil() == Perfil.RESPONSAVEL);
             if (responsavel.isEmpty()) {
-                LOGGER.warn("Dados de demonstração de recursos não foram criados: RESP001 não é um responsável válido.");
+                LOGGER.warn("Laboratório de demonstração não foi criado: RESP001 não é um responsável válido.");
                 return;
             }
-            recursos.save(new Recurso(null, "Sala de estudos", "SALA", false, null));
             recursos.save(new Recurso(null, "Laboratório", "LABORATORIO", true, responsavel.get().getId()));
         }
+    }
+
+    private void criarUsuarioSeAusente(String nome, String email, String matricula, Perfil perfil) {
+        var porMatricula = usuarios.findByMatricula(matricula);
+        var porEmail = usuarios.findByEmailIgnoreCase(email);
+        if (porMatricula.isPresent() || porEmail.isPresent()) {
+            Usuario usuario = porMatricula.orElseGet(porEmail::orElseThrow);
+            if (!email.equalsIgnoreCase(usuario.getEmail()) || !matricula.equals(usuario.getMatricula())
+                    || usuario.getPerfil() != perfil
+                    || (porEmail.isPresent() && !porEmail.get().getId().equals(usuario.getId()))) {
+                LOGGER.warn("Usuário de demonstração {} não foi criado: matrícula ou e-mail em uso com dados diferentes.",
+                        matricula);
+            }
+            return;
+        }
+        usuarios.save(new Usuario(null, nome, email, matricula, perfil));
     }
 }

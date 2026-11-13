@@ -19,7 +19,7 @@ export async function apiRequest(path, options = {}) {
   }
 
   const token = getToken();
-  if (token) {
+  if (token && path !== "/auth/login") {
     headers.set("Authorization", `Bearer ${token}`);
   }
 
@@ -47,6 +47,12 @@ export async function apiRequest(path, options = {}) {
   }
 
   if (response.status === 401) {
+    if (path === "/auth/login") {
+      const message = typeof payload?.erro === "string" && payload.erro
+        ? payload.erro
+        : "E-mail ou matrícula não encontrados.";
+      throw new ApiError(401, message);
+    }
     clearSession();
     window.dispatchEvent(new Event("session-expired"));
     throw new ApiError(401, "Sessão inválida ou expirada. Entre novamente.");

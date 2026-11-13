@@ -15,6 +15,8 @@ public interface UsuarioRepository extends JpaRepository<Usuario, UUID> {
 
     Optional<Usuario> findByMatricula(String matricula);
 
+    Optional<Usuario> findByEmailIgnoreCase(String email);
+
 	@Lock(LockModeType.PESSIMISTIC_WRITE)
 	@Query("SELECT u FROM Usuario u WHERE u.id = :usuarioId")
 	Optional<Usuario> buscarPorIdComBloqueio(@Param("usuarioId") UUID usuarioId);

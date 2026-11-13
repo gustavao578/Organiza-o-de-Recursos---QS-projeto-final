@@ -31,7 +31,7 @@ import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilde
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtException;
 
-@SpringBootTest
+@SpringBootTest(properties = "app.cors.allowed-origins=https://cliente.example, https://outro.example")
 @AutoConfigureMockMvc
 class SecurityConfigTest {
 
@@ -107,6 +107,34 @@ class SecurityConfigTest {
                         org.hamcrest.Matchers.containsString("PATCH")))
                 .andExpect(header().string("Access-Control-Allow-Headers",
                         org.hamcrest.Matchers.containsString("authorization")));
+    }
+
+    @Test
+    void preflightCorsRecusaOrigemNaoAutorizada() throws Exception {
+        mockMvc.perform(options("/reservas")
+                        .header("Origin", "https://nao-autorizada.example")
+                        .header("Access-Control-Request-Method", "PATCH"))
+                .andExpect(status().isForbidden())
+                .andExpect(header().doesNotExist("Access-Control-Allow-Origin"));
+    }
+
+    @Test
+    void corsNaoLiberaAutenticacaoMesmoParaOrigemPermitida() throws Exception {
+        mockMvc.perform(get("/reservas").header("Origin", "https://cliente.example"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(header().string("Access-Control-Allow-Origin", "https://cliente.example"));
+    }
+
+    @Test
+    void corsNaoPermiteOrigensPorPadraoNemCuringasConfigurados() {
+        var config = new SecurityConfig();
+        var source = config.corsConfigurationSource("");
+        var request = new org.springframework.mock.web.MockHttpServletRequest("GET", "/reservas");
+        request.setServletPath("/reservas");
+        org.assertj.core.api.Assertions.assertThat(
+                source.getCorsConfiguration(request).getAllowedOrigins()).isEmpty();
+        assertThrows(IllegalArgumentException.class, () -> config.corsConfigurationSource("*"));
+        assertThrows(IllegalArgumentException.class, () -> config.corsConfigurationSource("https://*.example"));
     }
 
     @Test

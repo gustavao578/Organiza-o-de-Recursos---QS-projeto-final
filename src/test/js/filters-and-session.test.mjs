@@ -3,6 +3,7 @@ import test from "node:test";
 import { getSession, startSession } from "../../main/resources/static/js/auth.js";
 import { mountResources } from "../../main/resources/static/js/recursos.js";
 import { mountReservations } from "../../main/resources/static/js/reservas.js";
+import { apiPost, apiGet } from "../../main/resources/static/js/api.js";
 
 class Element {
   constructor(tagName) {
@@ -74,4 +75,25 @@ test("resource and reservation filters send selected query parameters", async ()
   reservationForm.handlers.submit({ preventDefault() {} });
   await new Promise(setImmediate);
   assert.equal(requests.at(-1), "/reservas?status=N%C3%83O_COMPARECEU&recursoId=resource-id");
+});
+
+test("login 401 reports backend error without expiring the current session", async () => {
+  const events = [];
+  globalThis.window = { dispatchEvent: (event) => events.push(event.type) };
+  storedToken = "existing-token";
+  globalThis.fetch = async (_path, options) => {
+    assert.equal(options.headers.has("Authorization"), false);
+    return new Response(JSON.stringify({ erro: "Usuário não encontrado." }), {
+      status: 401, headers: { "content-type": "application/json" },
+    });
+  };
+  await assert.rejects(apiPost("/auth/login", {}), { message: "Usuário não encontrado." });
+  assert.equal(storedToken, "existing-token");
+  assert.deepEqual(events, []);
+
+  globalThis.fetch = async () => new Response(null, { status: 401 });
+  await assert.rejects(apiPost("/auth/login", {}), { message: "E-mail ou matrícula não encontrados." });
+  await assert.rejects(apiGet("/recursos"), { message: "Sessão inválida ou expirada. Entre novamente." });
+  assert.equal(storedToken, null);
+  assert.deepEqual(events, ["session-expired"]);
 });

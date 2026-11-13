@@ -31,6 +31,12 @@ compartilhada entre instâncias e muda a cada reinício; configure uma chave
 aleatória de pelo menos 32 bytes em `JWT_SECRET` para validar tokens do provedor
 de identidade e manter compatibilidade entre reinícios/instâncias.
 
+Por padrão, CORS não permite origens externas; SPA e Swagger na mesma origem
+continuam funcionando. Para clientes externos, configure
+`APP_CORS_ALLOWED_ORIGINS` com origens confiáveis completas separadas por vírgula,
+por exemplo `https://app.example.org,http://localhost:3000`. Curingas não são
+aceitos; CORS não substitui autenticação JWT.
+
 Em produção, ative o perfil `prod`, configure a conexão PostgreSQL e injete
 `JWT_SECRET`:
 
@@ -64,9 +70,10 @@ No perfil `local` padrão (e no perfil `demo`), a SPA permite entrar usando e-ma
 cadastrado. Esse fluxo é somente para demonstração local: não verifica a posse
 do identificador e, portanto, não deve ser habilitado em produção. Para
 iniciá-lo, use `./mvnw spring-boot:run`. Esses perfis usam armazenamento H2 local;
-não os use em ambientes compartilhados. Quando não há usuários, são criados
-os usuários de demonstração `ADM001`, `RESP001` e `SOL001`. Recursos de exemplo
-são criados se não existirem recursos e houver um responsável `RESP001`.
+não os use em ambientes compartilhados. Os usuários de demonstração `ADM001`,
+`RESP001` e `SOL001` e os recursos de exemplo são criados individualmente quando
+ausentes. Identificadores já usados com dados diferentes não são alterados e
+geram aviso no log; o laboratório requer um responsável `RESP001` válido.
 O seed pode ser desabilitado com `app.seed-demo-data=false`. O login e o seed
 ficam desabilitados sempre que o perfil `prod` está ativo.
 O Swagger documenta `POST /auth/login` apenas quando esse login está habilitado;
@@ -79,7 +86,8 @@ token deve conter `sub` (UUID do usuário), `profile` (`SOLICITANTE`,
 para exibir a identidade e adaptar as ações; assinatura, validade e autorização
 são sempre verificadas pelo backend. O token permanece em
 `sessionStorage` durante a sessão desta aba e é removido ao encerrar a sessão
-ou ao receber HTTP 401. `sessionStorage` não protege contra XSS: mantenha a
+ou ao receber HTTP 401 de uma rota protegida. Um erro de login não encerra a
+sessão existente. `sessionStorage` não protege contra XSS: mantenha a
 origem protegida, não adicione scripts de terceiros e trate os dados exibidos
 como não confiáveis.
 

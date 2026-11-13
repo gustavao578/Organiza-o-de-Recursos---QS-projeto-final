@@ -5,6 +5,9 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import br.edu.organizacaorecursos.config.DataInitializer;
+import br.edu.organizacaorecursos.domain.Perfil;
+import br.edu.organizacaorecursos.domain.Usuario;
 import br.edu.organizacaorecursos.repository.RecursoRepository;
 import br.edu.organizacaorecursos.repository.UsuarioRepository;
 import org.junit.jupiter.api.Test;
@@ -14,6 +17,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest(properties = {
         "spring.config.location=file:src/main/resources/",
@@ -25,6 +29,7 @@ class LocalDemoDefaultsIntegrationTest {
 
     @Autowired private UsuarioRepository usuarios;
     @Autowired private RecursoRepository recursos;
+    @Autowired private DataInitializer initializer;
     @Autowired private MockMvc mockMvc;
 
     @Test
@@ -37,5 +42,28 @@ class LocalDemoDefaultsIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.usuario.perfil").value("ADMINISTRADOR"))
                 .andExpect(jsonPath("$.token").isNotEmpty());
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identificador\":\"responsavel@organizacao.edu.br\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.usuario.perfil").value("RESPONSAVEL"));
+    }
+
+    @Test
+    @Transactional
+    void completaBancoParcialEPermiteLoginDoResponsavel() throws Exception {
+        recursos.deleteAll();
+        usuarios.deleteAll();
+        usuarios.save(new Usuario(null, "Existente", "existente@example.com", "EX001", Perfil.SOLICITANTE));
+
+        initializer.run();
+
+        assertThat(usuarios.count()).isEqualTo(4);
+        assertThat(recursos.count()).isEqualTo(2);
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"identificador\":\"responsavel@organizacao.edu.br\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.usuario.perfil").value("RESPONSAVEL"));
     }
 }
