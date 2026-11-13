@@ -1,5 +1,4 @@
 import { apiDelete, apiGet, apiPost, apiPut } from "./api.js";
-import { formatDate } from "./reservas.js";
 
 function node(tagName, text, className) {
   const element = document.createElement(tagName);
@@ -19,7 +18,23 @@ function feedback(container, message, kind = "info") {
   container.prepend(element);
 }
 
-export async function mountMaintenance(container, session) {
+function formatDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? value
+    : new Intl.DateTimeFormat("pt-BR", {
+      dateStyle: "short",
+      timeStyle: "short",
+    }).format(date);
+}
+
+function toInputDateTime(value) {
+  if (!value || typeof value !== "string") return "";
+  return value.length === 16 ? `${value}:00` : value.slice(0, 19);
+}
+
+export async function mountMaintenance(container) {
   container.replaceChildren();
   const form = node("form");
   form.className = "form-grid";
@@ -95,8 +110,8 @@ export async function mountMaintenance(container, session) {
     submit.disabled = true;
     const payload = {
       recursoId: resourceSelect.value,
-      dataInicio: start.value,
-      dataFim: end.value,
+      dataInicio: toInputDateTime(start.value),
+      dataFim: toInputDateTime(end.value),
       descricao: description.value.trim(),
     };
     try {
@@ -139,8 +154,8 @@ export async function mountMaintenance(container, session) {
         edit.addEventListener("click", () => {
           editingId = entry.id;
           resourceSelect.value = entry.recursoId;
-          start.value = entry.dataInicio.slice(0, 19);
-          end.value = entry.dataFim.slice(0, 19);
+          start.value = toInputDateTime(entry.dataInicio);
+          end.value = toInputDateTime(entry.dataFim);
           description.value = entry.descricao;
           submit.textContent = "Salvar alterações";
           cancel.hidden = false;

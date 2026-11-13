@@ -18,7 +18,7 @@ function feedback(container, message, kind = "info") {
   container.prepend(element);
 }
 
-export function formatDate(value) {
+function formatDate(value) {
   if (!value) return "—";
   const date = new Date(value);
   return Number.isNaN(date.getTime())
@@ -27,6 +27,11 @@ export function formatDate(value) {
       dateStyle: "short",
       timeStyle: "short",
     }).format(date);
+}
+
+function toInputDateTime(value) {
+  if (!value || typeof value !== "string") return "";
+  return value.length === 16 ? `${value}:00` : value.slice(0, 19);
 }
 
 function button(label, action) {
@@ -94,8 +99,8 @@ export async function mountReservations(container, session) {
         await apiPost("/reservas", {
           recursoId: resourceSelect.value,
           usuarioId: session.subject,
-          dataInicio: start.value,
-          dataFim: end.value,
+          dataInicio: toInputDateTime(start.value),
+          dataFim: toInputDateTime(end.value),
         });
         form.reset();
         feedback(container, "Reserva criada com sucesso.", "success");
@@ -109,39 +114,50 @@ export async function mountReservations(container, session) {
     container.append(form);
   }
 
-  const filters = node("form");
-  filters.className = "form-grid";
-  filters.setAttribute("aria-label", "Filtrar reservas");
-  const statusLabel = node("label", "Status");
+  // Barra de filtro de reservas
+  const filterForm = node("form");
+  filterForm.className = "filter-bar";
+  filterForm.setAttribute("aria-label", "Filtrar reservas");
+
+  const statusFilterLabel = node("label", "Filtrar por status");
   const statusFilter = node("select");
-  ["", "PENDENTE", "SOLICITADA", "APROVADA", "EM_USO", "CONCLUÍDA", "REJEITADA",
-    "CANCELADA", "NÃO_COMPARECEU"].forEach((value) => {
-    const option = node("option", value || "Todos");
-    option.value = value;
-    statusFilter.append(option);
+  [
+    { label: "Todos os status", value: "" },
+    { label: "PENDENTE", value: "PENDENTE" },
+    { label: "APROVADA", value: "APROVADA" },
+    { label: "EM_USO", value: "EM_USO" },
+    { label: "CONCLUÍDA", value: "CONCLUÍDA" },
+    { label: "REJEITADA", value: "REJEITADA" },
+    { label: "CANCELADA", value: "CANCELADA" },
+    { label: "NÃO_COMPARECEU", value: "NÃO_COMPARECEU" },
+  ].forEach((st) => {
+    const o = node("option", st.label);
+    o.value = st.value;
+    statusFilter.append(o);
   });
-  statusLabel.append(statusFilter);
-  const filterResourceLabel = node("label", "Recurso");
+  statusFilterLabel.append(statusFilter);
+
+  const resourceFilterLabel = node("label", "Filtrar por recurso");
   const resourceFilter = node("select");
-  const allResources = node("option", "Todos");
-  allResources.value = "";
-  resourceFilter.append(allResources);
-  resources.forEach((resource) => {
-    const option = node("option", resource.nome || "Recurso");
-    option.value = resource.id;
-    resourceFilter.append(option);
+  const allResourcesOpt = node("option", "Todos os recursos");
+  allResourcesOpt.value = "";
+  resourceFilter.append(allResourcesOpt);
+  resources.forEach((res) => {
+    const o = node("option", res.nome || "Recurso");
+    o.value = res.id;
+    resourceFilter.append(o);
   });
-  filterResourceLabel.append(resourceFilter);
-  const filterSubmit = node("button", "Filtrar reservas", "button button-secondary");
-  filterSubmit.type = "submit";
-  filters.append(statusLabel, filterResourceLabel, filterSubmit);
-  filters.addEventListener("submit", (event) => {
+  resourceFilterLabel.append(resourceFilter);
+
+  const refresh = node("button", "Filtrar / Atualizar reservas", "button button-secondary form-wide");
+  refresh.type = "submit";
+  filterForm.append(statusFilterLabel, resourceFilterLabel, refresh);
+  filterForm.addEventListener("submit", (event) => {
     event.preventDefault();
     void loadList();
   });
-  container.append(filters);
-  const refresh = button("Atualizar reservas", () => loadList());
-  container.append(refresh);
+  container.append(filterForm);
+
   const list = node("ul");
   list.className = "item-list";
   list.setAttribute("aria-label", "Lista de reservas");
@@ -158,6 +174,7 @@ export async function mountReservations(container, session) {
   }
 
   function renderEditForm(item, reservation) {
+    item.querySelector("form")?.remove();
     const form = node("form");
     form.className = "form-grid";
     form.setAttribute("aria-label", "Editar reserva");
@@ -177,7 +194,7 @@ export async function mountReservations(container, session) {
     start.type = "datetime-local";
     start.step = "1";
     start.required = true;
-    start.value = reservation.dataInicio || "";
+    start.value = toInputDateTime(reservation.dataInicio);
     startLabel.append(start);
 
     const endLabel = node("label", "Fim");
@@ -185,7 +202,7 @@ export async function mountReservations(container, session) {
     end.type = "datetime-local";
     end.step = "1";
     end.required = true;
-    end.value = reservation.dataFim || "";
+    end.value = toInputDateTime(reservation.dataFim);
     endLabel.append(end);
 
     const save = node("button", "Salvar reserva", "button form-wide");
@@ -204,8 +221,8 @@ export async function mountReservations(container, session) {
         await performAction(() => apiPut(`/reservas/${reservation.id}`, {
           recursoId: resourceSelect.value,
           usuarioId: session.subject,
-          dataInicio: start.value,
-          dataFim: end.value,
+          dataInicio: toInputDateTime(start.value),
+          dataFim: toInputDateTime(end.value),
         }), "Reserva atualizada.");
       } finally {
         save.disabled = false;
@@ -326,8 +343,8 @@ export async function mountReservations(container, session) {
       const params = new URLSearchParams();
       if (statusFilter.value) params.set("status", statusFilter.value);
       if (resourceFilter.value) params.set("recursoId", resourceFilter.value);
-      const query = params.toString();
-      const reservations = await apiGet(query ? `/reservas?${query}` : "/reservas");
+      const queryString = params.toString() ? `?${params.toString()}` : "";
+      const reservations = await apiGet(`/reservas${queryString}`);
       list.replaceChildren();
       if (!Array.isArray(reservations) || reservations.length === 0) {
         list.append(node("li", "Nenhuma reserva cadastrada.", "empty-state"));

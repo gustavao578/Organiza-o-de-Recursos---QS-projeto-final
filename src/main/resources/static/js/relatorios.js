@@ -18,6 +18,11 @@ function feedback(container, message, kind = "info") {
   container.prepend(element);
 }
 
+function toInputDateTime(value) {
+  if (!value || typeof value !== "string") return "";
+  return value.length === 16 ? `${value}:00` : value.slice(0, 19);
+}
+
 export async function mountReports(container) {
   container.replaceChildren();
   const form = node("form");
@@ -52,7 +57,10 @@ export async function mountReports(container) {
     }
     submit.disabled = true;
     try {
-      const query = new URLSearchParams({ inicio: start.value, fim: end.value });
+      const query = new URLSearchParams({
+        inicio: toInputDateTime(start.value),
+        fim: toInputDateTime(end.value),
+      });
       const report = await apiGet(`/relatorios/utilizacao?${query}`);
       result.replaceChildren();
       result.append(node("h3", "Horas por recurso"));

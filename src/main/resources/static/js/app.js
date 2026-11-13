@@ -17,17 +17,29 @@ const logoutButton = document.querySelector("#logout-button");
 const sessionIdentity = document.querySelector("#session-identity");
 const tabButtons = [...document.querySelectorAll(".tab-button")];
 const contentViews = [...document.querySelectorAll(".content-view")];
+const demoChipButtons = [...document.querySelectorAll(".chip-button[data-login]")];
+
 let selectedView = "resources-view";
 
 function showMessage(message, kind = "info") {
   appMessage.textContent = message;
-  appMessage.className = `app-message${kind === "error" ? " feedback-error" : ""}`;
+  appMessage.className = `app-message${kind === "error" ? " feedback-error" : kind === "success" ? " feedback-success" : ""}`;
   appMessage.hidden = false;
 }
 
 function hideMessage() {
   appMessage.textContent = "";
   appMessage.hidden = true;
+}
+
+function defaultViewForProfile(profile) {
+  if (profile === "SOLICITANTE") {
+    return "reservations-view";
+  }
+  if (profile === "RESPONSAVEL") {
+    return "reservations-view";
+  }
+  return "resources-view";
 }
 
 function showView(viewId) {
@@ -50,29 +62,45 @@ function showView(viewId) {
   });
 }
 
+async function safeMount(fn) {
+  try {
+    await fn();
+  } catch (error) {
+    console.error("Erro ao carregar seção:", error);
+  }
+}
+
 async function showPanel(session) {
   loginView.hidden = true;
   dashboardView.hidden = false;
   logoutButton.hidden = false;
   sessionIdentity.hidden = false;
-  sessionIdentity.textContent = `${session.name} · ${session.profile}`;
+  sessionIdentity.textContent = `${session.name || session.subject} · ${session.profile}`;
+
   const administrator = session.profile === "ADMINISTRADOR";
   const managementProfile = administrator || session.profile === "RESPONSAVEL";
   const usersTab = tabButtons.find((button) => button.dataset.view === "users-view");
-  usersTab.textContent = administrator ? "Usuários" : "Meu cadastro";
-  tabButtons.find((button) => button.dataset.view === "maintenance-view").hidden = !managementProfile;
-  tabButtons.find((button) => button.dataset.view === "reports-view").hidden = !managementProfile;
+  if (usersTab) {
+    usersTab.textContent = administrator ? "Usuários" : "Meu cadastro";
+  }
+
+  const maintenanceTab = tabButtons.find((button) => button.dataset.view === "maintenance-view");
+  if (maintenanceTab) maintenanceTab.hidden = !managementProfile;
+
+  const reportsTab = tabButtons.find((button) => button.dataset.view === "reports-view");
+  if (reportsTab) reportsTab.hidden = !managementProfile;
+
   showView(selectedView);
 
   await Promise.all([
-    mountResources(document.querySelector("#resources-content"), session),
-    mountReservations(document.querySelector("#reservations-content"), session),
-    mountUsers(document.querySelector("#users-content"), session),
+    safeMount(() => mountResources(document.querySelector("#resources-content"), session)),
+    safeMount(() => mountReservations(document.querySelector("#reservations-content"), session)),
+    safeMount(() => mountUsers(document.querySelector("#users-content"), session)),
     managementProfile
-      ? mountMaintenance(document.querySelector("#maintenance-content"), session)
+      ? safeMount(() => mountMaintenance(document.querySelector("#maintenance-content"), session))
       : Promise.resolve(),
     managementProfile
-      ? mountReports(document.querySelector("#reports-content"))
+      ? safeMount(() => mountReports(document.querySelector("#reports-content")))
       : Promise.resolve(),
   ]);
 }
@@ -84,11 +112,18 @@ async function renderSession() {
     dashboardView.hidden = true;
     logoutButton.hidden = true;
     sessionIdentity.hidden = true;
-    tokenField.value = "";
+    if (tokenField) tokenField.value = "";
     return;
   }
   await showPanel(session);
 }
+
+demoChipButtons.forEach((chip) => {
+  chip.addEventListener("click", () => {
+    loginIdentifier.value = chip.dataset.login || "";
+    loginForm.requestSubmit();
+  });
+});
 
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -96,12 +131,13 @@ loginForm.addEventListener("submit", async (event) => {
   const submit = loginForm.querySelector("button[type='submit']");
   submit.disabled = true;
   try {
-    const response = await apiPost("/auth/login", {
-      identificador: loginIdentifier.value.trim(),
-    });
-    if (!startSession(response?.token || "")) {
+    const identificador = loginIdentifier.value.trim();
+    const response = await apiPost("/auth/login", { identificador });
+    if (!startSession(response?.token || "", response?.usuario || null)) {
       throw new Error("O servidor retornou um token inválido ou expirado.");
     }
+    const activeSession = getSession();
+    selectedView = defaultViewForProfile(activeSession?.profile);
     loginIdentifier.value = "";
     await renderSession();
   } catch (error) {
@@ -120,6 +156,8 @@ manualTokenForm.addEventListener("submit", async (event) => {
     showMessage("Token inválido, expirado ou armazenamento de sessão indisponível.", "error");
     return;
   }
+  const activeSession = getSession();
+  selectedView = defaultViewForProfile(activeSession?.profile);
   await renderSession();
 });
 

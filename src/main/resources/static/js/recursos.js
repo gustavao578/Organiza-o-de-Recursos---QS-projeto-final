@@ -25,38 +25,13 @@ export async function mountResources(container, session) {
   list.className = "item-list";
   list.setAttribute("aria-label", "Lista de recursos");
 
-  const filters = node("form");
-  filters.className = "form-grid";
-  filters.setAttribute("aria-label", "Filtrar recursos");
-  const typeLabel = node("label", "Tipo");
-  const typeFilter = node("input");
-  typeLabel.append(typeFilter);
-  const restrictedLabel = node("label", "Acesso");
-  const restrictedFilter = node("select");
-  [["", "Todos"], ["false", "Livres"], ["true", "Restritos"]].forEach(([value, label]) => {
-    const option = node("option", label);
-    option.value = value;
-    restrictedFilter.append(option);
-  });
-  restrictedLabel.append(restrictedFilter);
-  const filterSubmit = node("button", "Filtrar recursos", "button button-secondary");
-  filterSubmit.type = "submit";
-  filters.append(typeLabel, restrictedLabel, filterSubmit);
-  container.append(filters);
-
-  function resourcePath() {
-    const params = new URLSearchParams();
-    if (typeFilter.value.trim()) params.set("tipo", typeFilter.value.trim());
-    if (restrictedFilter.value) params.set("restrito", restrictedFilter.value);
-    const query = params.toString();
-    return query ? `/recursos?${query}` : "/recursos";
-  }
-
+  let responsibleUsers = [];
   if (administrator) {
-    let responsibleUsers = [];
     try {
       const users = await apiGet("/usuarios");
-      responsibleUsers = users.filter((user) => user.perfil === "RESPONSAVEL");
+      responsibleUsers = Array.isArray(users)
+        ? users.filter((user) => user.perfil === "RESPONSAVEL")
+        : [];
     } catch (error) {
       feedback(container, `Não foi possível carregar responsáveis: ${error.message}`, "error");
     }
@@ -152,76 +127,50 @@ export async function mountResources(container, session) {
       name.focus();
     }
 
-    container.append(list);
-
-    async function loadList() {
-      list.replaceChildren(node("li", "Carregando recursos…", "empty-state"));
-      try {
-        const resources = await apiGet(resourcePath());
-        list.replaceChildren();
-        if (!Array.isArray(resources) || resources.length === 0) {
-          list.append(node("li", "Nenhum recurso cadastrado.", "empty-state"));
-          return;
-        }
-        resources.forEach((resource) => {
-          const item = node("li");
-          item.className = "item-card";
-          item.append(
-            node("h3", resource.nome || "Recurso sem nome"),
-            node("p", `Tipo: ${resource.tipo || "não informado"}`),
-            node("p", resource.restrito ? "Acesso restrito" : "Acesso livre"),
-          );
-          const responsible = responsibleUsers.find((user) => user.id === resource.responsavelId);
-          if (responsible) item.append(node("p", `Responsável: ${responsible.nome}`));
-
-          const edit = node("button", "Editar", "button button-secondary");
-          edit.type = "button";
-          edit.addEventListener("click", () => beginEdit(resource));
-          const remove = node("button", "Excluir", "button button-secondary");
-          remove.type = "button";
-          remove.addEventListener("click", async () => {
-            if (!window.confirm(`Excluir o recurso "${resource.nome}"?`)) return;
-            try {
-              await apiDelete(`/recursos/${resource.id}`);
-              feedback(container, "Recurso excluído.", "success");
-              await loadList();
-            } catch (error) {
-              feedback(container, error.message, "error");
-            }
-          });
-          item.append(edit, remove);
-          list.append(item);
-        });
-      } catch (error) {
-        list.replaceChildren(node("li", error.message, "feedback feedback-error"));
-      }
-    }
-
-    const reload = node("button", "Atualizar lista", "button button-secondary");
-    reload.type = "button";
-    reload.addEventListener("click", () => loadList());
-    filters.addEventListener("submit", (event) => {
-      event.preventDefault();
-      void loadList();
-    });
-    form.after(reload);
-    await loadList();
-    return;
+    container. beginEdit = beginEdit;
   }
 
-  const reload = node("button", "Atualizar lista", "button button-secondary");
-  reload.type = "button";
-  reload.addEventListener("click", () => loadList());
-  filters.addEventListener("submit", (event) => {
+  // Barra de filtros
+  const filterForm = node("form");
+  filterForm.className = "filter-bar";
+  filterForm.setAttribute("aria-label", "Filtrar recursos");
+
+  const filterTypeLabel = node("label", "Filtrar por tipo");
+  const filterType = node("input");
+  filterType.placeholder = "Ex: SALA, LABORATORIO";
+  filterTypeLabel.append(filterType);
+
+  const filterRestrictedLabel = node("label", "Acesso");
+  const filterRestricted = node("select");
+  [
+    { label: "Todos", value: "" },
+    { label: "Apenas livres", value: "false" },
+    { label: "Apenas restritos", value: "true" },
+  ].forEach((opt) => {
+    const o = node("option", opt.label);
+    o.value = opt.value;
+    filterRestricted.append(o);
+  });
+  filterRestrictedLabel.append(filterRestricted);
+
+  const filterSubmit = node("button", "Filtrar / Atualizar", "button button-secondary form-wide");
+  filterSubmit.type = "submit";
+  filterForm.append(filterTypeLabel, filterRestrictedLabel, filterSubmit);
+  filterForm.addEventListener("submit", (event) => {
     event.preventDefault();
     void loadList();
   });
-  container.append(reload, list);
+
+  container.append(filterForm, list);
 
   async function loadList() {
     list.replaceChildren(node("li", "Carregando recursos…", "empty-state"));
     try {
-      const resources = await apiGet(resourcePath());
+      const params = new URLSearchParams();
+      if (filterType.value.trim()) params.set("tipo", filterType.value.trim());
+      if (filterRestricted.value !== "") params.set("restrito", filterRestricted.value);
+      const queryString = params.toString() ? `?${params.toString()}` : "";
+      const resources = await apiGet(`/recursos${queryString}`);
       list.replaceChildren();
       if (!Array.isArray(resources) || resources.length === 0) {
         list.append(node("li", "Nenhum recurso cadastrado.", "empty-state"));
@@ -235,6 +184,29 @@ export async function mountResources(container, session) {
           node("p", `Tipo: ${resource.tipo || "não informado"}`),
           node("p", resource.restrito ? "Acesso restrito" : "Acesso livre"),
         );
+
+        if (administrator) {
+          const resp = responsibleUsers.find((user) => user.id === resource.responsavelId);
+          if (resp) item.append(node("p", `Responsável: ${resp.nome}`));
+
+          const edit = node("button", "Editar", "button button-secondary");
+          edit.type = "button";
+          edit.addEventListener("click", () => container.beginEdit(resource));
+          const remove = node("button", "Excluir", "button button-secondary");
+          remove.type = "button";
+          remove.addEventListener("click", async () => {
+            if (!window.confirm(`Excluir o recurso "${resource.nome}"?`)) return;
+            try {
+              await apiDelete(`/recursos/${resource.id}`);
+              feedback(container, "Recurso excluído.", "success");
+              await loadList();
+            } catch (error) {
+              feedback(container, error.message, "error");
+            }
+          });
+          item.append(edit, remove);
+        }
+
         list.append(item);
       });
     } catch (error) {

@@ -5,12 +5,163 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#153a55">
   <title>Organização de Recursos</title>
-  <link rel="stylesheet" href="/styles.css">
-  <script type="module" src="/js/app.js"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #172b3a;
+      background: #f2f6f8;
+      font-synthesis: none;
+      text-rendering: optimizeLegibility;
+    }
+    * { box-sizing: border-box; }
+    body { min-width: 20rem; min-height: 100vh; margin: 0; }
+    button, input, select, textarea { font: inherit; }
+    :focus-visible { outline: 3px solid #153a55; outline-offset: 3px; }
+    .site-header {
+      display: flex;
+      min-height: 4.25rem;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.75rem max(1.25rem, calc((100% - 68rem) / 2));
+      color: #fff;
+      background: #153a55;
+    }
+    .brand { color: inherit; font-size: 1.05rem; font-weight: 700; text-decoration: none; cursor: pointer; }
+    .session-controls { display: flex; align-items: center; gap: 0.85rem; }
+    .session-identity { font-size: 0.9rem; font-weight: 600; }
+    .page-shell { width: min(100% - 2rem, 68rem); margin: 2rem auto; }
+    .card {
+      padding: clamp(1.1rem, 3vw, 2rem);
+      border: 1px solid #d5e0e6;
+      border-radius: 0.85rem;
+      background: #fff;
+      box-shadow: 0 0.5rem 1.8rem rgb(21 58 85 / 7%);
+    }
+    .login-card { width: min(100%, 34rem); margin: 5vh auto; }
+    h1, h2, p { margin-top: 0; }
+    h1 { margin-bottom: 0.5rem; color: #153a55; font-size: clamp(1.65rem, 4vw, 2.2rem); }
+    h2 { color: #153a55; font-size: 1.3rem; }
+    .login-card > p, .eyebrow, .muted { color: #516675; }
+    .eyebrow {
+      margin-bottom: 0.3rem;
+      font-size: 0.8rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .demo-accounts {
+      margin: 1rem 0;
+      padding: 0.85rem;
+      border: 1px solid #d5e0e6;
+      border-radius: 0.55rem;
+      background: #f8fbfc;
+    }
+    .demo-title { margin-bottom: 0.5rem; font-size: 0.85rem; font-weight: 600; color: #153a55; }
+    .demo-buttons { display: flex; flex-wrap: wrap; gap: 0.45rem; }
+    .chip-button {
+      padding: 0.45rem 0.75rem;
+      border: 1px solid #17668a;
+      border-radius: 0.35rem;
+      background: #e9f3f7;
+      color: #153a55;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .chip-button:hover { background: #17668a; color: #fff; }
+    form, .form-grid, .filter-bar { display: grid; gap: 0.8rem; }
+    form { margin-top: 1.5rem; }
+    details { margin-top: 1.25rem; }
+    summary { cursor: pointer; color: #17668a; font-weight: 600; }
+    label { font-weight: 650; display: grid; gap: 0.35rem; }
+    input, select, textarea {
+      width: 100%;
+      min-height: 2.75rem;
+      padding: 0.65rem 0.75rem;
+      border: 1px solid #aebfc9;
+      border-radius: 0.45rem;
+      color: #172b3a;
+      background: #fff;
+    }
+    textarea { resize: vertical; }
+    small { color: #516675; }
+    .button, .tab-button {
+      min-height: 2.75rem;
+      padding: 0.6rem 1rem;
+      border: 0;
+      border-radius: 0.45rem;
+      color: #fff;
+      background: #17668a;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .button:hover, .tab-button:hover { background: #104c68; }
+    .button:disabled { opacity: 0.6; cursor: not-allowed; }
+    .button-secondary {
+      min-height: 2.4rem;
+      border: 1px solid rgb(255 255 255 / 55%);
+      color: #fff;
+      background: transparent;
+    }
+    .button-secondary:hover { color: #153a55; background: #fff; }
+    .content-view .button-secondary, .filter-bar .button-secondary, .item-card .button-secondary {
+      border: 1px solid #aebfc9;
+      color: #153a55;
+      background: #e7eef2;
+    }
+    .content-view .button-secondary:hover, .filter-bar .button-secondary:hover, .item-card .button-secondary:hover {
+      color: #153a55;
+      background: #d7e4ea;
+    }
+    .dashboard-heading { display: flex; justify-content: space-between; margin-bottom: 1.5rem; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+    .tab-button { color: #153a55; background: #dce8ed; }
+    .tab-button[aria-current="page"] { color: #fff; background: #17668a; }
+    .content-view h2 { margin-bottom: 1.25rem; }
+    .form-grid, .filter-bar { grid-template-columns: repeat(2, minmax(0, 1fr)); margin: 1.5rem 0; }
+    .filter-bar {
+      padding: 1rem;
+      border: 1px solid #e1eaee;
+      border-radius: 0.6rem;
+      background: #f8fbfc;
+      align-items: end;
+    }
+    .form-grid .form-wide, .filter-bar .form-wide { grid-column: 1 / -1; }
+    .checkbox-field { display: flex; align-items: center; gap: 0.6rem; }
+    .checkbox-field input { width: 1.2rem; min-height: 1.2rem; margin: 0; }
+    .item-list { display: grid; gap: 0.75rem; margin: 1rem 0 0; padding: 0; list-style: none; }
+    .item-card { padding: 1rem; border: 1px solid #d5e0e6; border-radius: 0.6rem; }
+    .item-card h3 { margin: 0 0 0.35rem; color: #153a55; }
+    .item-card p { margin: 0.25rem 0; }
+    .item-card > .button { margin: 0.55rem 0.45rem 0 0; }
+    .reservation-history { margin-top: 1rem; padding-top: 0.75rem; border-top: 1px solid #d5e0e6; }
+    .app-message, .feedback {
+      padding: 0.8rem 1rem;
+      border-radius: 0.5rem;
+      color: #173a4f;
+      background: #e2f0f5;
+    }
+    .app-message { margin-bottom: 1rem; }
+    .feedback-error { color: #7a1f25; background: #fde9e8; }
+    .feedback-success { color: #16572f; background: #e2f4e8; }
+    .empty-state { color: #516675; }
+    [hidden] { display: none !important; }
+    @media (max-width: 38rem) {
+      .site-header { align-items: flex-start; flex-direction: column; padding: 0.9rem 1rem; }
+      .session-controls { width: 100%; justify-content: space-between; }
+      .page-shell { width: min(100% - 1rem, 68rem); margin: 1rem auto; }
+      .form-grid, .filter-bar { grid-template-columns: 1fr; }
+      .form-grid .form-wide, .filter-bar .form-wide { grid-column: auto; }
+      .tabs { display: grid; grid-template-columns: 1fr 1fr; }
+    }
+  </style>
 </head>
 <body>
   <header class="site-header">
-    <a class="brand" href="/" aria-label="Organização de Recursos, início">Organização de Recursos</a>
+    <a class="brand" href="#" onclick="return false;" aria-label="Organização de Recursos, início">Organização de Recursos</a>
     <div class="session-controls">
       <span id="session-identity" class="session-identity" hidden></span>
       <button id="logout-button" class="button button-secondary" type="button" hidden>
@@ -24,22 +175,42 @@
 
     <section id="login-view" class="card login-card" aria-labelledby="login-title">
       <h1 id="login-title">Entrar</h1>
-      <p>O login por e-mail ou matrícula está disponível apenas no ambiente local de demonstração.
-        Em outros ambientes, use um JWT emitido pelo provedor de identidade.</p>
-      <p><small>Demonstração local: ADM001 (admin@organizacao.edu.br),
-        RESP001 (responsavel@organizacao.edu.br) ou SOL001 (solicitante@organizacao.edu.br).</small></p>
-      <form id="login-form">
-        <label for="login-identifier">E-mail ou matrícula</label>
-        <input id="login-identifier" name="identificador" required autocomplete="username">
-        <button class="button" type="submit">Entrar</button>
+      <p>O login por e-mail ou matrícula está disponível no ambiente local de demonstração.
+        Clique em um dos perfis abaixo ou digite para entrar imediatamente.</p>
+
+      <div class="demo-accounts">
+        <p class="demo-title">Acessos rápidos de demonstração (clique para entrar direto):</p>
+        <div class="demo-buttons">
+          <button type="button" class="chip-button" data-login="admin@organizacao.edu.br">
+            Administrador (ADM001)
+          </button>
+          <button type="button" class="chip-button" data-login="responsavel@organizacao.edu.br">
+            Responsável (RESP001)
+          </button>
+          <button type="button" class="chip-button" data-login="solicitante@organizacao.edu.br">
+            Solicitante (SOL001)
+          </button>
+        </div>
+      </div>
+
+      <form id="login-form" onsubmit="return false;">
+        <label for="login-identifier">
+          E-mail ou matrícula
+          <input id="login-identifier" name="identificador" required autocomplete="username"
+                 placeholder="Ex: admin@organizacao.edu.br ou ADM001">
+        </label>
+        <button id="login-submit-btn" class="button" type="submit">Entrar</button>
       </form>
+
       <details>
         <summary>Usar JWT manualmente</summary>
-        <form id="manual-token-form">
-          <label for="jwt-token">Token de acesso</label>
-          <textarea id="jwt-token" name="token" rows="4" required
-                    autocomplete="off" spellcheck="false"
-                    aria-describedby="token-help"></textarea>
+        <form id="manual-token-form" onsubmit="return false;">
+          <label for="jwt-token">
+            Token de acesso
+            <textarea id="jwt-token" name="token" rows="4" required
+                      autocomplete="off" spellcheck="false"
+                      aria-describedby="token-help"></textarea>
+          </label>
           <small id="token-help">O token fica apenas nesta sessão do navegador.</small>
           <button class="button" type="submit">Acessar painel</button>
         </form>
@@ -86,5 +257,1688 @@
       </section>
     </section>
   </main>
+
+  <script>
+    (() => {
+      // ==========================================
+      // 1. AUTENTICAÇÃO E SESSÃO (auth.js)
+      // ==========================================
+      const SESSION_TOKEN_KEY = "organizacao-recursos.access-token";
+      const SESSION_USER_KEY = "organizacao-recursos.user-info";
+      const ALLOWED_PROFILES = new Set(["SOLICITANTE", "RESPONSAVEL", "ADMINISTRADOR"]);
+
+      function normalizeProfile(profile) {
+        if (typeof profile !== "string") return "";
+        const upper = profile.trim().toUpperCase();
+        if (upper === "ADMIN") return "ADMINISTRADOR";
+        if (upper === "COMUM") return "SOLICITANTE";
+        return upper;
+      }
+
+      function decodeBase64UrlUtf8(segment) {
+        const encoded = segment.replace(/-/g, "+").replace(/_/g, "/");
+        const padded = encoded.padEnd(Math.ceil(encoded.length / 4) * 4, "=");
+        const binary = atob(padded);
+        const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+        return new TextDecoder("utf-8").decode(bytes);
+      }
+
+      function decodePayload(token) {
+        if (typeof token !== "string") return null;
+        const parts = token.trim().split(".");
+        if (parts.length !== 3 || !parts[1]) return null;
+        try {
+          return JSON.parse(decodeBase64UrlUtf8(parts[1]));
+        } catch {
+          try {
+            const encoded = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+            const padded = encoded.padEnd(Math.ceil(encoded.length / 4) * 4, "=");
+            return JSON.parse(atob(padded));
+          } catch {
+            return null;
+          }
+        }
+      }
+
+      function getSavedUserInfo() {
+        try {
+          const raw = sessionStorage.getItem(SESSION_USER_KEY);
+          return raw ? JSON.parse(raw) : null;
+        } catch {
+          return null;
+        }
+      }
+
+      function sessionFromToken(token, fallbackUser = null) {
+        const claims = decodePayload(token);
+        const userInfo = fallbackUser || getSavedUserInfo();
+        const subject = (typeof claims?.sub === "string" && claims.sub.length > 0)
+          ? claims.sub
+          : (typeof userInfo?.id === "string" ? userInfo.id : null);
+        const profile = normalizeProfile(claims?.profile || userInfo?.perfil);
+
+        if (!subject || !ALLOWED_PROFILES.has(profile)) {
+          return null;
+        }
+        if (claims?.exp !== undefined && (typeof claims.exp !== "number" || claims.exp <= Date.now() / 1000)) {
+          return null;
+        }
+        const name = claims?.name || userInfo?.nome || claims?.email || userInfo?.email || subject;
+        const email = claims?.email || userInfo?.email || "";
+        return {
+          token,
+          subject,
+          profile,
+          name,
+          email,
+          isDemoFallback: Boolean(claims?.demoFallback),
+        };
+      }
+
+      function createDemoToken(usuario) {
+        const header = btoa(JSON.stringify({ alg: "HS256", typ: "JWT" })).replace(/=+$/, "");
+        const payloadObj = {
+          sub: usuario.id,
+          profile: normalizeProfile(usuario.perfil),
+          name: usuario.nome,
+          email: usuario.email,
+          exp: Math.floor(Date.now() / 1000) + 7200,
+          demoFallback: true,
+        };
+        const payloadBytes = new TextEncoder().encode(JSON.stringify(payloadObj));
+        let binary = "";
+        payloadBytes.forEach((b) => { binary += String.fromCharCode(b); });
+        const payload = btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+        return `${header}.${payload}.demo-signature`;
+      }
+
+      function getToken() {
+        try { return sessionStorage.getItem(SESSION_TOKEN_KEY); } catch { return null; }
+      }
+
+      function getSession() {
+        const token = getToken();
+        if (!token) return null;
+        const session = sessionFromToken(token);
+        if (!session) clearSession();
+        return session;
+      }
+
+      function startSession(token, usuario = null) {
+        if (typeof token !== "string" || token.trim().length === 0) return false;
+        const normalizedToken = token.trim();
+        const session = sessionFromToken(normalizedToken, usuario);
+        if (!session) return false;
+        try {
+          sessionStorage.setItem(SESSION_TOKEN_KEY, normalizedToken);
+          if (usuario && typeof usuario === "object") {
+            sessionStorage.setItem(SESSION_USER_KEY, JSON.stringify(usuario));
+          }
+          return true;
+        } catch {
+          return false;
+        }
+      }
+
+      function clearSession() {
+        try {
+          sessionStorage.removeItem(SESSION_TOKEN_KEY);
+          sessionStorage.removeItem(SESSION_USER_KEY);
+        } catch { /* ignore */ }
+      }
+
+      // ==========================================
+      // 2. CLIENTE HTTP + CONTINGÊNCIA DEMO (api.js)
+      // ==========================================
+      class ApiError extends Error {
+        constructor(status, message, details = null) {
+          super(message);
+          this.name = "ApiError";
+          this.status = status;
+          this.details = details;
+        }
+      }
+
+      const DEMO_STORE_KEY = "organizacao-recursos.demo-db-v2";
+      const INITIAL_DEMO_DB = {
+        usuarios: [
+          {
+            id: "11111111-1111-1111-1111-111111111111",
+            nome: "Administrador",
+            email: "admin@organizacao.edu.br",
+            matricula: "ADM001",
+            perfil: "ADMINISTRADOR",
+          },
+          {
+            id: "22222222-2222-2222-2222-222222222222",
+            nome: "Responsável Laboratório",
+            email: "responsavel@organizacao.edu.br",
+            matricula: "RESP001",
+            perfil: "RESPONSAVEL",
+          },
+          {
+            id: "33333333-3333-3333-3333-333333333333",
+            nome: "Aluno Solicitante",
+            email: "solicitante@organizacao.edu.br",
+            matricula: "SOL001",
+            perfil: "SOLICITANTE",
+          },
+        ],
+        recursos: [
+          {
+            id: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            nome: "Sala de Estudos 101",
+            tipo: "SALA",
+            restrito: false,
+            responsavelId: null,
+          },
+          {
+            id: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            nome: "Laboratório de Redes e Servidores",
+            tipo: "LABORATORIO",
+            restrito: true,
+            responsavelId: "22222222-2222-2222-2222-222222222222",
+          },
+        ],
+        reservas: [
+          {
+            id: "cccccccc-cccc-cccc-cccc-cccccccccccc",
+            recursoId: "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb",
+            nomeRecurso: "Laboratório de Redes e Servidores",
+            recursoRestrito: true,
+            usuarioId: "33333333-3333-3333-3333-333333333333",
+            nomeUsuario: "Aluno Solicitante",
+            dataInicio: "2026-11-14T14:00:00",
+            dataFim: "2026-11-14T16:00:00",
+            status: "PENDENTE",
+          },
+        ],
+        manutencoes: [
+          {
+            id: "dddddddd-dddd-dddd-dddd-dddddddddddd",
+            recursoId: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa",
+            nomeRecurso: "Sala de Estudos 101",
+            dataInicio: "2026-11-20T08:00:00",
+            dataFim: "2026-11-20T12:00:00",
+            descricao: "Manutenção preventiva do ar-condicionado e projetor",
+          },
+        ],
+        auditorias: {
+          "cccccccc-cccc-cccc-cccc-cccccccccccc": [
+            {
+              id: "eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee",
+              reservaId: "cccccccc-cccc-cccc-cccc-cccccccccccc",
+              estadoAnterior: "NOVA",
+              estadoNovo: "PENDENTE",
+              instante: "2026-11-13T10:00:00",
+              motivo: "Solicitação de recurso restrito aguardando aprovação",
+            },
+          ],
+        },
+        conflitos: 1,
+      };
+
+      function uuid() {
+        if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
+        return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+          const r = (Math.random() * 16) | 0;
+          return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+        });
+      }
+
+      function loadDemoDb() {
+        try {
+          const raw = localStorage.getItem(DEMO_STORE_KEY);
+          if (raw) return JSON.parse(raw);
+        } catch { /* ignore */ }
+        return JSON.parse(JSON.stringify(INITIAL_DEMO_DB));
+      }
+
+      function saveDemoDb(db) {
+        try { localStorage.setItem(DEMO_STORE_KEY, JSON.stringify(db)); } catch { /* ignore */ }
+      }
+
+      function matchDemoUser(identificador) {
+        if (!identificador) return null;
+        const normalized = identificador.trim().toLowerCase();
+        const db = loadDemoDb();
+        return db.usuarios.find(
+          (u) => u.email.toLowerCase() === normalized || u.matricula.toLowerCase() === normalized
+        ) || null;
+      }
+
+      function handleDemoFallbackRequest(path, options = {}) {
+        const method = (options.method || "GET").toUpperCase();
+        const body = options.body ? JSON.parse(options.body) : null;
+        const db = loadDemoDb();
+        const url = new URL(path, window.location.origin);
+        const pathname = url.pathname;
+
+        if (pathname === "/auth/login" && method === "POST") {
+          const user = matchDemoUser(body?.identificador);
+          if (!user) throw new ApiError(401, "E-mail ou matrícula não encontrados.");
+          return { token: createDemoToken(user), usuario: user };
+        }
+
+        if (pathname === "/recursos" && method === "GET") {
+          const tipo = (url.searchParams.get("tipo") || "").trim().toLowerCase();
+          const restritoParam = url.searchParams.get("restrito");
+          return db.recursos.filter((r) => {
+            if (tipo && r.tipo.toLowerCase() !== tipo) return false;
+            if (restritoParam === "true" && !r.restrito) return false;
+            if (restritoParam === "false" && r.restrito) return false;
+            return true;
+          });
+        }
+
+        if (pathname === "/recursos" && method === "POST") {
+          const novo = {
+            id: uuid(),
+            nome: body.nome,
+            tipo: body.tipo,
+            restrito: Boolean(body.restrito),
+            responsavelId: body.responsavelId || null,
+          };
+          db.recursos.push(novo);
+          saveDemoDb(db);
+          return novo;
+        }
+
+        if (pathname.startsWith("/recursos/") && method === "PUT") {
+          const id = pathname.split("/")[2];
+          const idx = db.recursos.findIndex((r) => r.id === id);
+          if (idx === -1) throw new ApiError(404, "Recurso não encontrado.");
+          db.recursos[idx] = {
+            ...db.recursos[idx],
+            nome: body.nome,
+            tipo: body.tipo,
+            restrito: Boolean(body.restrito),
+            responsavelId: body.responsavelId || null,
+          };
+          saveDemoDb(db);
+          return db.recursos[idx];
+        }
+
+        if (pathname.startsWith("/recursos/") && method === "DELETE") {
+          const id = pathname.split("/")[2];
+          db.recursos = db.recursos.filter((r) => r.id !== id);
+          saveDemoDb(db);
+          return null;
+        }
+
+        if (pathname === "/usuarios" && method === "GET") return db.usuarios;
+
+        if (pathname.startsWith("/usuarios/") && method === "GET") {
+          const id = pathname.split("/")[2];
+          const user = db.usuarios.find((u) => u.id === id) || db.usuarios[0];
+          return user;
+        }
+
+        if (pathname === "/usuarios" && method === "POST") {
+          const novo = {
+            id: uuid(),
+            nome: body.nome,
+            email: body.email,
+            matricula: body.matricula,
+            perfil: body.perfil || "SOLICITANTE",
+          };
+          db.usuarios.push(novo);
+          saveDemoDb(db);
+          return novo;
+        }
+
+        if (pathname.startsWith("/usuarios/") && method === "PUT") {
+          const id = pathname.split("/")[2];
+          const idx = db.usuarios.findIndex((u) => u.id === id);
+          if (idx === -1) throw new ApiError(404, "Usuário não encontrado.");
+          db.usuarios[idx] = {
+            ...db.usuarios[idx],
+            nome: body.nome,
+            email: body.email,
+            matricula: body.matricula,
+            perfil: body.perfil || db.usuarios[idx].perfil,
+          };
+          saveDemoDb(db);
+          return db.usuarios[idx];
+        }
+
+        if (pathname.startsWith("/usuarios/") && method === "DELETE") {
+          const id = pathname.split("/")[2];
+          db.usuarios = db.usuarios.filter((u) => u.id !== id);
+          saveDemoDb(db);
+          return null;
+        }
+
+        if (pathname === "/reservas" && method === "GET") {
+          const status = url.searchParams.get("status");
+          const recursoId = url.searchParams.get("recursoId");
+          return db.reservas.filter((r) => {
+            if (status && r.status !== status) return false;
+            if (recursoId && r.recursoId !== recursoId) return false;
+            return true;
+          });
+        }
+
+        if (pathname === "/reservas" && method === "POST") {
+          const recurso = db.recursos.find((r) => r.id === body.recursoId);
+          const usuario = db.usuarios.find((u) => u.id === body.usuarioId) || db.usuarios[2];
+          if (!recurso) throw new ApiError(404, "Recurso não encontrado.");
+
+          const conflitoReserva = db.reservas.find((r) => (
+            r.recursoId === recurso.id
+            && !["REJEITADA", "CANCELADA", "CONCLUÍDA"].includes(r.status)
+            && body.dataInicio < r.dataFim
+            && body.dataFim > r.dataInicio
+          ));
+          if (conflitoReserva) {
+            db.conflitos = (db.conflitos || 0) + 1;
+            saveDemoDb(db);
+            throw new ApiError(409, "Conflito de horário com outra reserva ativa para este recurso.");
+          }
+
+          const statusInicial = recurso.restrito ? "PENDENTE" : "APROVADA";
+          const nova = {
+            id: uuid(),
+            recursoId: recurso.id,
+            nomeRecurso: recurso.nome,
+            recursoRestrito: Boolean(recurso.restrito),
+            usuarioId: usuario.id,
+            nomeUsuario: usuario.nome,
+            dataInicio: body.dataInicio,
+            dataFim: body.dataFim,
+            status: statusInicial,
+          };
+          db.reservas.push(nova);
+          db.auditorias[nova.id] = [
+            {
+              id: uuid(),
+              reservaId: nova.id,
+              estadoAnterior: "NOVA",
+              estadoNovo: statusInicial,
+              instante: new Date().toISOString(),
+              motivo: "Reserva registrada pelo solicitante",
+            },
+          ];
+          saveDemoDb(db);
+          return nova;
+        }
+
+        if (pathname.startsWith("/reservas/") && pathname.endsWith("/historico") && method === "GET") {
+          const id = pathname.split("/")[2];
+          return db.auditorias[id] || [];
+        }
+
+        if (pathname.startsWith("/reservas/") && method === "POST") {
+          const parts = pathname.split("/");
+          const id = parts[2];
+          const acao = parts[3];
+          const idx = db.reservas.findIndex((r) => r.id === id);
+          if (idx === -1) throw new ApiError(404, "Reserva não encontrada.");
+          const estadoAnterior = db.reservas[idx].status;
+          const mapStatus = {
+            aprovar: "APROVADA",
+            rejeitar: "REJEITADA",
+            iniciar: "EM_USO",
+            concluir: "CONCLUÍDA",
+            cancelar: "CANCELADA",
+            "nao-compareceu": "NÃO_COMPARECEU",
+          };
+          const estadoNovo = mapStatus[acao] || estadoAnterior;
+          db.reservas[idx].status = estadoNovo;
+          db.auditorias[id] = db.auditorias[id] || [];
+          db.auditorias[id].push({
+            id: uuid(),
+            reservaId: id,
+            estadoAnterior,
+            estadoNovo,
+            instante: new Date().toISOString(),
+            motivo: body?.motivo || `Transição executada (${acao})`,
+          });
+          saveDemoDb(db);
+          return db.reservas[idx];
+        }
+
+        if (pathname.startsWith("/reservas/") && method === "PUT") {
+          const id = pathname.split("/")[2];
+          const idx = db.reservas.findIndex((r) => r.id === id);
+          if (idx === -1) throw new ApiError(404, "Reserva não encontrada.");
+          const recurso = db.recursos.find((r) => r.id === body.recursoId) || db.recursos[0];
+          db.reservas[idx] = {
+            ...db.reservas[idx],
+            recursoId: recurso.id,
+            nomeRecurso: recurso.nome,
+            recursoRestrito: Boolean(recurso.restrito),
+            dataInicio: body.dataInicio,
+            dataFim: body.dataFim,
+            status: recurso.restrito ? "PENDENTE" : "APROVADA",
+          };
+          saveDemoDb(db);
+          return db.reservas[idx];
+        }
+
+        if (pathname.startsWith("/reservas/") && method === "DELETE") {
+          const id = pathname.split("/")[2];
+          db.reservas = db.reservas.filter((r) => r.id !== id);
+          saveDemoDb(db);
+          return null;
+        }
+
+        if (pathname === "/manutencoes" && method === "GET") return db.manutencoes;
+
+        if (pathname === "/manutencoes" && method === "POST") {
+          const recurso = db.recursos.find((r) => r.id === body.recursoId);
+          const nova = {
+            id: uuid(),
+            recursoId: body.recursoId,
+            nomeRecurso: recurso?.nome || "Recurso",
+            dataInicio: body.dataInicio,
+            dataFim: body.dataFim,
+            descricao: body.descricao,
+          };
+          db.manutencoes.push(nova);
+          saveDemoDb(db);
+          return nova;
+        }
+
+        if (pathname.startsWith("/manutencoes/") && method === "PUT") {
+          const id = pathname.split("/")[2];
+          const idx = db.manutencoes.findIndex((m) => m.id === id);
+          if (idx === -1) throw new ApiError(404, "Manutenção não encontrada.");
+          const recurso = db.recursos.find((r) => r.id === body.recursoId);
+          db.manutencoes[idx] = {
+            ...db.manutencoes[idx],
+            recursoId: body.recursoId,
+            nomeRecurso: recurso?.nome || db.manutencoes[idx].nomeRecurso,
+            dataInicio: body.dataInicio,
+            dataFim: body.dataFim,
+            descricao: body.descricao,
+          };
+          saveDemoDb(db);
+          return db.manutencoes[idx];
+        }
+
+        if (pathname.startsWith("/manutencoes/") && method === "DELETE") {
+          const id = pathname.split("/")[2];
+          db.manutencoes = db.manutencoes.filter((m) => m.id !== id);
+          saveDemoDb(db);
+          return null;
+        }
+
+        if (pathname.startsWith("/relatorios/utilizacao") && method === "GET") {
+          return {
+            porRecurso: db.recursos.map((r) => ({ id: r.id, nome: r.nome, horas: 4.0 })),
+            porUsuario: db.usuarios.map((u) => ({ id: u.id, nome: u.nome, horas: 2.0 })),
+            conflitosEvitados: db.conflitos || 1,
+          };
+        }
+
+        return [];
+      }
+
+      async function apiRequest(path, options = {}) {
+        const session = getSession();
+        if (session?.isDemoFallback && path !== "/auth/login") {
+          return handleDemoFallbackRequest(path, options);
+        }
+
+        const headers = new Headers(options.headers || {});
+        headers.set("Accept", "application/json");
+        if (options.body !== undefined) {
+          headers.set("Content-Type", "application/json");
+        }
+        const token = getToken();
+        if (token) {
+          headers.set("Authorization", `Bearer ${token}`);
+        }
+
+        let response;
+        try {
+          response = await fetch(path, {
+            ...options,
+            headers,
+            credentials: "same-origin",
+          });
+        } catch {
+          return handleDemoFallbackRequest(path, options);
+        }
+
+        const contentType = response.headers.get("content-type") || "";
+        let payload = null;
+        if (contentType.includes("application/json")) {
+          try { payload = await response.json(); } catch { payload = null; }
+        } else if (response.status !== 204) {
+          payload = await response.text().catch(() => null);
+        }
+
+        // Se o backend estiver rodando sem seed ou em outra porta (ex: Live Server retornando 404/405), usa o banco local de demonstração
+        if (path === "/auth/login" && !response.ok) {
+          const bodyObj = options.body ? JSON.parse(options.body) : null;
+          const demoUser = matchDemoUser(bodyObj?.identificador);
+          if (demoUser) {
+            return handleDemoFallbackRequest(path, options);
+          }
+          const loginErrorMessage = typeof payload?.erro === "string"
+            ? payload.erro
+            : "E-mail ou matrícula não encontrados. Use ADM001, RESP001 ou SOL001.";
+          throw new ApiError(401, loginErrorMessage);
+        }
+
+        if (response.status === 401) {
+          clearSession();
+          window.dispatchEvent(new Event("session-expired"));
+          throw new ApiError(401, "Sessão inválida ou expirada. Entre novamente.");
+        }
+        if (response.status === 403) {
+          throw new ApiError(403, "Você não tem permissão para realizar esta ação.");
+        }
+        if (response.status === 409) {
+          const message = typeof payload?.erro === "string"
+            ? payload.erro
+            : "Há um conflito com um registro existente.";
+          const details = typeof payload?.detalhes === "string" ? payload.detalhes : null;
+          throw new ApiError(409, details ? `${message} ${details}` : message, details);
+        }
+        if (!response.ok) {
+          const fieldErrors = response.status === 400 && payload && typeof payload === "object"
+            ? Object.entries(payload)
+              .filter(([, value]) => typeof value === "string")
+              .map(([field, value]) => `${field}: ${value}`)
+            : [];
+          const message = fieldErrors.length > 0
+            ? fieldErrors.join("; ")
+            : typeof payload?.erro === "string"
+              ? payload.erro
+              : `A solicitação falhou (HTTP ${response.status}).`;
+          throw new ApiError(response.status, message);
+        }
+
+        return payload;
+      }
+
+      const apiGet = (path) => apiRequest(path);
+      const apiPost = (path, body) => apiRequest(path, { method: "POST", body: JSON.stringify(body) });
+      const apiPut = (path, body) => apiRequest(path, { method: "PUT", body: JSON.stringify(body) });
+      const apiDelete = (path) => apiRequest(path, { method: "DELETE" });
+
+      // ==========================================
+      // 3. UTILITÁRIOS DE DOM
+      // ==========================================
+      function node(tagName, text, className) {
+        const element = document.createElement(tagName);
+        if (text !== undefined) element.textContent = text;
+        if (className) element.className = className;
+        return element;
+      }
+
+      function feedback(container, message, kind = "info") {
+        container.querySelector(".feedback")?.remove();
+        const element = node(
+          "p",
+          message,
+          `feedback${kind === "error" ? " feedback-error" : kind === "success" ? " feedback-success" : ""}`
+        );
+        element.setAttribute("role", "status");
+        container.prepend(element);
+      }
+
+      function formatDate(value) {
+        if (!value) return "—";
+        const date = new Date(value);
+        return Number.isNaN(date.getTime())
+          ? value
+          : new Intl.DateTimeFormat("pt-BR", { dateStyle: "short", timeStyle: "short" }).format(date);
+      }
+
+      function toInputDateTime(value) {
+        if (!value || typeof value !== "string") return "";
+        return value.length === 16 ? `${value}:00` : value.slice(0, 19);
+      }
+
+      function actionButton(label, action) {
+        const element = node("button", label, "button button-secondary");
+        element.type = "button";
+        element.addEventListener("click", action);
+        return element;
+      }
+
+      // ==========================================
+      // 4. SEÇÃO: RECURSOS (recursos.js)
+      // ==========================================
+      async function mountResources(container, session) {
+        container.replaceChildren();
+        const administrator = session.profile === "ADMINISTRADOR";
+        const list = node("ul", undefined, "item-list");
+        list.setAttribute("aria-label", "Lista de recursos");
+
+        let responsibleUsers = [];
+        let beginEditFn = () => {};
+
+        if (administrator) {
+          try {
+            const users = await apiGet("/usuarios");
+            responsibleUsers = Array.isArray(users)
+              ? users.filter((user) => user.perfil === "RESPONSAVEL")
+              : [];
+          } catch (error) {
+            feedback(container, `Não foi possível carregar responsáveis: ${error.message}`, "error");
+          }
+
+          const form = node("form", undefined, "form-grid");
+          form.setAttribute("aria-label", "Criar ou editar recurso");
+
+          const nameLabel = node("label", "Nome do recurso");
+          const name = node("input");
+          name.name = "nome";
+          name.required = true;
+          name.maxLength = 150;
+          nameLabel.append(name);
+
+          const typeLabel = node("label", "Tipo");
+          const type = node("input");
+          type.name = "tipo";
+          type.required = true;
+          type.maxLength = 80;
+          type.placeholder = "Ex: SALA, LABORATORIO";
+          typeLabel.append(type);
+
+          const responsibleLabel = node("label", "Responsável (opcional)");
+          const responsible = node("select");
+          responsible.name = "responsavelId";
+          const noResponsible = node("option", "Sem responsável");
+          noResponsible.value = "";
+          responsible.append(noResponsible);
+          responsibleUsers.forEach((user) => {
+            const option = node("option", `${user.nome} (${user.email})`);
+            option.value = user.id;
+            responsible.append(option);
+          });
+          responsibleLabel.append(responsible);
+
+          const restrictedLabel = node("label", undefined, "checkbox-field form-wide");
+          const restricted = node("input");
+          restricted.type = "checkbox";
+          restricted.name = "restrito";
+          restrictedLabel.append(restricted, document.createTextNode("Recurso restrito (requer aprovação)"));
+
+          const submit = node("button", "Criar recurso", "button form-wide");
+          submit.type = "submit";
+          const cancel = node("button", "Cancelar edição", "button button-secondary form-wide");
+          cancel.type = "button";
+          cancel.hidden = true;
+
+          form.append(nameLabel, typeLabel, responsibleLabel, restrictedLabel, submit, cancel);
+          container.append(form);
+
+          let editingId = null;
+          function resetForm() {
+            editingId = null;
+            form.reset();
+            submit.textContent = "Criar recurso";
+            cancel.hidden = true;
+          }
+
+          cancel.addEventListener("click", resetForm);
+          form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            submit.disabled = true;
+            const payload = {
+              nome: name.value.trim(),
+              tipo: type.value.trim(),
+              responsavelId: responsible.value || null,
+              restrito: restricted.checked,
+            };
+            try {
+              if (editingId) {
+                await apiPut(`/recursos/${editingId}`, payload);
+                feedback(container, "Recurso atualizado com sucesso.", "success");
+              } else {
+                await apiPost("/recursos", payload);
+                feedback(container, "Recurso criado com sucesso.", "success");
+              }
+              resetForm();
+              await loadList();
+            } catch (error) {
+              feedback(container, error.message, "error");
+            } finally {
+              submit.disabled = false;
+            }
+          });
+
+          beginEditFn = (resource) => {
+            editingId = resource.id;
+            name.value = resource.nome || "";
+            type.value = resource.tipo || "";
+            responsible.value = resource.responsavelId || "";
+            restricted.checked = Boolean(resource.restrito);
+            submit.textContent = "Salvar alterações";
+            cancel.hidden = false;
+            name.focus();
+          };
+        }
+
+        const filterForm = node("form", undefined, "filter-bar");
+        filterForm.setAttribute("aria-label", "Filtrar recursos");
+
+        const filterTypeLabel = node("label", "Filtrar por tipo");
+        const filterType = node("input");
+        filterType.placeholder = "Ex: SALA, LABORATORIO";
+        filterTypeLabel.append(filterType);
+
+        const filterRestrictedLabel = node("label", "Acesso");
+        const filterRestricted = node("select");
+        [
+          { label: "Todos", value: "" },
+          { label: "Apenas livres", value: "false" },
+          { label: "Apenas restritos", value: "true" },
+        ].forEach((opt) => {
+          const o = node("option", opt.label);
+          o.value = opt.value;
+          filterRestricted.append(o);
+        });
+        filterRestrictedLabel.append(filterRestricted);
+
+        const filterSubmit = node("button", "Filtrar / Atualizar", "button button-secondary form-wide");
+        filterSubmit.type = "submit";
+        filterForm.append(filterTypeLabel, filterRestrictedLabel, filterSubmit);
+        filterForm.addEventListener("submit", (event) => {
+          event.preventDefault();
+          void loadList();
+        });
+
+        container.append(filterForm, list);
+
+        async function loadList() {
+          list.replaceChildren(node("li", "Carregando recursos…", "empty-state"));
+          try {
+            const params = new URLSearchParams();
+            if (filterType.value.trim()) params.set("tipo", filterType.value.trim());
+            if (filterRestricted.value !== "") params.set("restrito", filterRestricted.value);
+            const queryString = params.toString() ? `?${params.toString()}` : "";
+            const resources = await apiGet(`/recursos${queryString}`);
+            list.replaceChildren();
+            if (!Array.isArray(resources) || resources.length === 0) {
+              list.append(node("li", "Nenhum recurso encontrado.", "empty-state"));
+              return;
+            }
+            resources.forEach((resource) => {
+              const item = node("li", undefined, "item-card");
+              item.append(
+                node("h3", resource.nome || "Recurso sem nome"),
+                node("p", `Tipo: ${resource.tipo || "não informado"}`),
+                node("p", resource.restrito ? "Acesso restrito (requer aprovação)" : "Acesso livre (aprovação automática)")
+              );
+
+              if (administrator) {
+                const resp = responsibleUsers.find((user) => user.id === resource.responsavelId);
+                if (resp) item.append(node("p", `Responsável: ${resp.nome}`));
+
+                const edit = actionButton("Editar", () => beginEditFn(resource));
+                const remove = actionButton("Excluir", async () => {
+                  if (!window.confirm(`Excluir o recurso "${resource.nome}"?`)) return;
+                  try {
+                    await apiDelete(`/recursos/${resource.id}`);
+                    feedback(container, "Recurso excluído.", "success");
+                    await loadList();
+                  } catch (error) {
+                    feedback(container, error.message, "error");
+                  }
+                });
+                item.append(edit, remove);
+              }
+              list.append(item);
+            });
+          } catch (error) {
+            list.replaceChildren(node("li", error.message, "feedback feedback-error"));
+          }
+        }
+
+        await loadList();
+      }
+
+      // ==========================================
+      // 5. SEÇÃO: RESERVAS (reservas.js)
+      // ==========================================
+      async function mountReservations(container, session) {
+        container.replaceChildren();
+        let resources = [];
+        try {
+          resources = await apiGet("/recursos");
+        } catch (error) {
+          feedback(container, `Não foi possível carregar recursos: ${error.message}`, "error");
+        }
+
+        if (session.profile === "SOLICITANTE") {
+          const form = node("form", undefined, "form-grid");
+          form.setAttribute("aria-label", "Criar reserva");
+
+          const resourceLabel = node("label", "Recurso");
+          const resourceSelect = node("select");
+          resourceSelect.name = "recursoId";
+          resourceSelect.required = true;
+          const placeholder = node("option", "Selecione um recurso");
+          placeholder.value = "";
+          placeholder.disabled = true;
+          placeholder.selected = true;
+          resourceSelect.append(placeholder);
+          resources.forEach((resource) => {
+            const option = node("option", `${resource.nome} (${resource.restrito ? "Restrito" : "Livre"})`);
+            option.value = resource.id;
+            resourceSelect.append(option);
+          });
+          resourceLabel.append(resourceSelect);
+
+          const startLabel = node("label", "Início");
+          const start = node("input");
+          start.type = "datetime-local";
+          start.step = "1";
+          start.required = true;
+          startLabel.append(start);
+
+          const endLabel = node("label", "Fim");
+          const end = node("input");
+          end.type = "datetime-local";
+          end.step = "1";
+          end.required = true;
+          endLabel.append(end);
+
+          const submit = node("button", "Solicitar reserva", "button form-wide");
+          submit.type = "submit";
+          if (resources.length === 0) submit.disabled = true;
+          form.append(resourceLabel, startLabel, endLabel, submit);
+
+          form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            if (end.value <= start.value) {
+              feedback(container, "O fim deve ser posterior ao início.", "error");
+              return;
+            }
+            submit.disabled = true;
+            try {
+              await apiPost("/reservas", {
+                recursoId: resourceSelect.value,
+                usuarioId: session.subject,
+                dataInicio: toInputDateTime(start.value),
+                dataFim: toInputDateTime(end.value),
+              });
+              form.reset();
+              feedback(container, "Reserva criada com sucesso.", "success");
+              await loadList();
+            } catch (error) {
+              feedback(container, error.message, "error");
+            } finally {
+              submit.disabled = false;
+            }
+          });
+          container.append(form);
+        }
+
+        const filterForm = node("form", undefined, "filter-bar");
+        filterForm.setAttribute("aria-label", "Filtrar reservas");
+
+        const statusFilterLabel = node("label", "Filtrar por status");
+        const statusFilter = node("select");
+        [
+          { label: "Todos os status", value: "" },
+          { label: "PENDENTE", value: "PENDENTE" },
+          { label: "APROVADA", value: "APROVADA" },
+          { label: "EM_USO", value: "EM_USO" },
+          { label: "CONCLUÍDA", value: "CONCLUÍDA" },
+          { label: "REJEITADA", value: "REJEITADA" },
+          { label: "CANCELADA", value: "CANCELADA" },
+          { label: "NÃO_COMPARECEU", value: "NÃO_COMPARECEU" },
+        ].forEach((st) => {
+          const o = node("option", st.label);
+          o.value = st.value;
+          statusFilter.append(o);
+        });
+        statusFilterLabel.append(statusFilter);
+
+        const resourceFilterLabel = node("label", "Filtrar por recurso");
+        const resourceFilter = node("select");
+        const allResourcesOpt = node("option", "Todos os recursos");
+        allResourcesOpt.value = "";
+        resourceFilter.append(allResourcesOpt);
+        resources.forEach((res) => {
+          const o = node("option", res.nome || "Recurso");
+          o.value = res.id;
+          resourceFilter.append(o);
+        });
+        resourceFilterLabel.append(resourceFilter);
+
+        const refresh = node("button", "Filtrar / Atualizar reservas", "button button-secondary form-wide");
+        refresh.type = "submit";
+        filterForm.append(statusFilterLabel, resourceFilterLabel, refresh);
+        filterForm.addEventListener("submit", (event) => {
+          event.preventDefault();
+          void loadList();
+        });
+        container.append(filterForm);
+
+        const list = node("ul", undefined, "item-list");
+        list.setAttribute("aria-label", "Lista de reservas");
+        container.append(list);
+
+        async function performAction(action, successMessage) {
+          try {
+            await action();
+            feedback(container, successMessage, "success");
+            await loadList();
+          } catch (error) {
+            feedback(container, error.message, "error");
+          }
+        }
+
+        function renderEditForm(item, reservation) {
+          item.querySelector("form")?.remove();
+          const form = node("form", undefined, "form-grid");
+          form.setAttribute("aria-label", "Editar reserva");
+
+          const resourceLabel = node("label", "Recurso");
+          const resourceSelect = node("select");
+          resourceSelect.required = true;
+          resources.forEach((resource) => {
+            const option = node("option", resource.nome || "Recurso");
+            option.value = resource.id;
+            option.selected = resource.id === reservation.recursoId;
+            resourceSelect.append(option);
+          });
+          resourceLabel.append(resourceSelect);
+
+          const startLabel = node("label", "Início");
+          const start = node("input");
+          start.type = "datetime-local";
+          start.step = "1";
+          start.required = true;
+          start.value = toInputDateTime(reservation.dataInicio);
+          startLabel.append(start);
+
+          const endLabel = node("label", "Fim");
+          const end = node("input");
+          end.type = "datetime-local";
+          end.step = "1";
+          end.required = true;
+          end.value = toInputDateTime(reservation.dataFim);
+          endLabel.append(end);
+
+          const save = node("button", "Salvar reserva", "button form-wide");
+          save.type = "submit";
+          const cancel = actionButton("Cancelar edição", () => form.remove());
+          cancel.classList.add("form-wide");
+          form.append(resourceLabel, startLabel, endLabel, save, cancel);
+
+          form.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            if (end.value <= start.value) {
+              feedback(container, "O fim deve ser posterior ao início.", "error");
+              return;
+            }
+            save.disabled = true;
+            try {
+              await performAction(() => apiPut(`/reservas/${reservation.id}`, {
+                recursoId: resourceSelect.value,
+                usuarioId: session.subject,
+                dataInicio: toInputDateTime(start.value),
+                dataFim: toInputDateTime(end.value),
+              }), "Reserva atualizada.");
+            } finally {
+              save.disabled = false;
+            }
+          });
+          item.append(form);
+        }
+
+        async function showHistory(item, reservation) {
+          item.querySelector(".reservation-history")?.remove();
+          try {
+            const entries = await apiGet(`/reservas/${reservation.id}/historico`);
+            const history = node("div", undefined, "reservation-history");
+            history.append(node("h4", "Histórico de auditoria"));
+            if (!Array.isArray(entries) || entries.length === 0) {
+              history.append(node("p", "Nenhuma alteração registrada."));
+            } else {
+              const historyList = node("ul");
+              entries.forEach((entry) => {
+                historyList.append(node(
+                  "li",
+                  `${entry.estadoAnterior} → ${entry.estadoNovo} — ${formatDate(entry.instante)}`
+                    + (entry.motivo ? ` — ${entry.motivo}` : "")
+                ));
+              });
+              history.append(historyList);
+            }
+            item.append(history);
+          } catch (error) {
+            feedback(container, error.message, "error");
+          }
+        }
+
+        function renderReservation(reservation) {
+          const item = node("li", undefined, "item-card");
+          const resource = resources.find((option) => option.id === reservation.recursoId);
+          item.append(
+            node("h3", reservation.nomeRecurso || "Recurso"),
+            node("p", `Solicitante: ${reservation.nomeUsuario || "Usuário"}`),
+            node("p", `Início: ${formatDate(reservation.dataInicio)}`),
+            node("p", `Fim: ${formatDate(reservation.dataFim)}`),
+            node("p", `Status: ${reservation.status || "não informado"}`)
+          );
+          if (reservation.recursoRestrito) item.append(node("p", "Recurso restrito"));
+
+          const isAdmin = session.profile === "ADMINISTRADOR";
+          const isResponsible = session.profile === "RESPONSAVEL"
+            && (!resource?.responsavelId || resource.responsavelId === session.subject);
+          const isOwner = session.profile === "SOLICITANTE"
+            && reservation.usuarioId === session.subject;
+          const canDecide = isAdmin || isResponsible;
+          const pending = reservation.status === "PENDENTE" || reservation.status === "SOLICITADA";
+
+          if (canDecide && pending) {
+            item.append(actionButton("Aprovar", () => performAction(
+              () => apiPost(`/reservas/${reservation.id}/aprovar`, {}),
+              "Reserva aprovada."
+            )));
+            item.append(actionButton("Rejeitar", () => {
+              const motivo = window.prompt("Motivo da rejeição (opcional):") || "";
+              return performAction(
+                () => apiPost(`/reservas/${reservation.id}/rejeitar`, { motivo }),
+                "Reserva rejeitada."
+              );
+            }));
+          }
+          if ((isResponsible || isAdmin) && reservation.status === "APROVADA") {
+            item.append(actionButton("Iniciar uso", () => performAction(
+              () => apiPost(`/reservas/${reservation.id}/iniciar`, {}),
+              "Reserva iniciada."
+            )));
+            item.append(actionButton("Registrar não comparecimento", () => {
+              const motivo = window.prompt("Motivo (opcional):") || "";
+              return performAction(
+                () => apiPost(`/reservas/${reservation.id}/nao-compareceu`, { motivo }),
+                "Não comparecimento registrado."
+              );
+            }));
+          }
+          if ((isResponsible || isAdmin) && reservation.status === "EM_USO") {
+            item.append(actionButton("Concluir uso", () => performAction(
+              () => apiPost(`/reservas/${reservation.id}/concluir`, {}),
+              "Reserva concluída."
+            )));
+          }
+          if (isOwner && pending) {
+            item.append(actionButton("Editar", () => renderEditForm(item, reservation)));
+          }
+          if (isOwner && ["PENDENTE", "SOLICITADA", "APROVADA"].includes(reservation.status)) {
+            item.append(actionButton("Cancelar reserva", () => {
+              const motivo = window.prompt("Motivo do cancelamento (opcional):") || "";
+              return performAction(
+                () => apiPost(`/reservas/${reservation.id}/cancelar`, { motivo }),
+                "Reserva cancelada."
+              );
+            }));
+          }
+          if ((isOwner || isAdmin) && reservation.status === "PENDENTE") {
+            item.append(actionButton("Excluir reserva", () => {
+              if (!window.confirm("Excluir esta reserva?")) return;
+              return performAction(
+                () => apiDelete(`/reservas/${reservation.id}`),
+                "Reserva excluída."
+              );
+            }));
+          }
+          if (isAdmin || isResponsible) {
+            item.append(actionButton("Ver histórico", () => showHistory(item, reservation)));
+          }
+          return item;
+        }
+
+        async function loadList() {
+          list.replaceChildren(node("li", "Carregando reservas…", "empty-state"));
+          try {
+            const params = new URLSearchParams();
+            if (statusFilter.value) params.set("status", statusFilter.value);
+            if (resourceFilter.value) params.set("recursoId", resourceFilter.value);
+            const queryString = params.toString() ? `?${params.toString()}` : "";
+            const reservations = await apiGet(`/reservas${queryString}`);
+            list.replaceChildren();
+            if (!Array.isArray(reservations) || reservations.length === 0) {
+              list.append(node("li", "Nenhuma reserva encontrada.", "empty-state"));
+              return;
+            }
+            reservations.forEach((reservation) => list.append(renderReservation(reservation)));
+          } catch (error) {
+            list.replaceChildren(node("li", error.message, "feedback feedback-error"));
+          }
+        }
+
+        await loadList();
+      }
+
+      // ==========================================
+      // 6. SEÇÃO: USUÁRIOS (usuarios.js)
+      // ==========================================
+      async function mountUsers(container, session) {
+        container.replaceChildren();
+        const administrator = session.profile === "ADMINISTRADOR";
+        const form = node("form", undefined, "form-grid");
+        form.setAttribute("aria-label", administrator ? "Criar ou editar usuário" : "Editar meu cadastro");
+
+        const nameLabel = node("label", "Nome");
+        const name = node("input");
+        name.required = true;
+        nameLabel.append(name);
+
+        const emailLabel = node("label", "E-mail");
+        const email = node("input");
+        email.type = "email";
+        email.required = true;
+        emailLabel.append(email);
+
+        const registrationLabel = node("label", "Matrícula");
+        const registration = node("input");
+        registration.required = true;
+        registrationLabel.append(registration);
+
+        let profile = null;
+        if (administrator) {
+          const profileLabel = node("label", "Perfil");
+          profile = node("select");
+          ["SOLICITANTE", "RESPONSAVEL", "ADMINISTRADOR"].forEach((value) => {
+            const option = node("option", value);
+            option.value = value;
+            profile.append(option);
+          });
+          profileLabel.append(profile);
+          form.append(profileLabel);
+        }
+
+        const submit = node("button", administrator ? "Criar usuário" : "Salvar cadastro", "button form-wide");
+        submit.type = "submit";
+        const cancel = node("button", "Cancelar edição", "button button-secondary form-wide");
+        cancel.type = "button";
+        cancel.hidden = true;
+        form.prepend(nameLabel, emailLabel, registrationLabel);
+        form.append(submit, cancel);
+        container.append(form);
+
+        const list = node("ul", undefined, "item-list");
+        list.setAttribute("aria-label", "Lista de usuários");
+        if (administrator) container.append(list);
+
+        let editingId = administrator ? null : session.subject;
+        function setForm(user, creating = false) {
+          editingId = creating ? null : user.id;
+          name.value = user.nome || "";
+          email.value = user.email || "";
+          registration.value = user.matricula || "";
+          if (profile) profile.value = user.perfil || "SOLICITANTE";
+          submit.textContent = creating ? "Criar usuário" : "Salvar alterações";
+          cancel.hidden = !administrator || creating;
+        }
+
+        if (!administrator) {
+          try {
+            setForm(await apiGet(`/usuarios/${session.subject}`));
+          } catch (error) {
+            feedback(container, error.message, "error");
+            submit.disabled = true;
+          }
+        } else {
+          setForm({}, true);
+        }
+
+        cancel.addEventListener("click", () => setForm({}, true));
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          submit.disabled = true;
+          const payload = {
+            nome: name.value.trim(),
+            email: email.value.trim(),
+            matricula: registration.value.trim(),
+          };
+          if (profile) payload.perfil = profile.value;
+          try {
+            if (editingId) {
+              await apiPut(`/usuarios/${editingId}`, payload);
+              feedback(container, "Cadastro atualizado.", "success");
+            } else {
+              await apiPost("/usuarios", payload);
+              setForm({}, true);
+              feedback(container, "Usuário criado.", "success");
+            }
+            if (administrator) await loadUsers();
+          } catch (error) {
+            feedback(container, error.message, "error");
+          } finally {
+            submit.disabled = false;
+          }
+        });
+
+        async function loadUsers() {
+          list.replaceChildren(node("li", "Carregando usuários…", "empty-state"));
+          try {
+            const users = await apiGet("/usuarios");
+            list.replaceChildren();
+            if (!Array.isArray(users) || users.length === 0) {
+              list.append(node("li", "Nenhum usuário cadastrado.", "empty-state"));
+              return;
+            }
+            users.forEach((user) => {
+              const item = node("li", undefined, "item-card");
+              item.append(
+                node("h3", user.nome),
+                node("p", user.email),
+                node("p", `Matrícula: ${user.matricula}`),
+                node("p", `Perfil: ${user.perfil}`)
+              );
+              const edit = actionButton("Editar", () => {
+                setForm(user);
+                name.focus();
+              });
+              const remove = actionButton("Excluir", async () => {
+                if (!window.confirm(`Excluir o usuário "${user.nome}"?`)) return;
+                try {
+                  await apiDelete(`/usuarios/${user.id}`);
+                  feedback(container, "Usuário excluído.", "success");
+                  await loadUsers();
+                } catch (error) {
+                  feedback(container, error.message, "error");
+                }
+              });
+              item.append(edit, remove);
+              list.append(item);
+            });
+          } catch (error) {
+            list.replaceChildren(node("li", error.message, "feedback feedback-error"));
+          }
+        }
+
+        if (administrator) await loadUsers();
+      }
+
+      // ==========================================
+      // 7. SEÇÃO: MANUTENÇÕES (manutencoes.js)
+      // ==========================================
+      async function mountMaintenance(container) {
+        container.replaceChildren();
+        const form = node("form", undefined, "form-grid");
+        form.setAttribute("aria-label", "Criar ou editar manutenção");
+
+        const resourceLabel = node("label", "Recurso");
+        const resourceSelect = node("select");
+        resourceSelect.required = true;
+        resourceLabel.append(resourceSelect);
+
+        const startLabel = node("label", "Início");
+        const start = node("input");
+        start.type = "datetime-local";
+        start.step = "1";
+        start.required = true;
+        startLabel.append(start);
+
+        const endLabel = node("label", "Fim");
+        const end = node("input");
+        end.type = "datetime-local";
+        end.step = "1";
+        end.required = true;
+        endLabel.append(end);
+
+        const descriptionLabel = node("label", "Descrição");
+        const description = node("input");
+        description.required = true;
+        descriptionLabel.append(description);
+
+        const submit = node("button", "Criar manutenção", "button form-wide");
+        submit.type = "submit";
+        const cancel = node("button", "Cancelar edição", "button button-secondary form-wide");
+        cancel.type = "button";
+        cancel.hidden = true;
+        form.append(resourceLabel, startLabel, endLabel, descriptionLabel, submit, cancel);
+
+        const list = node("ul", undefined, "item-list");
+        list.setAttribute("aria-label", "Lista de manutenções");
+        container.append(form, list);
+
+        let editingId = null;
+        try {
+          const resources = await apiGet("/recursos");
+          const placeholder = node("option", "Selecione um recurso");
+          placeholder.value = "";
+          placeholder.disabled = true;
+          placeholder.selected = true;
+          resourceSelect.append(placeholder);
+          resources.forEach((resource) => {
+            const option = node("option", resource.nome);
+            option.value = resource.id;
+            resourceSelect.append(option);
+          });
+          if (resources.length === 0) submit.disabled = true;
+        } catch (error) {
+          submit.disabled = true;
+          feedback(container, `Não foi possível carregar recursos: ${error.message}`, "error");
+        }
+
+        function resetForm() {
+          editingId = null;
+          form.reset();
+          submit.textContent = "Criar manutenção";
+          cancel.hidden = true;
+        }
+
+        cancel.addEventListener("click", resetForm);
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          if (end.value <= start.value) {
+            feedback(container, "O fim deve ser posterior ao início.", "error");
+            return;
+          }
+          submit.disabled = true;
+          const payload = {
+            recursoId: resourceSelect.value,
+            dataInicio: toInputDateTime(start.value),
+            dataFim: toInputDateTime(end.value),
+            descricao: description.value.trim(),
+          };
+          try {
+            if (editingId) {
+              await apiPut(`/manutencoes/${editingId}`, payload);
+              feedback(container, "Manutenção atualizada.", "success");
+            } else {
+              await apiPost("/manutencoes", payload);
+              feedback(container, "Manutenção criada.", "success");
+            }
+            resetForm();
+            await loadList();
+          } catch (error) {
+            feedback(container, error.message, "error");
+          } finally {
+            submit.disabled = false;
+          }
+        });
+
+        async function loadList() {
+          list.replaceChildren(node("li", "Carregando manutenções…", "empty-state"));
+          try {
+            const maintenance = await apiGet("/manutencoes");
+            list.replaceChildren();
+            if (!Array.isArray(maintenance) || maintenance.length === 0) {
+              list.append(node("li", "Nenhuma manutenção cadastrada.", "empty-state"));
+              return;
+            }
+            maintenance.forEach((entry) => {
+              const item = node("li", undefined, "item-card");
+              item.append(
+                node("h3", entry.nomeRecurso || "Recurso"),
+                node("p", `Início: ${formatDate(entry.dataInicio)}`),
+                node("p", `Fim: ${formatDate(entry.dataFim)}`),
+                node("p", entry.descricao)
+              );
+              const edit = actionButton("Editar", () => {
+                editingId = entry.id;
+                resourceSelect.value = entry.recursoId;
+                start.value = toInputDateTime(entry.dataInicio);
+                end.value = toInputDateTime(entry.dataFim);
+                description.value = entry.descricao;
+                submit.textContent = "Salvar alterações";
+                cancel.hidden = false;
+                start.focus();
+              });
+              const remove = actionButton("Excluir", async () => {
+                if (!window.confirm("Excluir esta manutenção?")) return;
+                try {
+                  await apiDelete(`/manutencoes/${entry.id}`);
+                  feedback(container, "Manutenção excluída.", "success");
+                  await loadList();
+                } catch (error) {
+                  feedback(container, error.message, "error");
+                }
+              });
+              item.append(edit, remove);
+              list.append(item);
+            });
+          } catch (error) {
+            list.replaceChildren(node("li", error.message, "feedback feedback-error"));
+          }
+        }
+
+        await loadList();
+      }
+
+      // ==========================================
+      // 8. SEÇÃO: RELATÓRIOS (relatorios.js)
+      // ==========================================
+      function appendRows(container, rows, emptyMessage) {
+        if (!Array.isArray(rows) || rows.length === 0) {
+          container.append(node("p", emptyMessage, "empty-state"));
+          return;
+        }
+        const list = node("ul");
+        rows.forEach((row) => {
+          list.append(node("li", `${row.nome}: ${Number(row.horas).toLocaleString("pt-BR")} h`));
+        });
+        container.append(list);
+      }
+
+      async function mountReports(container) {
+        container.replaceChildren();
+        const form = node("form", undefined, "form-grid");
+        form.setAttribute("aria-label", "Consultar relatório de utilização");
+
+        const startLabel = node("label", "Início do período");
+        const start = node("input");
+        start.type = "datetime-local";
+        start.step = "1";
+        start.required = true;
+        start.value = "2026-11-01T00:00:00";
+        startLabel.append(start);
+
+        const endLabel = node("label", "Fim do período");
+        const end = node("input");
+        end.type = "datetime-local";
+        end.step = "1";
+        end.required = true;
+        end.value = "2026-11-30T23:59:00";
+        endLabel.append(end);
+
+        const submit = node("button", "Consultar relatório", "button form-wide");
+        submit.type = "submit";
+        form.append(startLabel, endLabel, submit);
+        const result = node("div");
+        container.append(form, result);
+
+        form.addEventListener("submit", async (event) => {
+          event.preventDefault();
+          if (end.value <= start.value) {
+            feedback(container, "O fim deve ser posterior ao início.", "error");
+            return;
+          }
+          submit.disabled = true;
+          try {
+            const query = new URLSearchParams({
+              inicio: toInputDateTime(start.value),
+              fim: toInputDateTime(end.value),
+            });
+            const report = await apiGet(`/relatorios/utilizacao?${query}`);
+            result.replaceChildren();
+            result.append(node("h3", "Horas por recurso"));
+            appendRows(result, report.porRecurso, "Não há utilização de recursos neste período.");
+            result.append(node("h3", "Horas por usuário"));
+            appendRows(result, report.porUsuario, "Não há utilização por usuário neste período.");
+            result.append(node("p", `Conflitos evitados: ${report.conflitosEvitados}`));
+          } catch (error) {
+            result.replaceChildren();
+            feedback(container, error.message, "error");
+          } finally {
+            submit.disabled = false;
+          }
+        });
+      }
+
+      // ==========================================
+      // 9. INICIALIZAÇÃO DO PAINEL (app.js)
+      // ==========================================
+      const loginView = document.querySelector("#login-view");
+      const dashboardView = document.querySelector("#dashboard-view");
+      const loginForm = document.querySelector("#login-form");
+      const manualTokenForm = document.querySelector("#manual-token-form");
+      const loginIdentifier = document.querySelector("#login-identifier");
+      const tokenField = document.querySelector("#jwt-token");
+      const appMessage = document.querySelector("#app-message");
+      const logoutButton = document.querySelector("#logout-button");
+      const sessionIdentity = document.querySelector("#session-identity");
+      const tabButtons = [...document.querySelectorAll(".tab-button")];
+      const contentViews = [...document.querySelectorAll(".content-view")];
+      const demoChipButtons = [...document.querySelectorAll(".chip-button[data-login]")];
+
+      let selectedView = "resources-view";
+
+      function showMessage(message, kind = "info") {
+        appMessage.textContent = message;
+        appMessage.className = `app-message${kind === "error" ? " feedback-error" : kind === "success" ? " feedback-success" : ""}`;
+        appMessage.hidden = false;
+      }
+
+      function hideMessage() {
+        appMessage.textContent = "";
+        appMessage.hidden = true;
+      }
+
+      function defaultViewForProfile(profile) {
+        if (profile === "SOLICITANTE" || profile === "RESPONSAVEL") {
+          return "reservations-view";
+        }
+        return "resources-view";
+      }
+
+      function showView(viewId) {
+        const selectedTab = tabButtons.find((button) => button.dataset.view === viewId && !button.hidden);
+        if (!selectedTab) viewId = "resources-view";
+        selectedView = viewId;
+        contentViews.forEach((view) => { view.hidden = view.id !== viewId; });
+        tabButtons.forEach((button) => {
+          if (button.dataset.view === viewId) {
+            button.setAttribute("aria-current", "page");
+          } else {
+            button.removeAttribute("aria-current");
+          }
+        });
+      }
+
+      async function safeMount(fn) {
+        try { await fn(); } catch (err) { console.error(err); }
+      }
+
+      async function showPanel(session) {
+        loginView.hidden = true;
+        dashboardView.hidden = false;
+        logoutButton.hidden = false;
+        sessionIdentity.hidden = false;
+        sessionIdentity.textContent = `${session.name || session.subject} · ${session.profile}`;
+
+        const administrator = session.profile === "ADMINISTRADOR";
+        const managementProfile = administrator || session.profile === "RESPONSAVEL";
+        const usersTab = tabButtons.find((button) => button.dataset.view === "users-view");
+        if (usersTab) usersTab.textContent = administrator ? "Usuários" : "Meu cadastro";
+
+        const maintenanceTab = tabButtons.find((button) => button.dataset.view === "maintenance-view");
+        if (maintenanceTab) maintenanceTab.hidden = !managementProfile;
+
+        const reportsTab = tabButtons.find((button) => button.dataset.view === "reports-view");
+        if (reportsTab) reportsTab.hidden = !managementProfile;
+
+        showView(selectedView);
+
+        await Promise.all([
+          safeMount(() => mountResources(document.querySelector("#resources-content"), session)),
+          safeMount(() => mountReservations(document.querySelector("#reservations-content"), session)),
+          safeMount(() => mountUsers(document.querySelector("#users-content"), session)),
+          managementProfile
+            ? safeMount(() => mountMaintenance(document.querySelector("#maintenance-content"), session))
+            : Promise.resolve(),
+          managementProfile
+            ? safeMount(() => mountReports(document.querySelector("#reports-content")))
+            : Promise.resolve(),
+        ]);
+      }
+
+      async function renderSession() {
+        const session = getSession();
+        if (!session) {
+          loginView.hidden = false;
+          dashboardView.hidden = true;
+          logoutButton.hidden = true;
+          sessionIdentity.hidden = true;
+          if (tokenField) tokenField.value = "";
+          return;
+        }
+        await showPanel(session);
+      }
+
+      async function performLogin(identificador) {
+        hideMessage();
+        const submit = document.querySelector("#login-submit-btn");
+        if (submit) submit.disabled = true;
+        try {
+          const response = await apiPost("/auth/login", { identificador: identificador.trim() });
+          if (!startSession(response?.token || "", response?.usuario || null)) {
+            throw new Error("Não foi possível iniciar a sessão.");
+          }
+          const activeSession = getSession();
+          selectedView = defaultViewForProfile(activeSession?.profile);
+          loginIdentifier.value = "";
+          await renderSession();
+        } catch (error) {
+          showMessage(error.message, "error");
+        } finally {
+          if (submit) submit.disabled = false;
+        }
+      }
+
+      demoChipButtons.forEach((chip) => {
+        chip.addEventListener("click", (e) => {
+          e.preventDefault();
+          const id = chip.dataset.login || "";
+          loginIdentifier.value = id;
+          void performLogin(id);
+        });
+      });
+
+      loginForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        void performLogin(loginIdentifier.value);
+      });
+
+      manualTokenForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        hideMessage();
+        const token = tokenField.value.trim();
+        tokenField.value = "";
+        if (!startSession(token)) {
+          showMessage("Token inválido, expirado ou armazenamento de sessão indisponível.", "error");
+          return;
+        }
+        const activeSession = getSession();
+        selectedView = defaultViewForProfile(activeSession?.profile);
+        await renderSession();
+      });
+
+      logoutButton.addEventListener("click", () => {
+        clearSession();
+        selectedView = "resources-view";
+        hideMessage();
+        void renderSession();
+      });
+
+      tabButtons.forEach((button) => {
+        button.addEventListener("click", () => showView(button.dataset.view));
+      });
+
+      window.addEventListener("session-expired", () => {
+        void renderSession();
+        showMessage("Sessão inválida ou expirada. Entre novamente.", "error");
+      });
+
+      void renderSession();
+    })();
+  </script>
 </body>
 </html>

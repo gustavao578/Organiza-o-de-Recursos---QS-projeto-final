@@ -64,6 +64,7 @@ a {
 
 .session-identity {
   font-size: 0.9rem;
+  font-weight: 600;
 }
 
 .page-shell {
@@ -115,14 +116,62 @@ h2 {
   text-transform: uppercase;
 }
 
+.demo-accounts {
+  margin: 1rem 0;
+  padding: 0.85rem;
+  border: 1px solid #d5e0e6;
+  border-radius: 0.55rem;
+  background: #f8fbfc;
+}
+
+.demo-title {
+  margin-bottom: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #153a55;
+}
+
+.demo-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.chip-button {
+  padding: 0.35rem 0.65rem;
+  border: 1px solid #17668a;
+  border-radius: 0.35rem;
+  background: #e9f3f7;
+  color: #153a55;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chip-button:hover {
+  background: #17668a;
+  color: #fff;
+}
+
 form,
-.form-grid {
+.form-grid,
+.filter-bar {
   display: grid;
   gap: 0.8rem;
 }
 
 form {
   margin-top: 1.5rem;
+}
+
+details {
+  margin-top: 1.25rem;
+}
+
+summary {
+  cursor: pointer;
+  color: #17668a;
+  font-weight: 600;
 }
 
 label {
@@ -166,6 +215,11 @@ small {
   background: #104c68;
 }
 
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .button-secondary {
   min-height: 2.4rem;
   border: 1px solid rgb(255 255 255 / 55%);
@@ -178,13 +232,15 @@ small {
   background: #fff;
 }
 
-.content-view > .button-secondary {
+.content-view > .button-secondary,
+.filter-bar .button-secondary {
   border: 1px solid #aebfc9;
   color: #153a55;
   background: #e7eef2;
 }
 
-.content-view > .button-secondary:hover {
+.content-view > .button-secondary:hover,
+.filter-bar .button-secondary:hover {
   color: #153a55;
   background: #d7e4ea;
 }
@@ -208,6 +264,7 @@ small {
 
 .tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
   margin-bottom: 1rem;
 }
@@ -226,12 +283,22 @@ small {
   margin-bottom: 1.25rem;
 }
 
-.form-grid {
+.form-grid,
+.filter-bar {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin: 1.5rem 0;
 }
 
-.form-grid .form-wide {
+.filter-bar {
+  padding: 1rem;
+  border: 1px solid #e1eaee;
+  border-radius: 0.6rem;
+  background: #f8fbfc;
+  align-items: end;
+}
+
+.form-grid .form-wide,
+.filter-bar .form-wide {
   grid-column: 1 / -1;
 }
 
@@ -327,11 +394,13 @@ small {
     margin: 1rem auto;
   }
 
-  .form-grid {
+  .form-grid,
+  .filter-bar {
     grid-template-columns: 1fr;
   }
 
-  .form-grid .form-wide {
+  .form-grid .form-wide,
+  .filter-bar .form-wide {
     grid-column: auto;
   }
 
