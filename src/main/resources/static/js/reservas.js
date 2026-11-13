@@ -18,7 +18,7 @@ function feedback(container, message, kind = "info") {
   container.prepend(element);
 }
 
-function formatDate(value) {
+export function formatDate(value) {
   if (!value) return "—";
   const date = new Date(value);
   return Number.isNaN(date.getTime())
@@ -109,6 +109,37 @@ export async function mountReservations(container, session) {
     container.append(form);
   }
 
+  const filters = node("form");
+  filters.className = "form-grid";
+  filters.setAttribute("aria-label", "Filtrar reservas");
+  const statusLabel = node("label", "Status");
+  const statusFilter = node("select");
+  ["", "PENDENTE", "SOLICITADA", "APROVADA", "EM_USO", "CONCLUÍDA", "REJEITADA",
+    "CANCELADA", "NÃO_COMPARECEU"].forEach((value) => {
+    const option = node("option", value || "Todos");
+    option.value = value;
+    statusFilter.append(option);
+  });
+  statusLabel.append(statusFilter);
+  const filterResourceLabel = node("label", "Recurso");
+  const resourceFilter = node("select");
+  const allResources = node("option", "Todos");
+  allResources.value = "";
+  resourceFilter.append(allResources);
+  resources.forEach((resource) => {
+    const option = node("option", resource.nome || "Recurso");
+    option.value = resource.id;
+    resourceFilter.append(option);
+  });
+  filterResourceLabel.append(resourceFilter);
+  const filterSubmit = node("button", "Filtrar reservas", "button button-secondary");
+  filterSubmit.type = "submit";
+  filters.append(statusLabel, filterResourceLabel, filterSubmit);
+  filters.addEventListener("submit", (event) => {
+    event.preventDefault();
+    void loadList();
+  });
+  container.append(filters);
   const refresh = button("Atualizar reservas", () => loadList());
   container.append(refresh);
   const list = node("ul");
@@ -292,7 +323,11 @@ export async function mountReservations(container, session) {
   async function loadList() {
     list.replaceChildren(node("li", "Carregando reservas…", "empty-state"));
     try {
-      const reservations = await apiGet("/reservas");
+      const params = new URLSearchParams();
+      if (statusFilter.value) params.set("status", statusFilter.value);
+      if (resourceFilter.value) params.set("recursoId", resourceFilter.value);
+      const query = params.toString();
+      const reservations = await apiGet(query ? `/reservas?${query}` : "/reservas");
       list.replaceChildren();
       if (!Array.isArray(reservations) || reservations.length === 0) {
         list.append(node("li", "Nenhuma reserva cadastrada.", "empty-state"));

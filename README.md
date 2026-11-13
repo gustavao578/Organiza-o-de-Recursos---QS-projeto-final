@@ -60,12 +60,16 @@ Inicie a aplicação com `./mvnw spring-boot:run` e abra
 mesma origem da API; os arquivos ficam em `src/main/resources/static/` e não
 exigem instalação de dependências de frontend.
 
-No perfil `demo`, a SPA permite entrar usando e-mail ou matrícula de um usuário
+No perfil `local` padrão (e no perfil `demo`), a SPA permite entrar usando e-mail ou matrícula de um usuário
 cadastrado. Esse fluxo é somente para demonstração local: não verifica a posse
 do identificador e, portanto, não deve ser habilitado em produção. Para
-iniciá-lo, use `SPRING_PROFILES_ACTIVE=demo ./mvnw spring-boot:run`. O perfil
-`demo` inclui o armazenamento H2 local; não o use em ambientes compartilhados.
-O Swagger documenta `POST /auth/login` apenas quando esse perfil está ativo;
+iniciá-lo, use `./mvnw spring-boot:run`. Esses perfis usam armazenamento H2 local;
+não os use em ambientes compartilhados. Quando não há usuários, são criados
+os usuários de demonstração `ADM001`, `RESP001` e `SOL001`. Recursos de exemplo
+são criados se não existirem recursos e houver um responsável `RESP001`.
+O seed pode ser desabilitado com `app.seed-demo-data=false`. O login e o seed
+ficam desabilitados sempre que o perfil `prod` está ativo.
+O Swagger documenta `POST /auth/login` apenas quando esse login está habilitado;
 o login é público e as operações de negócio herdam o esquema Bearer JWT.
 
 Em produção, o endpoint de login por identificador fica desabilitado. Na tela
@@ -113,7 +117,7 @@ retorna as horas reservadas por recurso (`porRecurso`), as horas agrupadas por
 usuário associado à reserva (`porUsuario`) e a quantidade de recusas por
 sobreposição no período (`conflitosEvitados`). Os parâmetros usam data/hora
 ISO-8601; `inicio` é inclusivo e `fim` é exclusivo. Cada reserva contribui
-somente com sua interseção com o período, e reservas `CANCELADA` não contam.
+somente com sua interseção com o período, e reservas `CANCELADA` ou `REJEITADA` não contam.
 Os conflitos são filtrados pelo instante da tentativa recusada. Períodos sem
 dados retornam listas vazias e zero conflitos; um fim igual ou anterior ao
 início resulta em HTTP 400.

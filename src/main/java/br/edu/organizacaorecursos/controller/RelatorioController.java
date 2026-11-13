@@ -33,7 +33,7 @@ public class RelatorioController {
     @Operation(
             summary = "Relatório de utilização por período",
             description = "Retorna horas por recurso, carga horária agrupada por usuário associado à reserva "
-                    + "e tentativas recusadas por sobreposição no período. Reservas CANCELADA não contam. "
+                    + "e tentativas recusadas por sobreposição no período. Reservas CANCELADA e REJEITADA não contam. "
                     + "Apenas perfis RESPONSAVEL e ADMINISTRADOR podem consultar.",
             security = @SecurityRequirement(name = "bearerAuth"))
     @ApiResponses({

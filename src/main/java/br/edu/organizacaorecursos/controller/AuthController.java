@@ -11,6 +11,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
@@ -27,6 +28,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/auth")
 @Tag(name = "Autenticação")
+@Profile("local & !prod")
 @ConditionalOnProperty(name = "security.jwt.identifier-login-enabled", havingValue = "true")
 public class AuthController {
 
@@ -52,6 +54,8 @@ public class AuthController {
         JwtClaimsSet claims = JwtClaimsSet.builder()
                 .subject(usuario.getId().toString())
                 .claim("profile", usuario.getPerfil().name())
+                .claim("name", usuario.getNome())
+                .claim("email", usuario.getEmail())
                 .issuedAt(issuedAt)
                 .expiresAt(issuedAt.plus(TOKEN_LIFETIME))
                 .build();

@@ -11,9 +11,11 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.edu.organizacaorecursos.domain.Recurso;
+import br.edu.organizacaorecursos.domain.Manutencao;
 import br.edu.organizacaorecursos.domain.Reserva;
 import br.edu.organizacaorecursos.domain.Usuario;
 import br.edu.organizacaorecursos.repository.RecursoRepository;
+import br.edu.organizacaorecursos.repository.ManutencaoRepository;
 import br.edu.organizacaorecursos.repository.ReservaRepository;
 import br.edu.organizacaorecursos.repository.UsuarioRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -84,6 +86,9 @@ class ReservaExclusionPostgresIntegrationTest {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
+    @Autowired
+    private ManutencaoRepository manutencaoRepository;
+
     @SpyBean
     private ReservaRepository reservaRepository;
 
@@ -109,6 +114,7 @@ class ReservaExclusionPostgresIntegrationTest {
                 "ex_tb_reservas_sem_sobreposicao_ativa"))
                 .isEqualTo(1);
         jdbcTemplate.update("DELETE FROM tb_reservas");
+        manutencaoRepository.deleteAll();
         recursoRepository.deleteAll();
         usuarioRepository.deleteAll();
     }
@@ -133,6 +139,20 @@ class ReservaExclusionPostgresIntegrationTest {
         inserir(fixture, "APROVADA", INICIO.plusHours(1), INICIO.plusHours(2));
 
         assertThat(contar(fixture.recurso().getId())).isEqualTo(2);
+    }
+
+    @Test
+    void consultaDeManutencaoNoPostgresIgnoraProprioIdEAceitaLimitesAdjacentes() {
+        Fixture fixture = criarFixture();
+        Manutencao manutencao = manutencaoRepository.save(
+                new Manutencao(null, fixture.recurso(), INICIO, INICIO.plusHours(1), "Reparo"));
+
+        assertThat(manutencaoRepository.existeConflito(
+                fixture.recurso().getId(), null, INICIO, INICIO.plusHours(1))).isTrue();
+        assertThat(manutencaoRepository.existeConflito(
+                fixture.recurso().getId(), manutencao.getId(), INICIO, INICIO.plusHours(1))).isFalse();
+        assertThat(manutencaoRepository.existeConflito(
+                fixture.recurso().getId(), null, INICIO.plusHours(1), INICIO.plusHours(2))).isFalse();
     }
 
     @ParameterizedTest

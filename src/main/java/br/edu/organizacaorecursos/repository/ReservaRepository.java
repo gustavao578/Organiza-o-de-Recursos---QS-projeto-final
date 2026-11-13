@@ -38,7 +38,8 @@ public interface ReservaRepository extends JpaRepository<Reserva, UUID> {
             FROM Reserva r
             WHERE r.dataInicio < :fim
               AND r.dataFim > :inicio
-              AND r.status <> br.edu.organizacaorecursos.domain.StatusReserva.CANCELADA
+              AND r.status NOT IN (br.edu.organizacaorecursos.domain.StatusReserva.CANCELADA,
+                                   br.edu.organizacaorecursos.domain.StatusReserva.REJEITADA)
             """)
     List<Reserva> buscarReservasSobrepondoPeriodo(
             @Param("inicio") LocalDateTime inicio,

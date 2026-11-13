@@ -55,7 +55,7 @@ async function showPanel(session) {
   dashboardView.hidden = false;
   logoutButton.hidden = false;
   sessionIdentity.hidden = false;
-  sessionIdentity.textContent = `${session.subject} · ${session.profile}`;
+  sessionIdentity.textContent = `${session.name} · ${session.profile}`;
   const administrator = session.profile === "ADMINISTRADOR";
   const managementProfile = administrator || session.profile === "RESPONSAVEL";
   const usersTab = tabButtons.find((button) => button.dataset.view === "users-view");

@@ -21,7 +21,7 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest
+@SpringBootTest(properties = "security.jwt.identifier-login-enabled=true")
 @AutoConfigureMockMvc
 @ActiveProfiles("demo")
 class AuthLoginIntegrationTest {
@@ -66,6 +66,8 @@ class AuthLoginIntegrationTest {
         org.assertj.core.api.Assertions.assertThat(jwt.getHeaders().get("alg")).isEqualTo("HS256");
         org.assertj.core.api.Assertions.assertThat(jwt.getSubject()).isEqualTo(administrador.getId().toString());
         org.assertj.core.api.Assertions.assertThat(jwt.getClaimAsString("profile")).isEqualTo("ADMINISTRADOR");
+        org.assertj.core.api.Assertions.assertThat(jwt.getClaimAsString("name")).isEqualTo(administrador.getNome());
+        org.assertj.core.api.Assertions.assertThat(jwt.getClaimAsString("email")).isEqualTo(administrador.getEmail());
         org.assertj.core.api.Assertions.assertThat(jwt.getIssuedAt()).isNotNull();
         org.assertj.core.api.Assertions.assertThat(jwt.getExpiresAt()).isAfter(jwt.getIssuedAt());
     }
