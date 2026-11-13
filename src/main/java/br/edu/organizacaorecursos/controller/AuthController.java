@@ -5,6 +5,7 @@ import br.edu.organizacaorecursos.dto.LoginRequestDTO;
 import br.edu.organizacaorecursos.dto.LoginResponseDTO;
 import br.edu.organizacaorecursos.dto.UsuarioResponseDTO;
 import br.edu.organizacaorecursos.repository.UsuarioRepository;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.time.Duration;
 import java.time.Instant;
@@ -25,6 +26,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/auth")
+@Tag(name = "Autenticação")
 @ConditionalOnProperty(name = "security.jwt.identifier-login-enabled", havingValue = "true")
 public class AuthController {
 

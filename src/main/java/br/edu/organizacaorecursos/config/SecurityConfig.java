@@ -38,7 +38,6 @@ public class SecurityConfig {
 
     private static final RequestMatcher API_REQUEST = new OrRequestMatcher(List.of(
             new AntPathRequestMatcher("/reservas/**"),
-            new AntPathRequestMatcher("/api/reservas/**"),
             new AntPathRequestMatcher("/recursos/**"),
             new AntPathRequestMatcher("/usuarios/**"),
             new AntPathRequestMatcher("/manutencoes/**"),

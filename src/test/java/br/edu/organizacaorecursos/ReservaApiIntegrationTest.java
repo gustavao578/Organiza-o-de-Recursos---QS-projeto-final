@@ -467,7 +467,7 @@ class ReservaApiIntegrationTest {
     }
 
     @Test
-    void mantemAliasAnteriorParaCriacaoDeReserva() throws Exception {
+    void naoDisponibilizaAliasAnteriorParaCriacaoDeReserva() throws Exception {
         Recurso recurso = criarRecurso();
         ReservaRequestDTO request = reserva(recurso.getId(), inicioFuturo(), "usuario-api");
 
@@ -475,8 +475,7 @@ class ReservaApiIntegrationTest {
                         .with(jwtContexto(request.getUsuarioId(), "SOLICITANTE"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.recursoId").value(recurso.getId().toString()));
+                .andExpect(status().isNotFound());
         SecurityContextHolder.clearContext();
     }
 
@@ -611,14 +610,28 @@ class ReservaApiIntegrationTest {
 
     @Test
     void publicaDocumentacaoOpenApiEEndpointsDeReserva() throws Exception {
-        mockMvc.perform(get("/v3/api-docs"))
+        var result = mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.info.title").value("API de Organização de Recursos"))
+                .andExpect(jsonPath("$.security[0].bearerAuth").isArray())
+                .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.type").value("http"))
+                .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.scheme").value("bearer"))
+                .andExpect(jsonPath("$.components.securitySchemes.bearerAuth.bearerFormat").value("JWT"))
+                .andExpect(jsonPath("$.paths['/reservas'].get.security").doesNotExist())
                 .andExpect(jsonPath("$.paths['/reservas/{id}'].get").exists())
                 .andExpect(jsonPath("$.paths['/reservas/{id}'].delete").exists())
+                .andExpect(jsonPath("$.paths['/api/reservas']").doesNotExist())
+                .andExpect(jsonPath("$.paths['/api/reservas/{id}']").doesNotExist())
+                .andExpect(jsonPath("$.paths['/auth/login']").doesNotExist())
                 .andExpect(jsonPath("$.paths['/recursos'].post").exists())
                 .andExpect(jsonPath("$.paths['/usuarios'].post").exists())
-                .andExpect(jsonPath("$.paths['/manutencoes'].post").exists());
+                .andExpect(jsonPath("$.paths['/manutencoes'].post").exists())
+                .andReturn();
+
+        objectMapper.readTree(result.getResponse().getContentAsString())
+                .path("paths").fieldNames().forEachRemaining(path ->
+                        org.assertj.core.api.Assertions.assertThat(path)
+                                .doesNotStartWith("/api/reservas"));
 
         mockMvc.perform(get("/swagger-ui/index.html"))
                 .andExpect(status().isOk());

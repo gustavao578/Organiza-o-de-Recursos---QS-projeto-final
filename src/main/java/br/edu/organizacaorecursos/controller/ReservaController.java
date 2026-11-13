@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping({"/reservas", "/api/reservas"})
+@RequestMapping("/reservas")
 @RequiredArgsConstructor
 public class ReservaController {
 

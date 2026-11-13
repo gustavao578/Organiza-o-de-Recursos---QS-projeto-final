@@ -1,6 +1,7 @@
 package br.edu.organizacaorecursos;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -78,6 +79,15 @@ class AuthLoginIntegrationTest {
                                 """))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.token").doesNotExist());
+    }
+
+    @org.junit.jupiter.api.Test
+    void documentaLoginDemoComoPublicoNoOpenApi() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.security[0].bearerAuth").isArray())
+                .andExpect(jsonPath("$.paths['/auth/login'].post.tags[0]").value("Autenticação"))
+                .andExpect(jsonPath("$.paths['/auth/login'].post.security").isEmpty());
     }
 
     private record LoginRequest(String identificador) {

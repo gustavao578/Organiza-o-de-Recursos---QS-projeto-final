@@ -65,6 +65,8 @@ cadastrado. Esse fluxo é somente para demonstração local: não verifica a pos
 do identificador e, portanto, não deve ser habilitado em produção. Para
 iniciá-lo, use `SPRING_PROFILES_ACTIVE=demo ./mvnw spring-boot:run`. O perfil
 `demo` inclui o armazenamento H2 local; não o use em ambientes compartilhados.
+O Swagger documenta `POST /auth/login` apenas quando esse perfil está ativo;
+o login é público e as operações de negócio herdam o esquema Bearer JWT.
 
 Em produção, o endpoint de login por identificador fica desabilitado. Na tela
 inicial, informe um JWT emitido por um provedor de identidade confiável. O
@@ -79,7 +81,8 @@ como não confiáveis.
 
 Todos os endpoints de negócio da API continuam protegidos por Bearer JWT. Os
 arquivos estáticos da SPA podem ser carregados sem token, mas isso não libera
-rotas de negócio. A SPA permite listar recursos e reservas a usuários
+rotas de negócio. As reservas usam exclusivamente o caminho `/reservas`; o
+alias anterior `/api/reservas` não está mais disponível. A SPA permite listar recursos e reservas a usuários
 autenticados, oferece gestão de recursos e usuários a `ADMINISTRADOR` e mostra
 as ações de reservas conforme perfil, vínculo e estado.
 

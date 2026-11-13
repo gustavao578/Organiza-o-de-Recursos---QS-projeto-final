@@ -132,7 +132,6 @@ class SecurityConfigTest {
     @ParameterizedTest
     @ValueSource(strings = {
         "/reservas",
-        "/api/reservas",
         "/recursos",
         "/usuarios",
         "/manutencoes"
