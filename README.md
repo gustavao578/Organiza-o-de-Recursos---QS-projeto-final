@@ -22,6 +22,13 @@ O passo SonarCloud requer o secret `SONAR_TOKEN` e as variáveis
 `target/site/jacoco/jacoco.xml` e aguarda o Quality Gate. A configuração existe
 no workflow; a aprovação deve ser confirmada no run do commit em avaliação.
 
+### Revisão publicada
+
+O commit `6106cc5` foi verificado no [PR #11](https://github.com/gustavao578/Organiza-o-de-Recursos---QS-projeto-final/pull/11).
+O [Java CI](https://github.com/gustavao578/Organiza-o-de-Recursos---QS-projeto-final/actions/runs/43537064733)
+e o [Quality Gate SonarCloud](https://sonarcloud.io/dashboard?id=gustavao578_Organiza-o-de-Recursos---QS-projeto-final&pullRequest=11)
+passaram nessa revisão. Consulte os checks do PR para o estado do commit mais recente; a revisão humana continua pendente.
+
 ## Autenticação da API
 
 As rotas da API exigem `Authorization: Bearer <JWT>`. Em desenvolvimento local,

@@ -1,6 +1,6 @@
 # Relatório de Qualidade Final — Sistema de Organização de Recursos
 
-> **Atualização vigente — 2026-11-14:** a execução local `./mvnw -B verify` na branch `fix/verify-profile-isolation` terminou com 235 testes, 0 falhas/erros/ignorados e JaCoCo em 93,14% linhas, 76,77% branches e 92,21% instruções. O relatório antigo abaixo é uma fotografia de 12/11 e foi superado; ele ainda contém métricas, decisões de RC-02 e conclusões que não descrevem o código atual. Para o estado vigente, consulte o [relatório de testes](testes/relatorio-testes.md), a [RTM](rtm.md), os [relatórios de qualidade](qualidade/) e o [checklist de entrega](entrega/checklist.md). CI, Quality Gate SonarCloud e revisão por pares desta revisão continuam pendentes.
+> **Atualização vigente — 2026-11-14:** a execução local `./mvnw -B verify` no commit `6106cc5` terminou com 235 testes, 0 falhas/erros/ignorados e JaCoCo em 93,14% linhas, 76,77% branches e 92,21% instruções. Java CI e Quality Gate SonarCloud também passaram nesse commit; revisão por pares humana permanece pendente. O relatório antigo abaixo é uma fotografia de 12/11 e foi superado; ele ainda contém métricas, decisões de RC-02 e conclusões que não descrevem o código atual. Para o estado vigente, consulte o [relatório de testes](testes/relatorio-testes.md), a [RTM](rtm.md), os [relatórios de qualidade](qualidade/) e o [checklist de entrega](entrega/checklist.md).
 
 ## 1. Identificação
 

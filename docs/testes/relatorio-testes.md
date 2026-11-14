@@ -2,7 +2,7 @@
 
 **Data:** 2026-11-14
 
-**Revisão-base:** `01bd469` mais alterações locais na branch `fix/verify-profile-isolation`; resultado não representa CI ou revisão por pares.
+**Revisão:** commit `6106cc5` na branch `fix/verify-profile-isolation`; revisão humana permanece pendente.
 
 **Comando:** `./mvnw -B verify` com OpenJDK 21.0.13
 
@@ -31,7 +31,7 @@ Os relatórios Surefire/Failsafe e JaCoCo foram lidos após a execução. O Sure
 
 ## Conclusão
 
-A verificação local no runtime do CI satisfaz os limites Maven de teste e JaCoCo. Permanecem pendentes: CI no commit publicado, Quality Gate SonarCloud da revisão, revisão por pares, verificação visual/acessibilidade e aprovação de carga em ambiente representativo. Consulte [checklist de entrega](../entrega/checklist.md).
+A verificação local no runtime do CI satisfaz os limites Maven de teste e JaCoCo; Java CI e SonarCloud também passaram para `6106cc5`. Permanecem pendentes: revisão por pares humana, verificação visual/acessibilidade e aprovação de carga em ambiente representativo. Consulte [checklist de entrega](../entrega/checklist.md).
 
 ## Correções dos 11 erros da auditoria
 

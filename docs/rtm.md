@@ -1,7 +1,7 @@
 # Matriz de Rastreabilidade de Requisitos
 
 **Atualizada em:** 2026-11-14
-**Base de código:** `01bd469` mais as correções locais de isolamento de perfis e Flyway na branch `fix/verify-profile-isolation`. A execução local de `./mvnw -B verify` passou com 235 testes, 0 falhas/erros e JaCoCo gerado. A CI, revisão por pares e Quality Gate SonarCloud para a revisão resultante ainda dependem da publicação da branch.
+**Base de código:** commit `6106cc5` na branch `fix/verify-profile-isolation`. A execução local de `./mvnw -B verify` passou com 235 testes, 0 falhas/erros e JaCoCo gerado; Java CI e Quality Gate SonarCloud também passaram nesse commit. A revisão por pares humana continua pendente.
 
 Esta matriz distingue requisito documentado de requisito implementado e validado. **COBERTO** significa evidência automatizada no escopo descrito; **PARCIAL** indica lacunas de funcionalidade, ambiente ou critério; **BLOQUEADO** significa que a funcionalidade ou decisão não está disponível. Os status não são inferidos do percentual global JaCoCo.
 
@@ -56,6 +56,6 @@ Os IDs RC são editoriais e referenciam as regras críticas da [visão geral](..
 ## Evidência e atualização
 
 - Execução local: `./mvnw -B verify`, 235 testes, 0 falhas, 0 erros, 0 ignorados; JaCoCo: 93,14% de linhas, 76,77% de branches e 92,21% de instruções.
-- Isso não é uma execução de CI, uma revisão por pares nem um Quality Gate SonarCloud da branch.
+- A execução local não substitui CI; para `6106cc5`, Java CI e Quality Gate SonarCloud passaram. A revisão por pares humana continua pendente.
 - O documento histórico [prd/rtm.md](../prd/rtm.md) foi substituído por esta matriz como fonte atual; auditorias de mutação anteriores continuam preservadas como evidência histórica, não como estado vigente.
 - Atualize esta RTM quando requisitos ou evidências mudarem. Registre teste, ambiente, comando/run e limitações; não use cobertura agregada para promover status.

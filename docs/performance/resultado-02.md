@@ -13,7 +13,7 @@
 | Carga | Apache JMeter 5.6.3 em CLI |
 | Destino | Aplicação local em `127.0.0.1:8080` |
 | Perfil | 50 usuários virtuais; ramp-up de 60 s; 300 s estáveis; mistura aproximada 70/30 |
-| Revisão | Branch local `fix/verify-profile-isolation`, base `01bd469` mais alterações não commitadas |
+| Revisão | Código da aplicação incluído no commit `6106cc5` (carga executada no worktree antes do commit; código da aplicação não mudou depois) |
 
 O JTL contém 27.552 amostras incluindo setup e emissão local de JWT. As métricas abaixo consideram apenas os samplers de negócio. O GET medido é `GET /reservas`, uma listagem integral usada como proxy; não existe endpoint de disponibilidade seletiva.
 
