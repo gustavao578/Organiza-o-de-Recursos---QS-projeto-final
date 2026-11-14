@@ -38,6 +38,6 @@ class ProductionDemoDisabledIntegrationTest {
         mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"identificador\":\"ADM001\"}"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isUnauthorized());
     }
 }
