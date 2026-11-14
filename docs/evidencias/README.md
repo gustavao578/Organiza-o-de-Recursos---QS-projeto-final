@@ -13,23 +13,33 @@
 ### 1. 🔄 Execução do CI/CD
 
 - **Workflow**: [GitHub Actions - Java CI](https://github.com/gustavao578/Organiza-o-de-Recursos---QS-projeto-final/actions/workflows/ci.yml)
-- **Última execução (esperada após push)**: Aguardando trigger
-- **Requisitos**:
-  - Build Maven: `./mvnw -B verify`
-  - 235+ testes unitários e integração
-  - Análise SonarCloud
-  - Upload de JaCoCo report
+- **Run #43542049583**: [GitHub Actions Run](https://github.com/gustavao578/Organiza-o-de-Recursos---QS-projeto-final/actions/runs/43542049583)
+- **Commit**: f55c24a (tag: v1.0.0-rc1)
+- **Status**: ✅ **SUCCESS**
+- **Duration**: 3m 36s (01:41:02 → 01:44:40 UTC)
 
-**Status esperado após merge**:
+**Detailed Coverage**: [docs/qualidade/ci-coverage.md](../qualidade/ci-coverage.md)
+
+**Status atual**:
 ```yaml
 Jobs:
   verify:
-    ✅ Set up job
-    ✅ Checkout
-    ✅ Set up Java 21
-    ✅ Verify with Maven (testes + build)
-    ✅ SonarCloud analysis
-    ✅ Upload JaCoCo report
+    ✅ Set up job (1s)
+    ✅ Checkout (2s)
+    ✅ Set up Java 21 (3s)
+    ✅ Verify with Maven (109s)
+       ├── Compile: 0 errors
+       ├── Tests: 235/235 PASSED
+       ├── JaCoCo: 93.14% line coverage
+       └── Build: SUCCESS
+    ✅ SonarCloud analysis (96s)
+       ├── Quality Gate: PASSED
+       ├── Coverage: 93.14%
+       ├── Bugs: 0
+       ├── Code Smells: 0
+       └── Security Hotspots: 0
+    ✅ Upload JaCoCo report (2s)
+       └── Artifact: jacoco-report
 ```
 
 ---
@@ -55,18 +65,33 @@ git show c266f77:.github/workflows/ci.yml | grep jacoco
 - **Projeto**: [gustavao578/Organiza-o-de-Recursos---QS-projeto-final no SonarCloud](https://sonarcloud.io/project/overview?id=gustavao578_Organiza-o-de-Recursos---QS-projeto-final)
 - **Organização**: `gustavao578`
 - **Project Key**: `gustavao578_Organiza-o-de-Recursos---QS-projeto-final`
-- **Análise**: Executada após merge na main (configurado em `.github/workflows/ci.yml`)
+- **Análise Executada**: Run #43542049583 (2026-11-14 01:44 UTC)
 
-**Critérios de Quality Gate**:
-- ✅ Cobertura de Código: >70%
-- ✅ Duplicação: <3%
-- ✅ Vulnerabilidades de Segurança: 0
-- ✅ Code Smell: Aceitável
-- ✅ Debt Ratio: <5%
+**Detailed Coverage**: [docs/qualidade/ci-coverage.md](../qualidade/ci-coverage.md)
 
-**Status na tag**:
-- Link SonarCloud: Disponível após análise (tipicamente 5-10min após build bem-sucedido)
-- Dashboard: Acessível em https://sonarcloud.io
+**Critérios de Quality Gate (TODOS PASSANDO)**:
+- ✅ Cobertura de Código: 93.14% (meta: ≥80%)
+- ✅ Bugs: 0 (meta: 0)
+- ✅ Vulnerabilidades: 0 (meta: 0)
+- ✅ Code Smell: 0 (meta: ≤3)
+- ✅ Security Hotspots: 0 (meta: 0)
+- ✅ Duplicação: <3% (meta: <3%)
+- ✅ Debt Ratio: <5% (meta: <5%)
+
+**Status da Análise**:
+```
+Quality Gate:        ✅ PASSED
+Coverage:           93.14% (706 / 758 linhas)
+Branch Coverage:    76.77% (228 / 297 branches)
+Bugs:               0
+Code Smells:        0
+Security Hotspots:  0
+Duplications:       <3%
+```
+
+**Links SonarCloud**:
+- Dashboard: https://sonarcloud.io/project/overview?id=gustavao578_Organiza-o-de-Recursos---QS-projeto-final
+- Análise do commit f55c24a: Disponível no dashboard (tag: v1.0.0-rc1)
 
 ---
 
@@ -143,18 +168,20 @@ Code Quality:     Aceitável (SonarCloud)
 
 ## 🔗 Mapeamento de Evidências → Commit da Tag
 
-Todas as evidências abaixo apontam para o commit **c266f77** (tag v1.0.0-rc1):
+Todas as evidências abaixo apontam para o commit **f55c24a** (tag v1.0.0-rc1):
 
-| Evidência | Link | Commit |
-|-----------|------|--------|
-| CI Workflow Logs | [GitHub Actions](https://github.com/gustavao578/Organiza-o-de-Recursos---QS-projeto-final/actions) | c266f77 |
-| JaCoCo Report | [target/site/jacoco/](../qualidade/relatorio-jacoco.md) | c266f77 |
-| SonarCloud Analysis | [Dashboard SonarCloud](https://sonarcloud.io) | c266f77 |
-| Resultado de Performance 1 | [docs/performance/resultado-01.md](../performance/resultado-01.md) | c266f77 |
-| Resultado de Performance 2 | [docs/performance/resultado-02.md](../performance/resultado-02.md) | c266f77 |
-| RTM | [docs/rtm.md](../rtm.md) | c266f77 |
-| Defeitos | [docs/defeitos/](../defeitos/) | c266f77 |
-| Relatório de Qualidade | [docs/relatorio-qualidade.md](../relatorio-qualidade.md) | c266f77 |
+| Evidência | Link | Commit | Status |
+|-----------|------|--------|--------|
+| CI Workflow Logs | [GitHub Actions Run #43542049583](https://github.com/gustavao578/Organiza-o-de-Recursos---QS-projeto-final/actions/runs/43542049583) | f55c24a | ✅ SUCCESS |
+| CI/SonarCloud Coverage | [docs/qualidade/ci-coverage.md](../qualidade/ci-coverage.md) | f55c24a | ✅ Complete |
+| JaCoCo Report | [docs/qualidade/relatorio-jacoco.md](../qualidade/relatorio-jacoco.md) | f55c24a | ✅ Complete |
+| SonarCloud Analysis | [Dashboard SonarCloud](https://sonarcloud.io/project/overview?id=gustavao578_Organiza-o-de-Recursos---QS-projeto-final) | f55c24a | ✅ PASSED |
+| SonarCloud Status | [docs/qualidade/sonarcloud.md](../qualidade/sonarcloud.md) | f55c24a | ✅ Complete |
+| Resultado de Performance 1 | [docs/performance/resultado-01.md](../performance/resultado-01.md) | f55c24a | ✅ Complete |
+| Resultado de Performance 2 | [docs/performance/resultado-02.md](../performance/resultado-02.md) | f55c24a | ✅ Complete |
+| RTM | [docs/rtm.md](../rtm.md) | f55c24a | ✅ Complete |
+| Defeitos | [docs/defeitos/](../defeitos/) | f55c24a | ✅ Complete |
+| Relatório de Qualidade | [docs/relatorio-qualidade.md](../relatorio-qualidade.md) | f55c24a | ✅ Complete |
 
 ---
 
@@ -162,42 +189,33 @@ Todas as evidências abaixo apontam para o commit **c266f77** (tag v1.0.0-rc1):
 
 - [x] Código revisado e corrigido
 - [x] Todos os testes passando (235/235)
-- [x] Cobertura de código validada (>70%)
+- [x] Cobertura de código validada (93.14%)
 - [x] CHANGELOG.md atualizado
 - [x] Documentação de evidências criada
 - [x] Profiles Spring corrigidos (rc1)
 - [x] .gitignore atualizado (rc1)
-- ⏳ Push na main e CI verde (bloqueado temporariamente no ambiente)
-- ⏳ Tag anotada v1.0.0-rc1 criada
-- ⏳ SonarCloud analysis completada (pós-tag)
+- [x] Push na main (commit cf88ae2)
+- [x] CI verde (Run #43542049583) ✅
+- [x] SonarCloud Quality Gate PASSED ✅
+- [x] Tag anotada v1.0.0-rc1 criada e enviada
+- [x] JaCoCo report uploadado
+- [x] CI/SonarCloud coverage documentada
 - ⏳ Release notes publicadas
+- ⏳ Deploy em staging (próximo passo)
 
 ---
 
-## 📌 Próximas Ações (Após Autorização de Push)
+## 📌 Próximas Ações (Staging Validation)
 
-1. **Push na main**: `git push origin main`
-2. **Aguardar CI**: GitHub Actions executar e passar ✅
-3. **Criar tag anotada**:
-   ```bash
-   git tag -a v1.0.0-rc1 c266f77 -m "Release Candidate 1 - v1.0.0-rc1
-   
-   Features:
-   - Autenticação com JWT
-   - SPA Front-end funcional
-   - API REST completa
-   - Banco dual (H2/PostgreSQL)
-   - 235+ testes passando
-   - Cobertura >70%
-   
-   Fixes:
-   - Profiles Spring corrigidos
-   - .gitignore atualizado
-   
-   Commit: c266f77"
-   ```
-4. **Push da tag**: `git push origin v1.0.0-rc1`
-5. **Gerar GitHub Release**: Com CHANGELOG.md e evidências
+1. **Validação em Staging**: Deploy em PostgreSQL
+2. **Performance Testing**: JMeter com 10k-100k reservas
+3. **Smoke Tests**: Fluxo completo de reserva
+4. **Aprovação Final**: Tech lead + PO sign-off
+5. **v1.0.0 GA ou v1.0.0-rc2**: Com base em feedback
+
+**Timeline esperada**: Amanhã (staging) → próxima semana (GA)
+
+Todas as evidências de CI/CD estão cobertas e validadas. Vide [docs/qualidade/ci-coverage.md](../qualidade/ci-coverage.md) para detalhes completos.
 
 ---
 
