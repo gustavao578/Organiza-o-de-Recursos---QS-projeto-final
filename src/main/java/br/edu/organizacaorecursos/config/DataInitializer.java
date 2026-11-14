@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
-@Profile("local & !prod")
+@Profile("(local | demo) & !prod")
 @ConditionalOnProperty(name = "app.seed-demo-data", havingValue = "true")
 public class DataInitializer implements CommandLineRunner {
 

@@ -1,5 +1,7 @@
 # Relatório de Qualidade Final — Sistema de Organização de Recursos
 
+> **Atualização vigente — 2026-11-14:** a execução local `./mvnw -B verify` na branch `fix/verify-profile-isolation` terminou com 235 testes, 0 falhas/erros/ignorados e JaCoCo em 93,14% linhas, 76,77% branches e 92,21% instruções. O relatório antigo abaixo é uma fotografia de 12/11 e foi superado; ele ainda contém métricas, decisões de RC-02 e conclusões que não descrevem o código atual. Para o estado vigente, consulte o [relatório de testes](testes/relatorio-testes.md), a [RTM](rtm.md), os [relatórios de qualidade](qualidade/) e o [checklist de entrega](entrega/checklist.md). CI, Quality Gate SonarCloud e revisão por pares desta revisão continuam pendentes.
+
 ## 1. Identificação
 
 | Item | Valor |
@@ -344,7 +346,7 @@ Git: 2.46.0
 ### B. Artefatos de Teste
 
 - Cobertura JaCoCo: `/target/site/jacoco/index.html` (gerado com `verify`)
-- Resultados JMeter: `docs/performance/resultado-01.md`
+- Resultados JMeter: `docs/performance/resultado-01.md` (histórico), `docs/performance/resultado-02.md` (mais recente)
 - Defeitos de Segurança: `docs/defeitos/`
 - RTM Auditoria: `docs/testes/mutacao-manual.md`, `docs/testes/AUDITORIA-INDEX.md`
 
@@ -367,7 +369,7 @@ grep -r "DEF-" docs/defeitos/ | grep -c "FECHADO"
 ### D. Referências de Documentação
 
 - [RTM Rastreabilidade](rtm.md) — Requisitos críticos
-- [Performance RNF-03](performance/resultado-01.md) — Métricas JMeter
+- [Performance RNF-03](performance/resultado-02.md) — Métricas JMeter mais recentes; [rodada histórica](performance/resultado-01.md)
 - [Segurança Matriz](seguranca/matriz-autorizacao.md) — 44 casos
 - [Auditor Index](testes/AUDITORIA-INDEX.md) — Guia de leitura por perfil
 - [Defeitos](defeitos/README.md) — Status e consolidação

@@ -21,9 +21,15 @@ import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest(properties = "security.jwt.identifier-login-enabled=true")
+@SpringBootTest(properties = {
+        "security.jwt.identifier-login-enabled=true",
+        "spring.datasource.url=jdbc:h2:mem:auth-login-${random.uuid}",
+        "spring.datasource.driver-class-name=org.h2.Driver",
+        "spring.jpa.hibernate.ddl-auto=create-drop",
+        "spring.flyway.enabled=false"
+})
 @AutoConfigureMockMvc
-@ActiveProfiles("demo")
+@ActiveProfiles({"local", "demo"})
 class AuthLoginIntegrationTest {
 
     @Autowired

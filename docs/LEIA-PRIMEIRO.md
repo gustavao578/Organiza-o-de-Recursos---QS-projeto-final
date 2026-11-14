@@ -1,5 +1,7 @@
 # 🎯 AUDITORIA DE RASTREABILIDADE — LEIA PRIMEIRO
 
+> **Atualização vigente — 2026-11-14:** este arquivo e o conteúdo abaixo são um snapshot de 2026-11-12 e ainda apresentam RC-02 como bloqueador. Essa conclusão foi superada. Consulte [RTM atual](rtm.md), [relatório de testes](testes/relatorio-testes.md), [relatório de qualidade](relatorio-qualidade.md) e [checklist de entrega](entrega/checklist.md) antes de usar qualquer status histórico.
+
 **Status:** 🔴 BLOQUEADOR (RC-02 lacuna crítica)  
 **Conformidade:** 83,3% (5/6 regras críticas)  
 **Data:** 2026-11-12  

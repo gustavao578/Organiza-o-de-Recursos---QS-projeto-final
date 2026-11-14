@@ -1,5 +1,7 @@
 # Auditoria de requisitos — Organização de Recursos
 
+> **Snapshot de 2026-11-11.** Os quantitativos e status desta auditoria são históricos. A matriz atual, incluindo os resultados locais de 2026-11-14 e as lacunas abertas, está em [docs/rtm.md](../docs/rtm.md).
+
 **Data da verificação:** 2026-11-11
 **Fontes:** [requisitos funcionais](requisitos-funcionais.md), [RTM](rtm.md),
 [visão geral](visão-geral.md), código e testes atuais.

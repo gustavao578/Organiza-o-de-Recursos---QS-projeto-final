@@ -1,5 +1,7 @@
 # Status Atualizado da RTM — 2026-11-12
 
+> **Snapshot histórico.** RC-02 e os números de cobertura de requisitos abaixo refletem a auditoria anterior à correção. A fonte vigente é [docs/rtm.md](../rtm.md).
+
 **Data de Atualização:** 2026-11-12 03:00:00Z  
 **Auditor:** Analista de Qualidade  
 **Escopo:** Auditoria de Rastreabilidade com Testes de Mutação Manual  

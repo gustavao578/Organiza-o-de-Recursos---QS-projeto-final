@@ -1,5 +1,7 @@
 # Relatório Final — Auditoria de Rastreabilidade e Mutação Manual
 
+> **Snapshot histórico de 2026-11-12.** RC-02 não está mais aberto no código atual: a verificação de conflito precede a escolha do status e o teste de regressão passa. Não use a decisão antiga de bloqueio como gate vigente; confira a [RTM atual](../rtm.md) e o [checklist de entrega](../entrega/checklist.md).
+
 **Data:** 2026-11-12 02:45:00Z  
 **Auditor:** Analista de Qualidade (atuando como auditor de rastreabilidade)  
 **Duração da Auditoria:** 2 turnos de análise e validação  

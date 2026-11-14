@@ -1,3 +1,5 @@
+> **Fonte atual:** a RTM vigente está em [docs/rtm.md](../docs/rtm.md), com os resultados da execução local de 14/11/2026 e os status atualizados de RC-02. Este arquivo é preservado como fotografia histórica; suas avaliações e métricas antigas não representam a revisão atual.
+
 # Matriz de Rastreabilidade de Requisitos (RTM)
 
 **Data da fotografia:** 2026-11-10

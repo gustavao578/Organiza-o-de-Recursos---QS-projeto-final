@@ -1,5 +1,7 @@
 # Índice de Auditoria de Rastreabilidade
 
+> **Snapshot histórico de 2026-11-12.** A afirmação abaixo de que RC-02 está aberta está superada; consulte a [RTM vigente](../rtm.md) e o [relatório de testes atual](relatorio-testes.md).
+
 **Data de Conclusão:** 2026-11-12  
 **Escopo:** Auditoria de rastreabilidade com testes de mutação manual para 6 regras críticas  
 **Status:** 🔴 **BLOQUEADOR** — 1 lacuna crítica (RC-02)  

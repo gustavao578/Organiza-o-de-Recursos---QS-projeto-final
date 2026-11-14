@@ -1,5 +1,7 @@
 # Proposta de RNF de desempenho: reservas
 
+O plano executável e os critérios de análise estão em [plano-01.md](plano-01.md). Resultados locais são evidência diagnóstica e não equivalem a aprovação do RNF para PostgreSQL/staging/produção.
+
 **Estado:** Proposta para validação do grupo; ainda não aprovada.
 
 ## Requisitos propostos
@@ -37,13 +39,8 @@ O p95 e a taxa de erro devem ser reportados separadamente para consulta e criaç
 
 Arquivos JTL e relatórios HTML ficam ignorados pelo Git. Versione o plano e a lista fictícia, nunca os resultados gerados.
 
-## Resultado observado: rodada local
+## Resultados observados
 
-**Data:** 2026-11-11. **Ambiente:** aplicação local em H2 file-backed, JMeter CLI, 50 usuários, 60 s de ramp-up e 300 s estáveis. O relatório/JTL contém também amostras de setup e do emissor local de token; os números abaixo filtram apenas as duas operações de negócio.
+A rodada mais recente, em 2026-11-14 com H2 em memória, mediu 9.574 consultas (`p95=6 ms`, 26,73 req/s) e 4.163 criações (`p95=12 ms`, 11,70 req/s), sem erros técnicos. Os status da criação foram 1 × 201 e 4.162 × 409. Os detalhes e limitações estão em [resultado-02.md](resultado-02.md).
 
-| Operação | Amostras | Respostas | p50/p95/p99 | Erros técnicos |
-|---|---:|---|---:|---:|
-| Consulta proxy `GET /reservas` | 9.577 | 9.577 × 200 | 2/6/11 ms | 0 (0%) |
-| Criação `POST /reservas` | 4.144 | 1 × 201; 4.143 × 409 | 3/10/19 ms | 0 (0%) |
-
-A vazão do relatório JMeter foi 26,66 consultas/s e 11,58 criações/s (38,24 operações de negócio/s); a mistura foi 69,8%/30,2%. Nenhuma criação retornou 500 ou status diferente de 201/409. Os resultados atendem numericamente aos limites propostos nesta execução local; não aprovam o RNF, não substituem uma consulta de disponibilidade seletiva e não representam desempenho de PostgreSQL, staging ou produção. A repetição com H2 file-backed e a checagem SQL estão em [resultado-01.md](resultado-01.md).
+A rodada anterior, em 2026-11-11 com H2 file-backed, e sua checagem SQL estão documentadas separadamente em [resultado-01.md](resultado-01.md). Resultados das duas rodadas não devem ser combinados. Nenhuma delas aprova o RNF ou representa desempenho de PostgreSQL, staging ou produção.

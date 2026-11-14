@@ -1,5 +1,7 @@
 # 📋 Documentação Final de Auditoria de Rastreabilidade
 
+> **Snapshot histórico de 2026-11-12.** RC-02 foi corrigido e validado posteriormente; os números e a decisão de bloqueio abaixo não representam a revisão atual. Fonte atual: [RTM](rtm.md), [relatório de testes](testes/relatorio-testes.md) e [checklist](entrega/checklist.md).
+
 **Projeto:** Organização de Recursos - QS (Projeto Final)  
 **Data de Conclusão:** 2026-11-12 03:06:00Z  
 **Auditor:** Analista de Qualidade (Auditor de Rastreabilidade)  

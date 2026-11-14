@@ -1,5 +1,7 @@
 # Resultado de desempenho — Rodada 01
 
+> **Evidência histórica:** esta rodada foi executada em 2026-11-11 sobre worktree sujo e H2 file-backed. Ela não representa a revisão atual. A rodada posterior de 2026-11-14 está em [resultado-02.md](resultado-02.md); em ambos os casos, H2 local e `GET /reservas` proxy não aprovam desempenho de produção.
+
 **Decisão:** **INCONCLUSIVO** para aprovação ampla do RNF. Nesta execução local, os limites numéricos propostos foram atendidos; a API não tem endpoint seletivo de disponibilidade e o banco usado foi H2, portanto o resultado não demonstra desempenho PostgreSQL, staging ou produção.
 
 ## Ambiente

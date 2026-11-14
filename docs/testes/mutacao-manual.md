@@ -1,5 +1,7 @@
 # Auditoria de Mutação Manual — Requisitos Críticos
 
+> **Auditoria histórica de 2026-11-12.** O texto a seguir registra a descoberta original de RC-02, antes da correção; seus resultados não descrevem o código atual. A atualização e a evidência de regressão estão em [docs/rtm.md](../rtm.md) e [DEF-002](../defeitos/DEF-002-sobreposicao-pendentes.md).
+
 **Data:** 2026-11-12  
 **Auditor:** Analista de Qualidade (atuando como auditor de rastreabilidade)  
 **Escopo:** Validação de cobertura efetiva das 6 regras críticas do sistema de reservas

@@ -28,7 +28,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/auth")
 @Tag(name = "Autenticação")
-@Profile("local & !prod")
+@Profile("(local | demo) & !prod")
 @ConditionalOnProperty(name = "security.jwt.identifier-login-enabled", havingValue = "true")
 public class AuthController {
 

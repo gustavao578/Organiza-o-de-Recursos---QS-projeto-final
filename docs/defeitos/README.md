@@ -1,5 +1,7 @@
 # Defeitos de Segurança - Matriz de Autorização
 
+> **Estado vigente — 2026-11-14:** os nove defeitos de autorização listados abaixo são registros da revisão histórica associada ao PR #8, não defeitos abertos na branch atual. O defeito de domínio [DEF-002 — sobreposição de pendentes](DEF-002-sobreposicao-pendentes.md) também está resolvido no código atual e tem teste de regressão passando; sua auditoria antiga é histórica. A CI, revisão por pares e o Quality Gate da revisão local ainda aguardam publicação. Não use a contagem/resultados antigos deste índice como status atual.
+
 **Data**: 2026-11-12  
 **Total de Defeitos**: 9  
 **Status das correções**: implementadas localmente; aguardando revisão e merge do PR.
@@ -47,12 +49,12 @@ O registro técnico consolidado está em [FIX-EPIC-02-SEGURANCA-SPA.md](./FIX-EP
 - Arquivo: [src/test/java/br/edu/organizacaorecursos/security/MatrizAutorizacaoTest.java](../../src/test/java/br/edu/organizacaorecursos/security/MatrizAutorizacaoTest.java)
 - Casos da matriz: 44 casos parametrizados para os perfis e resultados esperados.
 - O teste PostgreSQL de exclusion constraint executa contra `tb_reservas` criada pelo Hibernate, aplica a migração versionada e valida o 409 da API.
-- `./mvnw -B verify`: 179 testes, 0 falhas, 0 erros, 0 ignorados; gate JaCoCo aprovado.
+- `./mvnw -B verify` em 2026-11-14: 235 testes, 0 falhas, 0 erros, 0 ignorados; JaCoCo local aprovado. Isso não é resultado de CI desta branch.
 
 ## Fonte de Verdade
 
 - Matriz de Autorização: [docs/seguranca/matriz-autorizacao.md](../seguranca/matriz-autorizacao.md)
-- Checkpoint de Análise: [Análise de segurança completa da API](../../.copilot/session-state/b6b6418c-54c2-44de-8615-e1cd4fbd77e2/checkpoints/001-an-lise-de-seguran-a-completa.md)
+- Relatório de segurança: [docs/seguranca/README.md](../seguranca/README.md)
 
 ## Convenções
 

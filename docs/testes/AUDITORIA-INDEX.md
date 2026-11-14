@@ -1,5 +1,7 @@
 # 📋 Índice Consolidado de Auditoria de Rastreabilidade
 
+> **Snapshot histórico de 2026-11-12.** As conclusões abaixo sobre RC-02 como lacuna/bloqueador e 83,3% de conformidade foram superadas pela implementação/teste atual. Consulte a [RTM vigente](../rtm.md), o [registro atualizado de DEF-002](../defeitos/DEF-002-sobreposicao-pendentes.md) e o [relatório de execução](relatorio-testes.md).
+
 **Data:** 2026-11-12  
 **Status:** 🔴 **BLOQUEADOR** — RC-02 lacuna confirmada (DEF-002)  
 **Conformidade:** 83,3% (5/6 regras críticas cobertas)  

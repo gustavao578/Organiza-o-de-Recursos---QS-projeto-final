@@ -1,5 +1,7 @@
 # Defeito DEF-002: Sobreposição de Reservas PENDENTES Não Validada
 
+> **Atualização vigente — 2026-11-14:** **RESOLVIDO E VERIFICADO** no código atual. `ReservaService.criarReserva` consulta conflitos antes de atribuir `PENDENTE` ou `APROVADA`; `ReservaApiIntegrationTest.rejeitaSobreposicaoDePendentesEmRecursoRestrito` passou em `./mvnw -B verify`. A descrição abaixo registra a condição histórica que motivou o defeito, não o comportamento atual. O teste comprova o cenário em escopo local; não substitui CI/Quality Gate ou revisão por pares da branch.
+
 **ID:** DEF-002  
 **Título:** Reservas PENDENTES podem se sobrepor, violando RC-02  
 **Severidade:** 🔴 **CRÍTICA**  

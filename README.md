@@ -4,22 +4,23 @@
 
 O workflow [.github/workflows/ci.yml](.github/workflows/ci.yml) executa
 `./mvnw -B verify` em pull requests e pushes, usando Java 21 (Temurin).
-A fase `verify` executa os testes JUnit e as features Cucumber, gera o relatório
-JaCoCo e aplica os limites de cobertura configurados no Maven. O run
-`42859680966`, no commit `eb2bced`, passou por Maven verify, SonarCloud e
-publicação do relatório JaCoCo.
+A fase `verify` executa JUnit, Cucumber, gera o relatório JaCoCo e aplica os
+limites de cobertura configurados no Maven. Consulte a aba **Actions** e os
+checks do commit avaliado para o resultado vigente; uma execução histórica não
+representa o estado de outro commit.
 
 ### Validação local
 
-| Comando | Resultado | Run ID |
+| Comando | Finalidade | Relatório |
 |---|---|---|
-| `./mvnw -B verify` | Executa JUnit, Cucumber e o gate JaCoCo | Não se aplica (execução local) |
+| `./mvnw -B verify` | Executa testes e gates Maven/JaCoCo | `target/site/jacoco/index.html` |
 
 ### SonarCloud
 
-O passo SonarCloud do workflow requer o secret `SONAR_TOKEN` e as variáveis
+O passo SonarCloud requer o secret `SONAR_TOKEN` e as variáveis
 `SONAR_ORGANIZATION` e `SONAR_PROJECT_KEY`. O scanner importa
-`target/site/jacoco/jacoco.xml`; o Quality Gate passou no run listado acima.
+`target/site/jacoco/jacoco.xml` e aguarda o Quality Gate. A configuração existe
+no workflow; a aprovação deve ser confirmada no run do commit em avaliação.
 
 ## Autenticação da API
 
